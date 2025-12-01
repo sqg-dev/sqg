@@ -1,0 +1,3 @@
+generated/
+tests/gen
+tests/users.sqlite

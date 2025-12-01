@@ -1,0 +1,88 @@
+import type { DuckDBConnection, DuckDBMaterializedResult } from "@duckdb/node-api";
+
+export class {{className}} {
+    
+    constructor(private conn: DuckDBConnection) {}
+
+    static getMigrations(): string[] {   
+        return [
+            {{#each migrations}}
+            {{{quote sqlQuery}}},
+            {{/each}}
+        ];
+    }
+
+    static getQueryNames(): Map<string, keyof {{className}}> {
+        return new Map([
+            {{#each queries}} {{#unless skipGenerateFunction}}
+            ["{{id}}", "{{functionName}}"],{{/unless}}{{/each}}]
+        );
+    }
+
+    {{#each queries}}
+    {{#unless skipGenerateFunction}}
+    async {{functionName}}({{#each variables}}{{name}}: {{type}}{{#unless @last}}, {{/unless}}{{/each}}): Promise<{{> returnType }}> {
+        const sql = {{{quote sqlQuery}}};
+        {{#if isQuery}}
+        const reader = await this.conn.runAndReadAll(sql,[{{> params}}]);
+        {{#if isPluck}}
+        {{#if isOne}}
+        return reader.getRows()[0][0] as {{> rowType}};
+        {{else}}
+        return reader.getRows().map((row) => row[0] as {{> rowType}});
+        {{/if}}
+        {{else}}
+        {{#if isOne}}
+        return reader.getRowObjects() as {{> rowType}};
+        {{else}}
+        return reader.getRowObjects() as {{> rowType}}[];
+        {{/if}}
+        {{/if}}
+        {{else}}
+        return await this.conn.run(sql,[{{> params}}]);
+        {{/if}}
+    }
+    {{/unless}}
+
+    {{/each}}
+}
+
+{{#*inline "params"}}{{#each parameterNames}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}{{/inline}}
+
+{{#*inline "paramTypes"}}{{#each parameters}}{{type}} {{#unless @last}}, {{/unless}}{{/each}}{{/inline}}
+
+{{#*inline "columnTypes"}}{{#each columns}}{{name}}: {{type}}{{#unless @last}}, {{/unless}}{{/each}}{{/inline}}
+
+{{#*inline "rowType"}}
+{{#if isQuery~}}
+{{#if isPluck~}}
+{{#if columns.length~}} {{columns.0.type}} {{else}}any{{/if~}}
+{{~else~}}
+{{#if columns.length}}{ {{> columnTypes}} }{{else}}any{{/if~}}
+{{/if~}}
+{{~else~}}
+any
+{{~/if~}}
+{{/inline~}}
+
+{{#*inline "resultType"}}
+{{#if isQuery~}}
+{{> rowType}}
+{{~else~}}
+any
+{{~/if~}}
+{{/inline~}}
+
+
+{{#*inline "returnType"}}
+{{#if isQuery~}}
+{{#if isOne~}}
+{{> rowType}} | undefined
+{{~else~}}
+{{> rowType}}[]
+{{/if~}}
+{{~else~}}
+DuckDBMaterializedResult
+{{~/if~}}
+{{/inline~}}
+

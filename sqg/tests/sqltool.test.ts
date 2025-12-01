@@ -1,0 +1,39 @@
+import { describe, it, expect, beforeEach } from "vitest";
+import { processProject } from "../src/sqltool";
+import { readFileSync } from "node:fs";
+import { basename } from "node:path";
+
+describe("sqg", () => {
+  beforeEach(() => {
+    //generator = new JavaGenerator('test-template');
+  });
+
+  async function handleProject(projectPath: string, expectedFiles: string[]) {
+    const files = await processProject(projectPath);
+    expect(expectedFiles).toEqual(files.map(file => basename(file)));
+    for (const file of files) {
+      const fileContent = readFileSync(file, "utf-8");
+      const snapshotFile = `./__snapshots__/${basename(file)}.snapshot`;
+      await expect(fileContent).toMatchFileSnapshot(snapshotFile);
+    }
+    return files;
+  }
+
+  describe("processProject", () => {
+    it("handle duckdb correctly", async () => {
+      await handleProject("tests/test-duckdb.yaml", ["TestDuckdb.java"]);
+    });
+    it("handle duckdb-arrow correctly", async () => {
+      await handleProject("tests/test-duckdb-arrow.yaml", ["TestDuckDbArrow.java"]);
+    });
+    it("handle postgres correctly", async () => {
+      await handleProject("tests/test-pg.yaml", ["TestPg.java"]);
+    });
+    it("handle sqlite correctly", async () => {
+      await handleProject("tests/test-sqlite.yaml", ["test-sqlite.ts", "TestSqlite.java"]);
+    });
+    it("handle sources correctly", async () => {
+      await handleProject("tests/test-sources.yaml", ["TestSources.java"]);
+    });
+  });
+});

@@ -1,0 +1,510 @@
+package sqg.generated;
+
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.arrow.memory.RootAllocator;
+import org.apache.arrow.vector.*;
+import org.apache.arrow.vector.complex.ListVector;
+import org.apache.arrow.vector.ipc.ArrowReader;
+import org.duckdb.DuckDBConnection;
+import org.duckdb.DuckDBResultSet;
+import sqg.generated.TestDuckDbArrowJdbc.*;
+
+public class TestDuckDbArrow {
+
+    private final DuckDBConnection connection;
+    private final TestDuckDbArrowJdbc jdbc;
+
+    public TestDuckDbArrow(DuckDBConnection connection) {
+        this.connection = connection;
+        this.jdbc = new TestDuckDbArrowJdbc(connection);
+    }
+
+    public static List<String> getMigrations() {
+        return TestDuckDbArrowJdbc.getMigrations();
+    }
+
+    public int insert(String name, String email)
+        throws SQLException, IOException {
+        var stmt = connection.prepareStatement(
+            """
+            insert into users (name, email) values ( ?, ?);"""
+        );
+        stmt.setObject(1, name);
+        stmt.setObject(2, email);
+        return stmt.executeUpdate();
+    }
+
+    public record AllResult(
+        PreparedStatement statement,
+        RootAllocator allocator,
+        ArrowReader reader,
+        VarCharVector a,
+        IntVector x,
+        IntVector id,
+        VarCharVector name,
+        VarCharVector email
+    ) implements AutoCloseable {
+        public boolean loadNextBatch() throws IOException {
+            return reader.loadNextBatch();
+        }
+
+        public int getRowCount() throws IOException {
+            return reader.getVectorSchemaRoot().getRowCount();
+        }
+
+        public void close() throws IOException, SQLException {
+            reader.close();
+            allocator.close();
+            statement.close();
+        }
+    }
+
+    public AllResult all() throws SQLException, IOException {
+        var stmt = connection.prepareStatement(
+            """
+            select 'abc' as a,1 as x,* from users;"""
+        );
+        var rs = (DuckDBResultSet) stmt.executeQuery();
+        var allocator = new RootAllocator();
+        var reader = (ArrowReader) rs.arrowExportStream(allocator, 65536);
+        var root = reader.getVectorSchemaRoot();
+
+        return new AllResult(
+            stmt,
+            allocator,
+            reader,
+            (VarCharVector) root.getVector("a"),
+            (IntVector) root.getVector("x"),
+            (IntVector) root.getVector("id"),
+            (VarCharVector) root.getVector("name"),
+            (VarCharVector) root.getVector("email")
+        );
+    }
+
+    public record AllEmailsResult(
+        PreparedStatement statement,
+        RootAllocator allocator,
+        ArrowReader reader,
+        VarCharVector email
+    ) implements AutoCloseable {
+        public boolean loadNextBatch() throws IOException {
+            return reader.loadNextBatch();
+        }
+
+        public int getRowCount() throws IOException {
+            return reader.getVectorSchemaRoot().getRowCount();
+        }
+
+        public void close() throws IOException, SQLException {
+            reader.close();
+            allocator.close();
+            statement.close();
+        }
+    }
+
+    public AllEmailsResult allEmails() throws SQLException, IOException {
+        var stmt = connection.prepareStatement(
+            """
+            select email from users;"""
+        );
+        var rs = (DuckDBResultSet) stmt.executeQuery();
+        var allocator = new RootAllocator();
+        var reader = (ArrowReader) rs.arrowExportStream(allocator, 65536);
+        var root = reader.getVectorSchemaRoot();
+
+        return new AllEmailsResult(
+            stmt,
+            allocator,
+            reader,
+            (VarCharVector) root.getVector("email")
+        );
+    }
+
+    public ByIdResult byId(Integer id) throws SQLException {
+        return jdbc.byId(id);
+    }
+
+    public ByEmailResult byEmail(String email) throws SQLException {
+        return jdbc.byEmail(email);
+    }
+
+    public Integer getIdByEmail(String email) throws SQLException {
+        return jdbc.getIdByEmail(email);
+    }
+
+    public int updateEmail(Integer id, String email)
+        throws SQLException, IOException {
+        var stmt = connection.prepareStatement(
+            """
+            update users set email =? where id =?;"""
+        );
+        stmt.setObject(1, email);
+        stmt.setObject(2, id);
+        return stmt.executeUpdate();
+    }
+
+    public int delete(Integer id) throws SQLException, IOException {
+        var stmt = connection.prepareStatement(
+            """
+            delete from users where id =?;"""
+        );
+        stmt.setObject(1, id);
+        return stmt.executeUpdate();
+    }
+
+    public record ActionsByUserIdResult(
+        PreparedStatement statement,
+        RootAllocator allocator,
+        ArrowReader reader,
+        IntVector id,
+        VarCharVector action,
+        Float8Vector value,
+        IntVector user_id,
+        IntVector timestamp
+    ) implements AutoCloseable {
+        public boolean loadNextBatch() throws IOException {
+            return reader.loadNextBatch();
+        }
+
+        public int getRowCount() throws IOException {
+            return reader.getVectorSchemaRoot().getRowCount();
+        }
+
+        public void close() throws IOException, SQLException {
+            reader.close();
+            allocator.close();
+            statement.close();
+        }
+    }
+
+    public ActionsByUserIdResult actionsByUserId(Integer user_id)
+        throws SQLException, IOException {
+        var stmt = connection.prepareStatement(
+            """
+            select * from actions where user_id =?;"""
+        );
+        stmt.setObject(1, user_id);
+        var rs = (DuckDBResultSet) stmt.executeQuery();
+        var allocator = new RootAllocator();
+        var reader = (ArrowReader) rs.arrowExportStream(allocator, 65536);
+        var root = reader.getVectorSchemaRoot();
+
+        return new ActionsByUserIdResult(
+            stmt,
+            allocator,
+            reader,
+            (IntVector) root.getVector("id"),
+            (VarCharVector) root.getVector("action"),
+            (Float8Vector) root.getVector("value"),
+            (IntVector) root.getVector("user_id"),
+            (IntVector) root.getVector("timestamp")
+        );
+    }
+
+    public record ActionsByUserIdAndActionResult(
+        PreparedStatement statement,
+        RootAllocator allocator,
+        ArrowReader reader,
+        IntVector id,
+        VarCharVector action,
+        Float8Vector value,
+        IntVector user_id,
+        IntVector timestamp
+    ) implements AutoCloseable {
+        public boolean loadNextBatch() throws IOException {
+            return reader.loadNextBatch();
+        }
+
+        public int getRowCount() throws IOException {
+            return reader.getVectorSchemaRoot().getRowCount();
+        }
+
+        public void close() throws IOException, SQLException {
+            reader.close();
+            allocator.close();
+            statement.close();
+        }
+    }
+
+    public ActionsByUserIdAndActionResult actionsByUserIdAndAction(
+        Integer user_id,
+        String action
+    ) throws SQLException, IOException {
+        var stmt = connection.prepareStatement(
+            """
+            select * from actions
+
+              where user_id =? and action =?;
+
+             """
+        );
+        stmt.setObject(1, user_id);
+        stmt.setObject(2, action);
+        var rs = (DuckDBResultSet) stmt.executeQuery();
+        var allocator = new RootAllocator();
+        var reader = (ArrowReader) rs.arrowExportStream(allocator, 65536);
+        var root = reader.getVectorSchemaRoot();
+
+        return new ActionsByUserIdAndActionResult(
+            stmt,
+            allocator,
+            reader,
+            (IntVector) root.getVector("id"),
+            (VarCharVector) root.getVector("action"),
+            (Float8Vector) root.getVector("value"),
+            (IntVector) root.getVector("user_id"),
+            (IntVector) root.getVector("timestamp")
+        );
+    }
+
+    public record TopUsersResult(
+        PreparedStatement statement,
+        RootAllocator allocator,
+        ArrowReader reader,
+        IntVector user_id,
+        Float8Vector total_value
+    ) implements AutoCloseable {
+        public boolean loadNextBatch() throws IOException {
+            return reader.loadNextBatch();
+        }
+
+        public int getRowCount() throws IOException {
+            return reader.getVectorSchemaRoot().getRowCount();
+        }
+
+        public void close() throws IOException, SQLException {
+            reader.close();
+            allocator.close();
+            statement.close();
+        }
+    }
+
+    public TopUsersResult topUsers() throws SQLException, IOException {
+        var stmt = connection.prepareStatement(
+            """
+            SELECT user_id, SUM(value) as total_value FROM actions GROUP BY user_id ORDER BY total_value DESC LIMIT 10;"""
+        );
+        var rs = (DuckDBResultSet) stmt.executeQuery();
+        var allocator = new RootAllocator();
+        var reader = (ArrowReader) rs.arrowExportStream(allocator, 65536);
+        var root = reader.getVectorSchemaRoot();
+
+        return new TopUsersResult(
+            stmt,
+            allocator,
+            reader,
+            (IntVector) root.getVector("user_id"),
+            (Float8Vector) root.getVector("total_value")
+        );
+    }
+
+    public record TestResult(
+        PreparedStatement statement,
+        RootAllocator allocator,
+        ArrowReader reader,
+        IntVector n
+    ) implements AutoCloseable {
+        public boolean loadNextBatch() throws IOException {
+            return reader.loadNextBatch();
+        }
+
+        public int getRowCount() throws IOException {
+            return reader.getVectorSchemaRoot().getRowCount();
+        }
+
+        public void close() throws IOException, SQLException {
+            reader.close();
+            allocator.close();
+            statement.close();
+        }
+    }
+
+    public TestResult test(Integer a) throws SQLException, IOException {
+        var stmt = connection.prepareStatement(
+            """
+            select 1 as n where ? ::int is null; """
+        );
+        stmt.setObject(1, a);
+        var rs = (DuckDBResultSet) stmt.executeQuery();
+        var allocator = new RootAllocator();
+        var reader = (ArrowReader) rs.arrowExportStream(allocator, 65536);
+        var root = reader.getVectorSchemaRoot();
+
+        return new TestResult(
+            stmt,
+            allocator,
+            reader,
+            (IntVector) root.getVector("n")
+        );
+    }
+
+    public record Test2Result(
+        PreparedStatement statement,
+        RootAllocator allocator,
+        ArrowReader reader,
+        IntVector n
+    ) implements AutoCloseable {
+        public boolean loadNextBatch() throws IOException {
+            return reader.loadNextBatch();
+        }
+
+        public int getRowCount() throws IOException {
+            return reader.getVectorSchemaRoot().getRowCount();
+        }
+
+        public void close() throws IOException, SQLException {
+            reader.close();
+            allocator.close();
+            statement.close();
+        }
+    }
+
+    public Test2Result test2() throws SQLException, IOException {
+        var stmt = connection.prepareStatement(
+            """
+            select  1 as n;"""
+        );
+        var rs = (DuckDBResultSet) stmt.executeQuery();
+        var allocator = new RootAllocator();
+        var reader = (ArrowReader) rs.arrowExportStream(allocator, 65536);
+        var root = reader.getVectorSchemaRoot();
+
+        return new Test2Result(
+            stmt,
+            allocator,
+            reader,
+            (IntVector) root.getVector("n")
+        );
+    }
+
+    public record Test3Result(
+        PreparedStatement statement,
+        RootAllocator allocator,
+        ArrowReader reader,
+        VarCharVector b,
+        IntVector a
+    ) implements AutoCloseable {
+        public boolean loadNextBatch() throws IOException {
+            return reader.loadNextBatch();
+        }
+
+        public int getRowCount() throws IOException {
+            return reader.getVectorSchemaRoot().getRowCount();
+        }
+
+        public void close() throws IOException, SQLException {
+            reader.close();
+            allocator.close();
+            statement.close();
+        }
+    }
+
+    public Test3Result test3() throws SQLException, IOException {
+        var stmt = connection.prepareStatement(
+            """
+            select '--ok' b,2 as a """
+        );
+        var rs = (DuckDBResultSet) stmt.executeQuery();
+        var allocator = new RootAllocator();
+        var reader = (ArrowReader) rs.arrowExportStream(allocator, 65536);
+        var root = reader.getVectorSchemaRoot();
+
+        return new Test3Result(
+            stmt,
+            allocator,
+            reader,
+            (VarCharVector) root.getVector("b"),
+            (IntVector) root.getVector("a")
+        );
+    }
+
+    public record Test4Result(
+        PreparedStatement statement,
+        RootAllocator allocator,
+        ArrowReader reader,
+        VarCharVector s,
+        IntVector z
+    ) implements AutoCloseable {
+        public boolean loadNextBatch() throws IOException {
+            return reader.loadNextBatch();
+        }
+
+        public int getRowCount() throws IOException {
+            return reader.getVectorSchemaRoot().getRowCount();
+        }
+
+        public void close() throws IOException, SQLException {
+            reader.close();
+            allocator.close();
+            statement.close();
+        }
+    }
+
+    public Test4Result test4() throws SQLException, IOException {
+        var stmt = connection.prepareStatement(
+            """
+            select '/* lol */' s , 5 as z"""
+        );
+        var rs = (DuckDBResultSet) stmt.executeQuery();
+        var allocator = new RootAllocator();
+        var reader = (ArrowReader) rs.arrowExportStream(allocator, 65536);
+        var root = reader.getVectorSchemaRoot();
+
+        return new Test4Result(
+            stmt,
+            allocator,
+            reader,
+            (VarCharVector) root.getVector("s"),
+            (IntVector) root.getVector("z")
+        );
+    }
+
+    public record Test5Result(
+        PreparedStatement statement,
+        RootAllocator allocator,
+        ArrowReader reader,
+        VarCharVector x,
+        VarCharVector y,
+        IntVector c
+    ) implements AutoCloseable {
+        public boolean loadNextBatch() throws IOException {
+            return reader.loadNextBatch();
+        }
+
+        public int getRowCount() throws IOException {
+            return reader.getVectorSchemaRoot().getRowCount();
+        }
+
+        public void close() throws IOException, SQLException {
+            reader.close();
+            allocator.close();
+            statement.close();
+        }
+    }
+
+    public Test5Result test5() throws SQLException, IOException {
+        var stmt = connection.prepareStatement(
+            """
+            select 'a 	' x , 'a	 a' y, 1 as c"""
+        );
+        var rs = (DuckDBResultSet) stmt.executeQuery();
+        var allocator = new RootAllocator();
+        var reader = (ArrowReader) rs.arrowExportStream(allocator, 65536);
+        var root = reader.getVectorSchemaRoot();
+
+        return new Test5Result(
+            stmt,
+            allocator,
+            reader,
+            (VarCharVector) root.getVector("x"),
+            (VarCharVector) root.getVector("y"),
+            (IntVector) root.getVector("c")
+        );
+    }
+}

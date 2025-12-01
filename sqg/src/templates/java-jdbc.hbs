@@ -1,0 +1,134 @@
+package {{config.package}};
+
+import java.sql.Array;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Struct;
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.HashMap;
+import java.util.Collections;
+import java.util.function.Function;
+
+public class {{className}} {
+    private final Connection connection;
+
+    public {{className}}(Connection connection) {
+        this.connection = connection;
+    }
+
+    private static Object[] getObjectArray(Array array) {
+        if (array == null) {
+            return null;
+        }
+        try {
+            return (Object[]) array.getArray();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    private static Object[] getAttr(Struct struct) {
+        if (struct == null) {
+            return null;
+        }
+        try {
+            return struct.getAttributes();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    
+    private static <K> List<K> arrayToList(
+        Array array,
+        Class<? extends K[]> baseType
+    )  {
+        var objectArray = getObjectArray(array);
+        if (objectArray == null) {
+            return null;
+        }
+        return Collections.unmodifiableList(
+            Arrays.asList(
+                Arrays.copyOf(objectArray, objectArray.length, baseType)
+            )
+        );
+    }
+
+    private static <K> List<K> arrayOfStructToList(
+        Array array,
+        Function<Object[], K> convert
+    )  {
+        var objectArray = getObjectArray(array);
+        if (objectArray == null) {
+            return null;
+        }
+        var list = new ArrayList<K>(objectArray.length);
+        for (Object obj : objectArray) {
+            list.add(obj != null ? convert.apply(getAttr((Struct)obj)) : null);
+        }
+        return Collections.unmodifiableList(list);
+    }
+
+    private static final List<String> migrations = List.of(
+        {{#each migrations}}"""
+{{{sqlQuery}}}"""{{#unless @last}},{{/unless}}
+        {{/each}}
+    );
+
+    public static List<String> getMigrations() {   
+        return migrations;
+    }
+
+    {{#each queries}}
+    {{#unless skipGenerateFunction}}
+    {{>columnTypesRecord}}
+    public {{> returnType}} {{functionName}}({{#each variables}}{{{type}}} {{name}}{{#unless @last}}, {{/unless}}{{/each}}) throws SQLException {
+        try (var stmt = connection.prepareStatement({{{partsToString sqlQueryParts}}})) {
+            {{> execute}}
+        }
+    }
+    {{/unless}}
+    {{/each}}
+}
+
+
+{{#*inline "columnTypesRecord"}}
+{{#if isQuery}}
+{{{declareTypes this}}}
+{{/if}}
+{{/inline}}
+
+{{#*inline "returnType"}}
+{{#if isQuery~}}
+{{functionReturnType}}
+{{~else~}}
+int
+{{~/if~}}
+{{/inline~}}
+
+{{#*inline "readRow"}}
+{{{readColumns this}}}
+{{/inline~}}
+
+{{#*inline "execute"}}
+{{#each parameterNames}}stmt.setObject({{plusOne @index}}, {{this}});
+{{/each}}
+{{#if isQuery}}
+try(var rs = stmt.executeQuery()) {
+{{#if isOne}}
+        return rs.next() ? {{> readRow}} : null;    
+{{else}}
+var results = new ArrayList<{{rowType}}>();
+while (rs.next()) {
+    results.add({{> readRow}});
+}
+return results;
+{{/if}}
+}
+{{else}}
+return stmt.executeUpdate();
+{{/if}}
+{{/inline}}
