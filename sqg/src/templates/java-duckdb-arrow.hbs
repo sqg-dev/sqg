@@ -1,0 +1,105 @@
+package {{config.package}};
+
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.arrow.memory.RootAllocator;
+import org.apache.arrow.vector.*;
+import org.apache.arrow.vector.complex.ListVector;
+import org.apache.arrow.vector.ipc.ArrowReader;
+import org.duckdb.DuckDBConnection;
+import org.duckdb.DuckDBResultSet;
+import {{config.package}}.{{className}}Jdbc.*;
+
+public class {{className}} {
+    private final DuckDBConnection connection;
+    private final {{className}}Jdbc jdbc;
+
+    public {{className}}(DuckDBConnection connection) {
+        this.connection = connection;
+        this.jdbc = new {{className}}Jdbc(connection);
+    }
+
+
+    public static List<String> getMigrations() {   
+        return {{className}}Jdbc.getMigrations();
+    }
+
+    {{#each queries}}
+    {{#unless skipGenerateFunction}}
+    {{#if isOne}}
+    public {{> returnType}} {{functionName}}({{#each variables}}{{type}} {{name}}{{#unless @last}}, {{/unless}}{{/each}}) throws SQLException {
+        return jdbc.{{functionName}}({{#each variables}}{{name}}{{#unless @last}}, {{/unless}}{{/each}});
+    }
+    {{else}}
+    {{>columnTypesRecord}}
+    public {{> returnType}} {{functionName}}({{#each variables}}{{type}} {{name}}{{#unless @last}}, {{/unless}}{{/each}}) throws SQLException, IOException {
+        var stmt = connection.prepareStatement("""
+{{{sqlQuery}}}""");
+    {{> execute}}
+    }
+    {{/if}}
+    {{/unless}}
+    {{/each}}
+}
+
+
+
+
+{{#*inline "columnTypesRecord"}}
+{{#if isQuery}}
+{{#if isOne}}
+public record {{rowType}}({{#each columns}}{{type}} {{name}}{{#unless @last}}, {{/unless}}{{/each}}) {}
+{{else}}
+public record {{rowType}}(PreparedStatement statement, RootAllocator allocator, ArrowReader reader,
+{{#each columns}}{{mapType this}} {{name}}{{#unless @last}}, {{/unless}}{{/each}}) implements AutoCloseable {
+    public boolean loadNextBatch() throws IOException {
+        return reader.loadNextBatch();
+    }
+    
+    public int getRowCount() throws IOException {
+        return reader.getVectorSchemaRoot().getRowCount();
+    }
+
+    public void close() throws IOException, SQLException {
+        reader.close();
+        allocator.close();
+        statement.close();
+    }
+}
+{{/if}}
+{{/if}}
+{{/inline}}
+
+{{#*inline "returnType"}}
+{{#if isQuery~}}
+{{functionReturnType}}
+{{~else~}}
+int
+{{~/if~}}
+{{/inline~}}
+
+{{#*inline "readVectors"}}
+var root = reader.getVectorSchemaRoot();
+
+return new {{rowType}}(stmt, allocator, reader, {{#each columns}}({{mapType this}})root.getVector("{{name}}"){{#unless @last}}, {{/unless}}{{/each}});
+
+{{/inline~}}
+
+
+{{#*inline "execute"}}
+{{#each parameterNames}}stmt.setObject({{plusOne @index}}, {{this}});
+{{/each}}
+{{#if isQuery}}
+    var rs = (DuckDBResultSet) stmt.executeQuery();
+    var allocator = new RootAllocator();
+    var reader = (ArrowReader) rs.arrowExportStream(allocator, 65536);
+    {{> readVectors}}
+    {{else}}
+    return stmt.executeUpdate();
+{{/if}}
+{{/inline}}

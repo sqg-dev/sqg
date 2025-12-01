@@ -1,0 +1,863 @@
+package sqg.generated;
+
+import java.math.BigInteger;
+import java.sql.Array;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Struct;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.function.Function;
+
+public class TestDuckdb {
+
+    private final Connection connection;
+
+    public TestDuckdb(Connection connection) {
+        this.connection = connection;
+    }
+
+    private static Object[] getObjectArray(Array array) {
+        if (array == null) {
+            return null;
+        }
+        try {
+            return (Object[]) array.getArray();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static Object[] getAttr(Struct struct) {
+        if (struct == null) {
+            return null;
+        }
+        try {
+            return struct.getAttributes();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static <K> List<K> arrayToList(
+        Array array,
+        Class<? extends K[]> baseType
+    ) {
+        var objectArray = getObjectArray(array);
+        if (objectArray == null) {
+            return null;
+        }
+        return Collections.unmodifiableList(
+            Arrays.asList(
+                Arrays.copyOf(objectArray, objectArray.length, baseType)
+            )
+        );
+    }
+
+    private static <K> List<K> arrayOfStructToList(
+        Array array,
+        Function<Object[], K> convert
+    ) {
+        var objectArray = getObjectArray(array);
+        if (objectArray == null) {
+            return null;
+        }
+        var list = new ArrayList<K>(objectArray.length);
+        for (Object obj : objectArray) {
+            list.add(obj != null ? convert.apply(getAttr((Struct) obj)) : null);
+        }
+        return Collections.unmodifiableList(list);
+    }
+
+    private static final List<String> migrations = List.of(
+        """
+        CREATE SEQUENCE seq_users_id START 1;
+
+        create table if not exists users (
+            id integer primary key not null default nextval('seq_users_id'),
+            name text not null,
+            email text not null unique
+        );
+
+
+        create table if not exists actions (
+            id integer primary key not null,
+            action text not null,
+            value double,
+            user_id integer not null references users(id),
+            timestamp integer not null
+        );"""
+    );
+
+    public static List<String> getMigrations() {
+        return migrations;
+    }
+
+    public int insert(String name, String email) throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "insert into users (name, email) values (?,?);"
+            );
+        ) {
+            stmt.setObject(1, name);
+            stmt.setObject(2, email);
+            return stmt.executeUpdate();
+        }
+    }
+
+    public record AllResult(
+        String a,
+        Integer x,
+        Integer id,
+        String name,
+        String email
+    ) {}
+
+    public List<AllResult> all() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select 'abc' as a,1 as x,* from users;"
+            );
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<AllResult>();
+                while (rs.next()) {
+                    results.add(
+                        new AllResult(
+                            (String) rs.getObject(1),
+                            (Integer) rs.getObject(2),
+                            (Integer) rs.getObject(3),
+                            (String) rs.getObject(4),
+                            (String) rs.getObject(5)
+                        )
+                    );
+                }
+                return results;
+            }
+        }
+    }
+
+    public List<String> allEmails() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement("select email from users;");
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<String>();
+                while (rs.next()) {
+                    results.add((String) rs.getObject(1));
+                }
+                return results;
+            }
+        }
+    }
+
+    public record ByIdResult(Integer id, String name, String email) {}
+
+    public ByIdResult byId(Integer id) throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select * from users where id =? limit 1;"
+            );
+        ) {
+            stmt.setObject(1, id);
+            try (var rs = stmt.executeQuery()) {
+                return rs.next()
+                    ? new ByIdResult(
+                        (Integer) rs.getObject(1),
+                        (String) rs.getObject(2),
+                        (String) rs.getObject(3)
+                    )
+                    : null;
+            }
+        }
+    }
+
+    public record ByEmailResult(Integer id, String name, String email) {}
+
+    public ByEmailResult byEmail(String email) throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select * from users where email =?;"
+            );
+        ) {
+            stmt.setObject(1, email);
+            try (var rs = stmt.executeQuery()) {
+                return rs.next()
+                    ? new ByEmailResult(
+                        (Integer) rs.getObject(1),
+                        (String) rs.getObject(2),
+                        (String) rs.getObject(3)
+                    )
+                    : null;
+            }
+        }
+    }
+
+    public Integer getIdByEmail(String email) throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select id from users where email =?;"
+            );
+        ) {
+            stmt.setObject(1, email);
+            try (var rs = stmt.executeQuery()) {
+                return rs.next() ? (Integer) rs.getObject(1) : null;
+            }
+        }
+    }
+
+    public int updateEmail(Integer id, String email) throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "update users set email =? where id =?;"
+            );
+        ) {
+            stmt.setObject(1, email);
+            stmt.setObject(2, id);
+            return stmt.executeUpdate();
+        }
+    }
+
+    public int delete(Integer id) throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "delete from users where id =?;"
+            );
+        ) {
+            stmt.setObject(1, id);
+            return stmt.executeUpdate();
+        }
+    }
+
+    public record ActionsByUserIdResult(
+        Integer id,
+        String action,
+        Double value,
+        Integer userId,
+        Integer timestamp
+    ) {}
+
+    public List<ActionsByUserIdResult> actionsByUserId(Integer user_id)
+        throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select * from actions where user_id =?;"
+            );
+        ) {
+            stmt.setObject(1, user_id);
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<ActionsByUserIdResult>();
+                while (rs.next()) {
+                    results.add(
+                        new ActionsByUserIdResult(
+                            (Integer) rs.getObject(1),
+                            (String) rs.getObject(2),
+                            (Double) rs.getObject(3),
+                            (Integer) rs.getObject(4),
+                            (Integer) rs.getObject(5)
+                        )
+                    );
+                }
+                return results;
+            }
+        }
+    }
+
+    public record ActionsByUserIdAndActionResult(
+        Integer id,
+        String action,
+        Double value,
+        Integer userId,
+        Integer timestamp
+    ) {}
+
+    public List<ActionsByUserIdAndActionResult> actionsByUserIdAndAction(
+        Integer user_id,
+        String action
+    ) throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                """
+                select * from actions
+
+                  where user_id =? and action =?;
+
+                 """
+            );
+        ) {
+            stmt.setObject(1, user_id);
+            stmt.setObject(2, action);
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<ActionsByUserIdAndActionResult>();
+                while (rs.next()) {
+                    results.add(
+                        new ActionsByUserIdAndActionResult(
+                            (Integer) rs.getObject(1),
+                            (String) rs.getObject(2),
+                            (Double) rs.getObject(3),
+                            (Integer) rs.getObject(4),
+                            (Integer) rs.getObject(5)
+                        )
+                    );
+                }
+                return results;
+            }
+        }
+    }
+
+    public record TopUsersResult(Integer userId, Double totalValue) {}
+
+    public List<TopUsersResult> topUsers() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "SELECT user_id, SUM(value) as total_value FROM actions GROUP BY user_id ORDER BY total_value DESC LIMIT 10;"
+            );
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<TopUsersResult>();
+                while (rs.next()) {
+                    results.add(
+                        new TopUsersResult(
+                            (Integer) rs.getObject(1),
+                            (Double) rs.getObject(2)
+                        )
+                    );
+                }
+                return results;
+            }
+        }
+    }
+
+    public record TestResult(Integer n) {}
+
+    public List<TestResult> test(Integer a) throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select 1 as n where? ::int is null; "
+            );
+        ) {
+            stmt.setObject(1, a);
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<TestResult>();
+                while (rs.next()) {
+                    results.add(new TestResult((Integer) rs.getObject(1)));
+                }
+                return results;
+            }
+        }
+    }
+
+    public record Test2Result(Integer n) {}
+
+    public List<Test2Result> test2() throws SQLException {
+        try (var stmt = connection.prepareStatement("select  1 as n;")) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<Test2Result>();
+                while (rs.next()) {
+                    results.add(new Test2Result((Integer) rs.getObject(1)));
+                }
+                return results;
+            }
+        }
+    }
+
+    public record Test3Result(String b, Integer a) {}
+
+    public List<Test3Result> test3() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement("select '--ok' b,2 as a ");
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<Test3Result>();
+                while (rs.next()) {
+                    results.add(
+                        new Test3Result(
+                            (String) rs.getObject(1),
+                            (Integer) rs.getObject(2)
+                        )
+                    );
+                }
+                return results;
+            }
+        }
+    }
+
+    public record Test4Result(String s, Integer z) {}
+
+    public List<Test4Result> test4() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select '/* lol */' s , 5 as z"
+            );
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<Test4Result>();
+                while (rs.next()) {
+                    results.add(
+                        new Test4Result(
+                            (String) rs.getObject(1),
+                            (Integer) rs.getObject(2)
+                        )
+                    );
+                }
+                return results;
+            }
+        }
+    }
+
+    public record Test5Result(String x, String y, Integer c) {}
+
+    public List<Test5Result> test5() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select 'a 	' x , 'a	 a' y, 1 as c"
+            );
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<Test5Result>();
+                while (rs.next()) {
+                    results.add(
+                        new Test5Result(
+                            (String) rs.getObject(1),
+                            (String) rs.getObject(2),
+                            (Integer) rs.getObject(3)
+                        )
+                    );
+                }
+                return results;
+            }
+        }
+    }
+
+    public record TestListResult(List<String> names) {}
+
+    public List<TestListResult> testList() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select ['a','b', 'c'] as names"
+            );
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<TestListResult>();
+                while (rs.next()) {
+                    results.add(
+                        new TestListResult(
+                            arrayToList((Array) rs.getObject(1), String[].class)
+                        )
+                    );
+                }
+                return results;
+            }
+        }
+    }
+
+    public List<List<String>> testList2() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select ['a','b', 'c'] as names"
+            );
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<List<String>>();
+                while (rs.next()) {
+                    results.add(
+                        arrayToList((Array) rs.getObject(1), String[].class)
+                    );
+                }
+                return results;
+            }
+        }
+    }
+
+    public List<String> testList3() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select ['a','b', 'c'] as names"
+            );
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                return rs.next()
+                    ? arrayToList((Array) rs.getObject(1), String[].class)
+                    : null;
+            }
+        }
+    }
+
+    public record TestMapResult(HashMap props) {}
+
+    public List<TestMapResult> testMap() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select props: MAP {'a' : 1}"
+            );
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<TestMapResult>();
+                while (rs.next()) {
+                    results.add(new TestMapResult((HashMap) rs.getObject(1)));
+                }
+                return results;
+            }
+        }
+    }
+
+    public record TestMap2Result(HashMap props) {}
+
+    public List<TestMap2Result> testMap2() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                """
+
+                select props: MAP { 1 : 2 }"""
+            );
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<TestMap2Result>();
+                while (rs.next()) {
+                    results.add(new TestMap2Result((HashMap) rs.getObject(1)));
+                }
+                return results;
+            }
+        }
+    }
+
+    public record TestMap3Result(HashMap props) {}
+
+    public List<TestMap3Result> testMap3() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                """
+
+                select props: MAP { [1] : 2 }"""
+            );
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<TestMap3Result>();
+                while (rs.next()) {
+                    results.add(new TestMap3Result((HashMap) rs.getObject(1)));
+                }
+                return results;
+            }
+        }
+    }
+
+    public record TestStructResult(DataResult data) {
+        public record DataResult(
+            Integer test,
+            String name,
+            NestedResult nested
+        ) {
+            private static DataResult fromAttributes(Object[] v) {
+                return new DataResult(
+                    (Integer) v[0],
+                    (String) v[1],
+                    NestedResult.fromAttributes(getAttr((Struct) v[2]))
+                );
+            }
+
+            public record NestedResult(Boolean test) {
+                private static NestedResult fromAttributes(Object[] v) {
+                    return new NestedResult((Boolean) v[0]);
+                }
+            }
+        }
+    }
+
+    public List<TestStructResult> testStruct() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select data: {'test' : 1, 'name' : 'abc', 'nested' : {'test' : true}}"
+            );
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<TestStructResult>();
+                while (rs.next()) {
+                    results.add(
+                        new TestStructResult(
+                            TestStructResult.DataResult.fromAttributes(
+                                getAttr((Struct) rs.getObject(1))
+                            )
+                        )
+                    );
+                }
+                return results;
+            }
+        }
+    }
+
+    public record TestStruct2Result(
+        Integer test,
+        String name,
+        NestedResult nested
+    ) {
+        private static TestStruct2Result fromAttributes(Object[] v) {
+            return new TestStruct2Result(
+                (Integer) v[0],
+                (String) v[1],
+                NestedResult.fromAttributes(getAttr((Struct) v[2]))
+            );
+        }
+
+        public record NestedResult(Boolean test) {
+            private static NestedResult fromAttributes(Object[] v) {
+                return new NestedResult((Boolean) v[0]);
+            }
+        }
+    }
+
+    public List<TestStruct2Result> testStruct2() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select data: {'test' : 1, 'name' : 'abc', 'nested' : {'test' : true}}"
+            );
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<TestStruct2Result>();
+                while (rs.next()) {
+                    results.add(
+                        TestStruct2Result.fromAttributes(
+                            getAttr((Struct) rs.getObject(1))
+                        )
+                    );
+                }
+                return results;
+            }
+        }
+    }
+
+    public record TestStruct3Result(
+        Integer test,
+        String name,
+        NestedResult nested
+    ) {
+        private static TestStruct3Result fromAttributes(Object[] v) {
+            return new TestStruct3Result(
+                (Integer) v[0],
+                (String) v[1],
+                NestedResult.fromAttributes(getAttr((Struct) v[2]))
+            );
+        }
+
+        public record NestedResult(Boolean test) {
+            private static NestedResult fromAttributes(Object[] v) {
+                return new NestedResult((Boolean) v[0]);
+            }
+        }
+    }
+
+    public TestStruct3Result testStruct3() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select data: {'test' : 1, 'name' : 'abc', 'nested' : {'test' : true}}"
+            );
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                return rs.next()
+                    ? TestStruct3Result.fromAttributes(
+                        getAttr((Struct) rs.getObject(1))
+                    )
+                    : null;
+            }
+        }
+    }
+
+    public record TestStruct4Result(DataResult data) {
+        public record DataResult(
+            Integer test,
+            String name,
+            NestedResult nested
+        ) {
+            private static DataResult fromAttributes(Object[] v) {
+                return new DataResult(
+                    (Integer) v[0],
+                    (String) v[1],
+                    NestedResult.fromAttributes(getAttr((Struct) v[2]))
+                );
+            }
+
+            public record NestedResult(Boolean test) {
+                private static NestedResult fromAttributes(Object[] v) {
+                    return new NestedResult((Boolean) v[0]);
+                }
+            }
+        }
+    }
+
+    public TestStruct4Result testStruct4() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select data: {'test' : 1, 'name' : 'abc', 'nested' : {'test' : true}}"
+            );
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                return rs.next()
+                    ? new TestStruct4Result(
+                        TestStruct4Result.DataResult.fromAttributes(
+                            getAttr((Struct) rs.getObject(1))
+                        )
+                    )
+                    : null;
+            }
+        }
+    }
+
+    public record TestNestedStructsResult(DataResult data) {
+        public record DataResult(Integer v, XResult x) {
+            private static DataResult fromAttributes(Object[] v) {
+                return new DataResult(
+                    (Integer) v[0],
+                    XResult.fromAttributes(getAttr((Struct) v[1]))
+                );
+            }
+
+            public record XResult(Integer v, YResult y) {
+                private static XResult fromAttributes(Object[] v) {
+                    return new XResult(
+                        (Integer) v[0],
+                        YResult.fromAttributes(getAttr((Struct) v[1]))
+                    );
+                }
+
+                public record YResult(Integer v, List<Integer> z) {
+                    private static YResult fromAttributes(Object[] v) {
+                        return new YResult(
+                            (Integer) v[0],
+                            arrayToList((Array) v[1], Integer[].class)
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    public TestNestedStructsResult testNestedStructs() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select {v:1,'x' : {v:2,'y' : {v:3, 'z' : [1]}}} as data"
+            );
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                return rs.next()
+                    ? new TestNestedStructsResult(
+                        TestNestedStructsResult.DataResult.fromAttributes(
+                            getAttr((Struct) rs.getObject(1))
+                        )
+                    )
+                    : null;
+            }
+        }
+    }
+
+    public record TestNestedResult(HashMap data) {}
+
+    public List<TestNestedResult> testNested() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select MAP {'x' : [{'a' : 1}]} as data"
+            );
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<TestNestedResult>();
+                while (rs.next()) {
+                    results.add(
+                        new TestNestedResult((HashMap) rs.getObject(1))
+                    );
+                }
+                return results;
+            }
+        }
+    }
+
+    public record TestNested2Result(DataResult data) {
+        public record DataResult(List<XResult> x) {
+            private static DataResult fromAttributes(Object[] v) {
+                return new DataResult(
+                    arrayOfStructToList((Array) v[0], XResult::fromAttributes)
+                );
+            }
+
+            public record XResult(Integer a) {
+                private static XResult fromAttributes(Object[] v) {
+                    return new XResult((Integer) v[0]);
+                }
+            }
+        }
+    }
+
+    public TestNested2Result testNested2() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                """
+                select {'x' : [{'a' : 1}]} as data
+                 """
+            );
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                return rs.next()
+                    ? new TestNested2Result(
+                        TestNested2Result.DataResult.fromAttributes(
+                            getAttr((Struct) rs.getObject(1))
+                        )
+                    )
+                    : null;
+            }
+        }
+    }
+
+    public record TestNested3Result(List<Integer> a, Integer b, CResult c) {
+        public record CResult(List<XResult> x, YResult y) {
+            private static CResult fromAttributes(Object[] v) {
+                return new CResult(
+                    arrayOfStructToList((Array) v[0], XResult::fromAttributes),
+                    YResult.fromAttributes(getAttr((Struct) v[1]))
+                );
+            }
+
+            public record XResult(Integer a) {
+                private static XResult fromAttributes(Object[] v) {
+                    return new XResult((Integer) v[0]);
+                }
+            }
+
+            public record YResult(Integer z) {
+                private static YResult fromAttributes(Object[] v) {
+                    return new YResult((Integer) v[0]);
+                }
+            }
+        }
+    }
+
+    public TestNested3Result testNested3() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                """
+                select a:[1,2,3] ,b:2, c: {'x' : [{'a' : 1}], 'y' : {'z' : 3}}
+
+
+
+
+
+
+
+                """
+            );
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                return rs.next()
+                    ? new TestNested3Result(
+                        arrayToList((Array) rs.getObject(1), Integer[].class),
+                        (Integer) rs.getObject(2),
+                        TestNested3Result.CResult.fromAttributes(
+                            getAttr((Struct) rs.getObject(3))
+                        )
+                    )
+                    : null;
+            }
+        }
+    }
+}

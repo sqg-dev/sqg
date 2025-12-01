@@ -1,0 +1,98 @@
+import type { Database, RunResult, Statement } from "better-sqlite3";
+
+export class TestSqlite {
+  private statements = new Map<string, Statement>();
+
+  constructor(private db: Database) {}
+
+  private prepare<
+    BindParameters extends unknown[] | {} = unknown[],
+    Result = unknown,
+  >(id: string, query: string, isPluck = false) {
+    let stmt = this.statements.get(id);
+    if (!stmt) {
+      stmt = this.db.prepare(query);
+      if (isPluck) {
+        stmt = stmt.pluck();
+      }
+      this.statements.set(id, stmt);
+    }
+    return stmt as Statement<BindParameters, Result>;
+  }
+
+  static getMigrations(): string[] {
+    return [
+      `create table  users (
+    id text primary key,
+    name text not null,
+    email text unique
+) strict;`,
+    ];
+  }
+
+  static getQueryNames(): Map<string, keyof TestSqlite> {
+    return new Map([
+      ["users1", "users1"],
+      ["users2", "users2"],
+      ["users3", "users3"],
+      ["users4", "users4"],
+      ["users5", "users5"],
+      ["users6", "users6"],
+      ["users7", "users7"],
+    ]);
+  }
+
+  users1(): { id: string; name: string; email: string | null }[] {
+    const stmt = this.prepare<
+      [],
+      { id: string; name: string; email: string | null }
+    >("users1", "select * from users;");
+    return stmt.all();
+  }
+  users2(): string | undefined {
+    const stmt = this.prepare<[], string>(
+      "users2",
+      `select id from users where id = '1';`,
+      true,
+    );
+    return stmt.get();
+  }
+  users3(): string | undefined {
+    const stmt = this.prepare<[], string>(
+      "users3",
+      `select name from users where id = '1';`,
+      true,
+    );
+    return stmt.get();
+  }
+  users4(): { email: string | null; name: string } | undefined {
+    const stmt = this.prepare<[], { email: string | null; name: string }>(
+      "users4",
+      `select email, name from users where id = '1';`,
+    );
+    return stmt.get();
+  }
+  users5(): { count: number; email: string | null }[] {
+    const stmt = this.prepare<[], { count: number; email: string | null }>(
+      "users5",
+      `select 10 count, email from users where id = '1';`,
+    );
+    return stmt.all();
+  }
+  users6(
+    name: string,
+  ): { id: string; name: string; email: string } | undefined {
+    const stmt = this.prepare<
+      [string],
+      { id: string; name: string; email: string }
+    >("users6", "SELECT * FROM users WHERE name =?");
+    return stmt.get(name);
+  }
+  users7(name: string): { id: string; name: string; email: string | null }[] {
+    const stmt = this.prepare<
+      [string],
+      { id: string; name: string; email: string | null }
+    >("users7", "SELECT * FROM users WHERE name =?");
+    return stmt.all(name);
+  }
+}

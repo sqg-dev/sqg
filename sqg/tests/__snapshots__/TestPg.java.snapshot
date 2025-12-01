@@ -1,0 +1,221 @@
+package com.test;
+
+import java.math.BigInteger;
+import java.sql.Array;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Struct;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.function.Function;
+
+public class TestPg {
+
+    private final Connection connection;
+
+    public TestPg(Connection connection) {
+        this.connection = connection;
+    }
+
+    private static Object[] getObjectArray(Array array) {
+        if (array == null) {
+            return null;
+        }
+        try {
+            return (Object[]) array.getArray();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static Object[] getAttr(Struct struct) {
+        if (struct == null) {
+            return null;
+        }
+        try {
+            return struct.getAttributes();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static <K> List<K> arrayToList(
+        Array array,
+        Class<? extends K[]> baseType
+    ) {
+        var objectArray = getObjectArray(array);
+        if (objectArray == null) {
+            return null;
+        }
+        return Collections.unmodifiableList(
+            Arrays.asList(
+                Arrays.copyOf(objectArray, objectArray.length, baseType)
+            )
+        );
+    }
+
+    private static <K> List<K> arrayOfStructToList(
+        Array array,
+        Function<Object[], K> convert
+    ) {
+        var objectArray = getObjectArray(array);
+        if (objectArray == null) {
+            return null;
+        }
+        var list = new ArrayList<K>(objectArray.length);
+        for (Object obj : objectArray) {
+            list.add(obj != null ? convert.apply(getAttr((Struct) obj)) : null);
+        }
+        return Collections.unmodifiableList(list);
+    }
+
+    private static final List<String> migrations = List.of(
+        """
+        create table users (
+            id text primary key,
+            name text not null,
+            email text unique
+        );"""
+    );
+
+    public static List<String> getMigrations() {
+        return migrations;
+    }
+
+    public record Users1Result(String id, String name, String email) {}
+
+    public List<Users1Result> users1() throws SQLException {
+        try (var stmt = connection.prepareStatement("select * from users;")) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<Users1Result>();
+                while (rs.next()) {
+                    results.add(
+                        new Users1Result(
+                            (String) rs.getObject(1),
+                            (String) rs.getObject(2),
+                            (String) rs.getObject(3)
+                        )
+                    );
+                }
+                return results;
+            }
+        }
+    }
+
+    public String users2() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select id from users where id = '1';"
+            );
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                return rs.next() ? (String) rs.getObject(1) : null;
+            }
+        }
+    }
+
+    public String users3() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select name from users where id = '1';"
+            );
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                return rs.next() ? (String) rs.getObject(1) : null;
+            }
+        }
+    }
+
+    public record Users4Result(String email, String name) {}
+
+    public Users4Result users4() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select email, name from users where id = '1';"
+            );
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                return rs.next()
+                    ? new Users4Result(
+                        (String) rs.getObject(1),
+                        (String) rs.getObject(2)
+                    )
+                    : null;
+            }
+        }
+    }
+
+    public record Users5Result(Integer count, String email) {}
+
+    public List<Users5Result> users5() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select 10 count, email from users where id = '1';"
+            );
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<Users5Result>();
+                while (rs.next()) {
+                    results.add(
+                        new Users5Result(
+                            (Integer) rs.getObject(1),
+                            (String) rs.getObject(2)
+                        )
+                    );
+                }
+                return results;
+            }
+        }
+    }
+
+    public record Users6Result(String id, String name, String email) {}
+
+    public Users6Result users6(String name) throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "SELECT * FROM users WHERE name =?"
+            );
+        ) {
+            stmt.setObject(1, name);
+            try (var rs = stmt.executeQuery()) {
+                return rs.next()
+                    ? new Users6Result(
+                        (String) rs.getObject(1),
+                        (String) rs.getObject(2),
+                        (String) rs.getObject(3)
+                    )
+                    : null;
+            }
+        }
+    }
+
+    public record Users7Result(String id, String name, String email) {}
+
+    public List<Users7Result> users7(String name) throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "SELECT * FROM users WHERE name =?"
+            );
+        ) {
+            stmt.setObject(1, name);
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<Users7Result>();
+                while (rs.next()) {
+                    results.add(
+                        new Users7Result(
+                            (String) rs.getObject(1),
+                            (String) rs.getObject(2),
+                            (String) rs.getObject(3)
+                        )
+                    );
+                }
+                return results;
+            }
+        }
+    }
+}

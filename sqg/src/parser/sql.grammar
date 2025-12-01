@@ -1,0 +1,108 @@
+
+// run `pnpm lezer-gen` to update code after changing this file
+// run `pnpx tsx src/test-grammar.ts` to see a syntax tree 
+
+// https://lezer.codemirror.net/docs/guide/#writing-a-grammar
+// A lowercase name for token or non-terminal means that it is not a node in the syntax tree
+
+
+// https://github.com/lezer-parser/java/blob/main/src/java.grammar
+
+
+@top File { QueryBlock+ }
+
+QueryBlock {
+  header
+  SQLBlock 
+}
+
+SQLBlock {
+ sqlStuff  (sqlStuff | BR)*
+}
+
+sqlStuff {
+  BlockComment | LineComment | SQLText | StringLiteral | StringLiteralSingle | VarRef
+}
+
+header {
+  (blockCommentSpecial | lineCommentSpecial)
+  br+
+  setVars?
+}
+
+BR {br}
+
+blockCommentSpecial {  BlockCommentStartSpecial  Name  Modifiers* br* Config }
+
+Config {
+  blockCommentRest
+}
+
+lineCommentSpecial {
+    LineCommentStartSpecial  Name Modifiers*
+}
+
+setVars {
+  SetVarLine+
+}
+
+SetVarLine {
+  set Name "=" Value br+
+}
+Value {
+  StringLiteral | StringLiteralSingle | SQLText
+}
+
+@tokens {
+  set { "@set" }
+  nameChar { @asciiLetter | @digit | "_" }
+  Name { nameChar+ }
+  VarRef { "${" Name "}" }
+
+  Modifiers { ":" nameChar+ }
+
+  QueryType {
+    "EXEC" | "QUERY" | "MIGRATE" | "TESTDATA"
+  }
+
+  lineCommentStart {  "--" }
+  
+  LineCommentStartSpecial {
+    lineCommentStart  $[ \t]*  QueryType
+  }
+
+  LineComment {
+    lineCommentStart ![\n]*
+  }
+  BlockCommentStartSpecial {
+    blockCommentStart  (space | br )* QueryType 
+  }
+  blockCommentStart { "/*" } 
+  BlockComment {  blockCommentStart blockCommentRest }
+  blockCommentRest { ![*] blockCommentRest | "*" blockCommentAfterStar }
+  blockCommentAfterStar { "/" | "*" blockCommentAfterStar | ![/*] blockCommentRest }
+
+  StringLiteral {
+      "\"" (![\\"\n] | "\\" (![\n] | "\n"))* "\""
+   }
+   StringLiteralSingle {
+      "'" (!['\n] | "\\" (![\n] | "\n"))* "'"
+   }
+   
+  SQLText { ![ $\t\n\r]+ | $[$] }  // break at variables references
+  br { "\n" }
+
+  space { $[ \t]+ }
+  
+  @precedence {BlockCommentStartSpecial, BlockComment, SQLText}
+  @precedence {LineCommentStartSpecial, LineComment, SQLText}
+  @precedence {StringLiteral, SQLText}
+  @precedence {Modifiers, SQLText}
+  @precedence {StringLiteralSingle, SQLText}
+  @precedence {space, blockCommentRest}
+  @precedence {set, SQLText}
+  @precedence {VarRef, SQLText}
+  @precedence { Modifiers, blockCommentRest}
+}
+
+@skip { space }

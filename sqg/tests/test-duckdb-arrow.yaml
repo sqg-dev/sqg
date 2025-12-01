@@ -1,0 +1,16 @@
+version: 1
+
+name: test-duckdb-arrow
+
+sql:     
+  - engine: duckdb
+    files:
+      - test-duckdb-arrow.sql   
+    gen:
+        - generator: java/duckdb-arrow
+          name: TestDuckDBArrow
+          output: ../java/src/main/java/sqg/generated/
+          config:
+            package: sqg.generated
+        
+        

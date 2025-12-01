@@ -1,0 +1,11 @@
+packages:
+  - sqg
+
+catalog:
+  '@duckdb/node-api': ^1.4.2-r.1
+  '@duckdb/node-bindings-linux-x64': ^1.4.2-r.1
+
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - better-sqlite3
+  - esbuild

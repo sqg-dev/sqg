@@ -1,0 +1,133 @@
+package com.test;
+
+import java.math.BigInteger;
+import java.sql.Array;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Struct;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.function.Function;
+
+public class TestSources {
+
+    private final Connection connection;
+
+    public TestSources(Connection connection) {
+        this.connection = connection;
+    }
+
+    private static Object[] getObjectArray(Array array) {
+        if (array == null) {
+            return null;
+        }
+        try {
+            return (Object[]) array.getArray();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static Object[] getAttr(Struct struct) {
+        if (struct == null) {
+            return null;
+        }
+        try {
+            return struct.getAttributes();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static <K> List<K> arrayToList(
+        Array array,
+        Class<? extends K[]> baseType
+    ) {
+        var objectArray = getObjectArray(array);
+        if (objectArray == null) {
+            return null;
+        }
+        return Collections.unmodifiableList(
+            Arrays.asList(
+                Arrays.copyOf(objectArray, objectArray.length, baseType)
+            )
+        );
+    }
+
+    private static <K> List<K> arrayOfStructToList(
+        Array array,
+        Function<Object[], K> convert
+    ) {
+        var objectArray = getObjectArray(array);
+        if (objectArray == null) {
+            return null;
+        }
+        var list = new ArrayList<K>(objectArray.length);
+        for (Object obj : objectArray) {
+            list.add(obj != null ? convert.apply(getAttr((Struct) obj)) : null);
+        }
+        return Collections.unmodifiableList(list);
+    }
+
+    private static final List<String> migrations = List.of();
+
+    public static List<String> getMigrations() {
+        return migrations;
+    }
+
+    public record Test1Result(Integer x) {}
+
+    public List<Test1Result> test1() throws SQLException {
+        try (var stmt = connection.prepareStatement("select 1 as x;")) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<Test1Result>();
+                while (rs.next()) {
+                    results.add(new Test1Result((Integer) rs.getObject(1)));
+                }
+                return results;
+            }
+        }
+    }
+
+    public int attach(String sources_users) throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "attach '" +
+                sources_users +
+                """
+                ' as "users" (TYPE SQLITE);"""
+            );
+        ) {
+            return stmt.executeUpdate();
+        }
+    }
+
+    public record Test2Result(Long id, String name, String email) {}
+
+    public List<Test2Result> test2() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select * from users.users limit 10;"
+            );
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<Test2Result>();
+                while (rs.next()) {
+                    results.add(
+                        new Test2Result(
+                            (Long) rs.getObject(1),
+                            (String) rs.getObject(2),
+                            (String) rs.getObject(3)
+                        )
+                    );
+                }
+                return results;
+            }
+        }
+    }
+}
