@@ -2,10 +2,10 @@ name: Build
 
 on:
   push:
-    branches: [ "main","github-workflow" ]
+    branches: [ "*" ]
   pull_request:
     branches: [ "main" ]
-  workflow_dispatch:
+  workflow_dispatch: {}
 
 jobs:
   build:
