@@ -1,8 +1,9 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import CodeEditor from '../components/CodeEditor.svelte';
+import { actions } from 'astro:actions';
 ---
 
 <Layout>
-	<CodeEditor client:load />
+	<CodeEditor client:load actions={actions} />
 </Layout>
