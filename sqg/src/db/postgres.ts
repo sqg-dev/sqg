@@ -16,13 +16,17 @@ for (const [name, id] of Object.entries(types.builtins)) {
 }
 
 export const postgres = new (class implements DatabaseEngine {
-  dbInitial: Client;
-  db: Client;
+  dbInitial!: Client;
+  db!: Client;
 
   async initializeDatabase(queries: SQLQuery[]) {
     this.dbInitial = new Client({
       connectionString: connectionString,
     });
+    this.db = new Client({
+      connectionString: connectionStringTemp,
+    });
+
     await this.dbInitial.connect();
 
     try {
@@ -36,9 +40,7 @@ export const postgres = new (class implements DatabaseEngine {
       consola.error("Error creating database:", error);
     }
 
-    this.db = new Client({
-      connectionString: connectionStringTemp,
-    });
+   
     await this.db.connect();
 
     await initializeDatabase(queries, async (query) => {
@@ -67,7 +69,7 @@ export const postgres = new (class implements DatabaseEngine {
         consola.success(`Query ${query.id} executed successfully`);
       }
     } catch (error) {
-      consola.error("Error executing queries:", error.message);
+      consola.error("Error executing queries:", (error as Error).message);
       throw error;
     }
   }
