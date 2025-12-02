@@ -31,9 +31,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build
+        working-directory: sqg
         run: pnpm build
 
-      # Optional: run tests
-      # - name: Test
-      #   run: pnpm test
+      - name: Test
+        working-directory: sqg
+        run: pnpm test:run
 
