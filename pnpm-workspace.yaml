@@ -1,5 +1,6 @@
 packages:
   - sqg
+  - editor
 
 catalog:
   '@duckdb/node-api': ^1.4.2-r.1
@@ -9,3 +10,4 @@ onlyBuiltDependencies:
   - '@parcel/watcher'
   - better-sqlite3
   - esbuild
+  - sharp
