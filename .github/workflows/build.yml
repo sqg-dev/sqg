@@ -38,7 +38,7 @@ jobs:
 
       - name: generate code
         working-directory: sqg
-        run: just all-ci
+        run: just install all-ci
 
       - name: Test
         working-directory: sqg

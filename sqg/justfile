@@ -28,4 +28,9 @@ stop-pg:
 
 create-users-sqlite:
   cd tests && rm -f users.sqlite && duckdb < users.sql
+
+install:
+  pnpm i -g tsx
+  pnpm link --global
+
   
