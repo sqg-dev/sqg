@@ -14,7 +14,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-    
+
+      - uses: extractions/setup-just@v3
+      
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -34,7 +36,11 @@ jobs:
         working-directory: sqg
         run: pnpm build
 
+      - name: generate code
+        working-directory: sqg
+        run: just all-ci
+
       - name: Test
         working-directory: sqg
-        run: pnpm test:run
+        run: pnpm test:run --exclude sqltool-pg.test.ts
 

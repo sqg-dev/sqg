@@ -1,6 +1,9 @@
 all: build-duckdb build-duckdb-arrow build-pg build-sqlite build-sources
   echo "All done"
 
+all-ci: build-duckdb build-duckdb-arrow build-sqlite build-sources
+  echo "All done"
+
 build-duckdb:
   pnpm sqg tests/test-duckdb.yaml
 
