@@ -1,0 +1,9 @@
+# Build the Docker image for sqg
+build:
+    docker build -f Dockerfile -t sqg:latest ../..
+
+# Build and show image info
+build-info: build
+    docker image ls sqg:latest
+
+
