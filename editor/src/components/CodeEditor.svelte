@@ -104,7 +104,7 @@ SELECT * FROM users;
       {#if isGenerating}
         <div class="py-8 text-center text-gray-500">Generating...</div>
       {:else if error}
-        <div class="p-8 text-red-600 bg-red-50 m-4 rounded-lg">{error}</div>
+        <div class="p-8 text-red-600 bg-red-50 m-4 rounded-lg whitespace-pre-wrap font-mono text-sm">{error}</div>
       {:else if generatedCode}
         <pre class="m-0 p-4 bg-slate-800 text-slate-200 font-mono text-sm leading-relaxed overflow-x-auto h-full"><code>{generatedCode}</code></pre>
       {:else}
