@@ -9,7 +9,7 @@ import {
 import BetterSqlite3, { type Database } from "better-sqlite3";
 import consola from "consola";
 import { isNotNil, sortBy } from "es-toolkit";
-import { postgres } from "./db/postgres";
+import { postgres } from "./db/postgres.js";
 import type { SQLQuery } from "./sql-query.js";
 import { ColumnMapType, type ColumnType, ColumnTypeList, ColumnTypeStruct } from "./sql-query.js";
 

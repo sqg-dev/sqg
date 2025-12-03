@@ -1,3 +1,5 @@
 generated/
+dist/
 tests/gen
 tests/users.sqlite
+prod/
