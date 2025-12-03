@@ -1,7 +1,7 @@
 import { defineAction } from 'astro:actions';
 import { z } from 'astro:schema';
 import Docker from 'dockerode';
-import { mkdirSync, writeFileSync, readFileSync, rmSync, readdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, rmSync, readdirSync, chmodSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import YAML from 'yaml';
@@ -75,6 +75,8 @@ export const server = {
         // Create directories
         mkdirSync(inputDir, { recursive: true });
         mkdirSync(outputDir, { recursive: true });
+        // Set permissions so Docker container can write
+        chmodSync(outputDir, 0o777);
 
         // Create SQL file
         const sqlFile = join(inputDir, `${sqlFileName}.sql`);
