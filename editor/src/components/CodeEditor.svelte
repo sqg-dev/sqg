@@ -1,7 +1,6 @@
 <script lang="ts">
   import Editor from './Editor.svelte';
   import { actions } from 'astro:actions';
-  
 
   let sqlCode = `-- MIGRATE 1 
 
@@ -29,6 +28,7 @@ select email from users limit \${limit};
 `;
 
   let generatedCode = '';
+  let highlightedCode = '';
   let error: string | null = null;
   let isGenerating = false;
   let selectedDatabase: 'sqlite' | 'duckdb' = 'sqlite';
@@ -64,6 +64,7 @@ select email from users limit \${limit};
         error = actionError.message || 'An error occurred while generating code';
       } else if (data) {
         generatedCode = data.code || '';
+        highlightedCode = data.highlightedCode || '';
       }
     } catch (e) {
       error = e instanceof Error ? e.message : 'An error occurred while generating code';
@@ -127,7 +128,13 @@ select email from users limit \${limit};
       {:else if error}
         <div class="p-8 text-red-600 bg-red-50 m-4 rounded-lg whitespace-pre-wrap font-mono text-sm">{error}</div>
       {:else if generatedCode}
-        <pre class="m-0 p-4 bg-slate-800 text-slate-200 font-mono text-sm leading-relaxed overflow-x-auto h-full"><code>{generatedCode}</code></pre>
+        {#if highlightedCode}
+          <div class="m-0 p-4 h-full overflow-x-auto">
+            {@html highlightedCode}
+          </div>
+        {:else}
+          <pre class="m-0 p-4 bg-slate-800 text-slate-200 font-mono text-sm leading-relaxed overflow-x-auto h-full"><code>{generatedCode}</code></pre>
+        {/if}
       {:else}
         <div class="py-8 text-center text-gray-500">Generated code will appear here</div>
       {/if}
