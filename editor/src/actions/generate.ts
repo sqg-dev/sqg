@@ -6,9 +6,23 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import YAML from 'yaml';
 import { randomUUID } from 'node:crypto';
+import { createHighlighter } from 'shiki';
 
 const docker = new Docker();
 const IMAGE_NAME = 'sqg:latest';
+
+// Initialize shiki highlighter lazily
+let highlighterPromise: Promise<Awaited<ReturnType<typeof createHighlighter>>> | null = null;
+
+async function getHighlighterInstance() {
+  if (!highlighterPromise) {
+    highlighterPromise = createHighlighter({
+      themes: ['github-dark'],
+      langs: ['java', 'typescript'],
+    });
+  }
+  return highlighterPromise;
+}
 
 // Map language to generator format and determine output filename
 function getGeneratorInfo(language: string, database: string) {
@@ -147,8 +161,20 @@ export const server = {
             throw new Error(errorMessage);
           }
 
+          // Generate syntax highlighted HTML for Java and TypeScript
+          let highlightedCode = '';
+          if (language === 'typescript' || language === 'java-jdbc' || language === 'java-arrow') {
+            const shiki = await getHighlighterInstance();
+            const lang = language === 'typescript' ? 'typescript' : 'java';
+            highlightedCode = shiki.codeToHtml(generatedCode, {
+              lang,
+              theme: 'github-dark',
+            });
+          }
+
           return {
             code: generatedCode,
+            highlightedCode,
             generator,
             database,
           };
