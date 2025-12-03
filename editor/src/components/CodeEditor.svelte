@@ -3,8 +3,29 @@
   import { actions } from 'astro:actions';
   
 
-  let sqlCode = `-- Enter your SQL queries here
-SELECT * FROM users;
+  let sqlCode = `-- MIGRATE 1 
+
+create table  users (
+    id text primary key,
+    name text not null,
+    email text unique
+);
+
+
+-- QUERY all_users
+select * from users;
+
+-- QUERY total_users_count :pluck :one
+select count(*) from users;
+
+-- QUERY get_user_by_id :pluck :one
+@set id = 1
+select id from users where id = \${id};
+
+
+-- QUERY get_emails :pluck 
+@set limit = 5
+select email from users limit \${limit};
 `;
 
   let generatedCode = '';
