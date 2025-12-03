@@ -7,3 +7,5 @@ build-info: build
     docker image ls sqg:latest
 
 
+save:
+   docker save -o sqg-docker.tar sqg:latest
