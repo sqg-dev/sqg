@@ -11,8 +11,10 @@
   },
   "dependencies": {
     "@astrojs/check": "^0.9.6",
+    "@epic-web/cachified": "^5.6.0",
     "astro": "^5.16.3",
     "dockerode": "^4.0.9",
+    "lru-cache": "^11.2.4",
     "shiki": "^3.19.0",
     "typescript": "^5.8.3",
     "yaml": "^2.8.0"
@@ -21,7 +23,6 @@
     "@astrojs/node": "^9.5.1",
     "@astrojs/svelte": "^7.2.2",
     "@astrojs/tailwind": "^6.0.2",
-    "@codemirror/basic-setup": "^0.20.0",
     "@codemirror/lang-sql": "^6.10.0",
     "@codemirror/state": "^6.5.2",
     "@codemirror/theme-one-dark": "^6.1.3",
