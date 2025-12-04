@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import YAML from 'yaml';
 import { randomUUID } from 'node:crypto';
 import { createHighlighter } from 'shiki';
+import { cachified } from './cache';
 
 const docker = new Docker();
 const IMAGE_NAME = 'sqg:latest';
@@ -55,16 +56,7 @@ function getGeneratorInfo(language: string, database: string) {
   return { generator, sqlFileName, outputFileName };
 }
 
-export const server = {
-  generateCode: defineAction({
-    accept: 'json',
-    input: z.object({
-      sql: z.string(),
-      database: z.enum(['sqlite', 'duckdb']),
-      language: z.enum(['java-jdbc', 'java-arrow', 'typescript']),
-    }),
-    handler: async ({ sql, database, language }) => {
-      const { generator, sqlFileName, outputFileName } = getGeneratorInfo(language, database);
+async function generateWithDocker(sql: string, database: string, language: string, generator: string, sqlFileName: string, outputFileName: string) {
 
       // Create temporary directory for this request
       const tempDir = join(tmpdir(), `sqg-${randomUUID()}`);
@@ -202,6 +194,25 @@ export const server = {
           console.error('Error cleaning up temp directory:', error);
         }
       }
+}
+
+export const server = {
+  generateCode: defineAction({
+    accept: 'json',
+    input: z.object({
+      sql: z.string(),
+      database: z.enum(['sqlite', 'duckdb']),
+      language: z.enum(['java-jdbc', 'java-arrow', 'typescript']),
+    }),
+    handler: async ({ sql, database, language }) => {
+      const { generator, sqlFileName, outputFileName } = getGeneratorInfo(language, database);
+
+      return await cachified({
+        key: `generate-${sql}-${database}-${language}`,
+        ttl: 60 * 60 * 24 * 1000, // 24 hours
+        getFreshValue: async () => await generateWithDocker(sql, database, language, generator, sqlFileName, outputFileName),
+      });
+      
     },
   }),
 };
