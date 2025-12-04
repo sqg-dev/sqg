@@ -1,0 +1,15 @@
+set dotenv-load
+
+test:
+  #pnpm test:run --silent
+  #pnpm check
+ 
+push: test
+  pnpm build
+  rm -rf deploy
+  pnpm deploy --filter editor --prod deploy
+  echo "push to $TARGET"
+  rsync -az --delete  --chown=$OWNER deploy/ $TARGET
+  rsync -L -azc --chown=$OWNER .env.production $TARGET/.env
+  @echo "push done!"
+
