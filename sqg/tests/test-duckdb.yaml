@@ -11,5 +11,7 @@ sql:
           output: ../java/src/main/java/sqg/generated/
           config:
             package: sqg.generated
+        - generator: typescript/duckdb
+          output: /tmp/
         
         

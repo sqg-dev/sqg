@@ -5,7 +5,7 @@ import { basename } from "node:path";
 
 export async function handleProject(projectPath: string, expectedFiles: string[]) {
   const files = await processProject(projectPath);
-  expect(expectedFiles).toEqual(files.map(file => basename(file)));
+  expect(files.map(file => basename(file))).toEqual(expectedFiles);
   for (const file of files) {
     const fileContent = readFileSync(file, "utf-8");
     const snapshotFile = `./__snapshots__/${basename(file)}.snapshot`;
@@ -21,7 +21,7 @@ describe("sqg", () => {
 
   describe("processProject", () => {
     it("handle duckdb correctly", async () => {
-      await handleProject("tests/test-duckdb.yaml", ["TestDuckdb.java"]);
+      await handleProject("tests/test-duckdb.yaml", ["TestDuckdb.java", "test-duckdb.ts"]);
     });
     it("handle duckdb-arrow correctly", async () => {
       await handleProject("tests/test-duckdb-arrow.yaml", ["TestDuckDbArrow.java"]);

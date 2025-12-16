@@ -212,7 +212,12 @@ export class TypeScriptTypeMapper extends TypeMapper {
     const interfaceName = this.formatStructTypeName(column.name);
     const fields = column.type.fields
       .map((field) => {
-        const fieldType = this.getTypeName({ ...column, type: field.type });
+        const fieldType = this.getTypeName({
+          name: field.name,
+          type: field.type,
+          // Struct fields are nullable by default unless configured otherwise
+          nullable: true,
+        });
         return `  ${field.name}: ${fieldType};`;
       })
       .join("\n");

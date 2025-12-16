@@ -1,0 +1,433 @@
+import type {
+  DuckDBConnection,
+  DuckDBMaterializedResult,
+} from "@duckdb/node-api";
+
+export class TestDuckdb {
+  constructor(private conn: DuckDBConnection) {}
+
+  static getMigrations(): string[] {
+    return [
+      `CREATE SEQUENCE seq_users_id START 1;
+
+create table if not exists users (
+    id integer primary key not null default nextval('seq_users_id'),
+    name text not null,
+    email text not null unique
+);
+
+
+create table if not exists actions (
+    id integer primary key not null,
+    action text not null,
+    value double,
+    user_id integer not null references users(id),
+    timestamp integer not null
+);`,
+    ];
+  }
+
+  static getQueryNames(): Map<string, keyof TestDuckdb> {
+    return new Map([
+      ["insert", "insert"],
+      ["all", "all"],
+      ["all_emails", "allEmails"],
+      ["by_id", "byId"],
+      ["by_email", "byEmail"],
+      ["get_id_by_email", "getIdByEmail"],
+      ["update_email", "updateEmail"],
+      ["delete", "delete"],
+      ["actions_by_user_id", "actionsByUserId"],
+      ["actions_by_user_id_and_action", "actionsByUserIdAndAction"],
+      ["top_users", "topUsers"],
+      ["test", "test"],
+      ["test2", "test2"],
+      ["test3", "test3"],
+      ["test4", "test4"],
+      ["test5", "test5"],
+      ["testList", "testList"],
+      ["testList2", "testList2"],
+      ["testList3", "testList3"],
+      ["testMap", "testMap"],
+      ["testMap2", "testMap2"],
+      ["testMap3", "testMap3"],
+      ["testStruct", "testStruct"],
+      ["testStruct2", "testStruct2"],
+      ["testStruct3", "testStruct3"],
+      ["testStruct4", "testStruct4"],
+      ["testNestedStructs", "testNestedStructs"],
+      ["testNested", "testNested"],
+      ["testNested2", "testNested2"],
+      ["testNested3", "testNested3"],
+    ]);
+  }
+
+  async insert(name: string, email: string): Promise<DuckDBMaterializedResult> {
+    const sql = "insert into users (name, email) values ( ?, ?);";
+    return await this.conn.run(sql, [name, email]);
+  }
+
+  async all(): Promise<
+    {
+      a: string | null;
+      x: number | null;
+      id: number | null;
+      name: string | null;
+      email: string | null;
+    }[]
+  > {
+    const sql = `select 'abc' as a,1 as x,* from users;`;
+    const reader = await this.conn.runAndReadAll(sql, []);
+    return reader.getRowObjects() as {
+      a: string | null;
+      x: number | null;
+      id: number | null;
+      name: string | null;
+      email: string | null;
+    }[];
+  }
+
+  async allEmails(): Promise<(string | null)[]> {
+    const sql = "select email from users;";
+    const reader = await this.conn.runAndReadAll(sql, []);
+    return reader.getRows().map((row) => row[0] as string | null);
+  }
+
+  async byId(
+    id: number,
+  ): Promise<
+    { id: number | null; name: string | null; email: string | null } | undefined
+  > {
+    const sql = "select * from users where id =? limit 1;";
+    const reader = await this.conn.runAndReadAll(sql, [id]);
+    return reader.getRowObjects()[0] as
+      | { id: number | null; name: string | null; email: string | null }
+      | undefined;
+  }
+
+  async byEmail(
+    email: string,
+  ): Promise<
+    { id: number | null; name: string | null; email: string | null } | undefined
+  > {
+    const sql = "select * from users where email =?;";
+    const reader = await this.conn.runAndReadAll(sql, [email]);
+    return reader.getRowObjects()[0] as
+      | { id: number | null; name: string | null; email: string | null }
+      | undefined;
+  }
+
+  async getIdByEmail(email: string): Promise<number | null | undefined> {
+    const sql = "select id from users where email =?;";
+    const reader = await this.conn.runAndReadAll(sql, [email]);
+    return reader.getRows()[0]?.[0] as number | null | undefined;
+  }
+
+  async updateEmail(
+    id: number,
+    email: string,
+  ): Promise<DuckDBMaterializedResult> {
+    const sql = "update users set email =? where id =?;";
+    return await this.conn.run(sql, [email, id]);
+  }
+
+  async delete(id: number): Promise<DuckDBMaterializedResult> {
+    const sql = "delete from users where id =?;";
+    return await this.conn.run(sql, [id]);
+  }
+
+  async actionsByUserId(
+    user_id: number,
+  ): Promise<
+    {
+      id: number | null;
+      action: string | null;
+      value: number | null;
+      user_id: number | null;
+      timestamp: number | null;
+    }[]
+  > {
+    const sql = "select * from actions where user_id =?;";
+    const reader = await this.conn.runAndReadAll(sql, [user_id]);
+    return reader.getRowObjects() as {
+      id: number | null;
+      action: string | null;
+      value: number | null;
+      user_id: number | null;
+      timestamp: number | null;
+    }[];
+  }
+
+  async actionsByUserIdAndAction(
+    user_id: number,
+    action: string,
+  ): Promise<
+    {
+      id: number | null;
+      action: string | null;
+      value: number | null;
+      user_id: number | null;
+      timestamp: number | null;
+    }[]
+  > {
+    const sql = `select * from actions 
+ 
+  where user_id =? and action =?;
+
+ `;
+    const reader = await this.conn.runAndReadAll(sql, [user_id, action]);
+    return reader.getRowObjects() as {
+      id: number | null;
+      action: string | null;
+      value: number | null;
+      user_id: number | null;
+      timestamp: number | null;
+    }[];
+  }
+
+  async topUsers(): Promise<
+    { user_id: number | null; total_value: number | null }[]
+  > {
+    const sql =
+      "SELECT user_id, SUM(value) as total_value FROM actions GROUP BY user_id ORDER BY total_value DESC LIMIT 10;";
+    const reader = await this.conn.runAndReadAll(sql, []);
+    return reader.getRowObjects() as {
+      user_id: number | null;
+      total_value: number | null;
+    }[];
+  }
+
+  async test(a: number): Promise<{ n: number | null }[]> {
+    const sql = "select 1 as n where ? ::int is null; ";
+    const reader = await this.conn.runAndReadAll(sql, [a]);
+    return reader.getRowObjects() as { n: number | null }[];
+  }
+
+  async test2(): Promise<{ n: number | null }[]> {
+    const sql = "select  1 as n;";
+    const reader = await this.conn.runAndReadAll(sql, []);
+    return reader.getRowObjects() as { n: number | null }[];
+  }
+
+  async test3(): Promise<{ b: string | null; a: number | null }[]> {
+    const sql = `select '--ok' b,2 as a `;
+    const reader = await this.conn.runAndReadAll(sql, []);
+    return reader.getRowObjects() as { b: string | null; a: number | null }[];
+  }
+
+  async test4(): Promise<{ s: string | null; z: number | null }[]> {
+    const sql = `select '/* lol */' s , 5 as z`;
+    const reader = await this.conn.runAndReadAll(sql, []);
+    return reader.getRowObjects() as { s: string | null; z: number | null }[];
+  }
+
+  async test5(): Promise<
+    { x: string | null; y: string | null; c: number | null }[]
+  > {
+    const sql = `select 'a 	' x , 'a	 a' y, 1 as c`;
+    const reader = await this.conn.runAndReadAll(sql, []);
+    return reader.getRowObjects() as {
+      x: string | null;
+      y: string | null;
+      c: number | null;
+    }[];
+  }
+
+  async testList(): Promise<{ names: (string | null)[] }[]> {
+    const sql = `select ['a','b', 'c'] as names`;
+    const reader = await this.conn.runAndReadAll(sql, []);
+    return reader.getRowObjects() as { names: (string | null)[] }[];
+  }
+
+  async testList2(): Promise<(string | null)[][]> {
+    const sql = `select ['a','b', 'c'] as names`;
+    const reader = await this.conn.runAndReadAll(sql, []);
+    return reader.getRows().map((row) => row[0] as (string | null)[]);
+  }
+
+  async testList3(): Promise<(string | null)[] | undefined> {
+    const sql = `select ['a','b', 'c'] as names`;
+    const reader = await this.conn.runAndReadAll(sql, []);
+    return reader.getRows()[0]?.[0] as (string | null)[] | undefined;
+  }
+
+  async testMap(): Promise<{ props: Map<string, number | null> }[]> {
+    const sql = `select props: MAP {'a' : 1}`;
+    const reader = await this.conn.runAndReadAll(sql, []);
+    return reader.getRowObjects() as { props: Map<string, number | null> }[];
+  }
+
+  async testMap2(): Promise<{ props: Map<number, number | null> }[]> {
+    const sql = ` 
+select props: MAP { 1 : 2 }`;
+    const reader = await this.conn.runAndReadAll(sql, []);
+    return reader.getRowObjects() as { props: Map<number, number | null> }[];
+  }
+
+  async testMap3(): Promise<
+    { props: Map<(number | null)[], number | null> }[]
+  > {
+    const sql = ` 
+select props: MAP { [1] : 2 }`;
+    const reader = await this.conn.runAndReadAll(sql, []);
+    return reader.getRowObjects() as {
+      props: Map<(number | null)[], number | null>;
+    }[];
+  }
+
+  async testStruct(): Promise<
+    {
+      data: {
+        test: number | null;
+        name: string | null;
+        nested: { test: boolean | null };
+      };
+    }[]
+  > {
+    const sql = `select data: {'test' : 1, 'name' : 'abc', 'nested' : {'test' : true}}`;
+    const reader = await this.conn.runAndReadAll(sql, []);
+    return reader.getRowObjects() as {
+      data: {
+        test: number | null;
+        name: string | null;
+        nested: { test: boolean | null };
+      };
+    }[];
+  }
+
+  async testStruct2(): Promise<
+    {
+      test: number | null;
+      name: string | null;
+      nested: { test: boolean | null };
+    }[]
+  > {
+    const sql = `select data: {'test' : 1, 'name' : 'abc', 'nested' : {'test' : true}}`;
+    const reader = await this.conn.runAndReadAll(sql, []);
+    return reader
+      .getRows()
+      .map(
+        (row) =>
+          row[0] as {
+            test: number | null;
+            name: string | null;
+            nested: { test: boolean | null };
+          },
+      );
+  }
+
+  async testStruct3(): Promise<
+    | {
+        test: number | null;
+        name: string | null;
+        nested: { test: boolean | null };
+      }
+    | undefined
+  > {
+    const sql = `select data: {'test' : 1, 'name' : 'abc', 'nested' : {'test' : true}}`;
+    const reader = await this.conn.runAndReadAll(sql, []);
+    return reader.getRows()[0]?.[0] as
+      | {
+          test: number | null;
+          name: string | null;
+          nested: { test: boolean | null };
+        }
+      | undefined;
+  }
+
+  async testStruct4(): Promise<
+    | {
+        data: {
+          test: number | null;
+          name: string | null;
+          nested: { test: boolean | null };
+        };
+      }
+    | undefined
+  > {
+    const sql = `select data: {'test' : 1, 'name' : 'abc', 'nested' : {'test' : true}}`;
+    const reader = await this.conn.runAndReadAll(sql, []);
+    return reader.getRowObjects()[0] as
+      | {
+          data: {
+            test: number | null;
+            name: string | null;
+            nested: { test: boolean | null };
+          };
+        }
+      | undefined;
+  }
+
+  async testNestedStructs(): Promise<
+    | {
+        data: {
+          v: number | null;
+          x: {
+            v: number | null;
+            y: { v: number | null; z: (number | null)[] };
+          };
+        };
+      }
+    | undefined
+  > {
+    const sql = `select {v:1,'x' : {v:2,'y' : {v:3, 'z' : [1]}}} as data`;
+    const reader = await this.conn.runAndReadAll(sql, []);
+    return reader.getRowObjects()[0] as
+      | {
+          data: {
+            v: number | null;
+            x: {
+              v: number | null;
+              y: { v: number | null; z: (number | null)[] };
+            };
+          };
+        }
+      | undefined;
+  }
+
+  async testNested(): Promise<{ data: Map<string, { a: number | null }[]> }[]> {
+    const sql = `select MAP {'x' : [{'a' : 1}]} as data`;
+    const reader = await this.conn.runAndReadAll(sql, []);
+    return reader.getRowObjects() as {
+      data: Map<string, { a: number | null }[]>;
+    }[];
+  }
+
+  async testNested2(): Promise<
+    { data: { x: { a: number | null }[] } } | undefined
+  > {
+    const sql = `select {'x' : [{'a' : 1}]} as data
+ `;
+    const reader = await this.conn.runAndReadAll(sql, []);
+    return reader.getRowObjects()[0] as
+      | { data: { x: { a: number | null }[] } }
+      | undefined;
+  }
+
+  async testNested3(): Promise<
+    | {
+        a: (number | null)[];
+        b: number | null;
+        c: { x: { a: number | null }[]; y: { z: number | null } };
+      }
+    | undefined
+  > {
+    const sql = `select a:[1,2,3] ,b:2, c: {'x' : [{'a' : 1}], 'y' : {'z' : 3}}
+
+
+ 
+ 
+
+
+ 
+`;
+    const reader = await this.conn.runAndReadAll(sql, []);
+    return reader.getRowObjects()[0] as
+      | {
+          a: (number | null)[];
+          b: number | null;
+          c: { x: { a: number | null }[]; y: { z: number | null } };
+        }
+      | undefined;
+  }
+}

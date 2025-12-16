@@ -27,13 +27,13 @@ export class {{className}} {
         const reader = await this.conn.runAndReadAll(sql,[{{> params}}]);
         {{#if isPluck}}
         {{#if isOne}}
-        return reader.getRows()[0][0] as {{> rowType}};
+        return reader.getRows()[0]?.[0] as {{> rowType}} | undefined;
         {{else}}
         return reader.getRows().map((row) => row[0] as {{> rowType}});
         {{/if}}
         {{else}}
         {{#if isOne}}
-        return reader.getRowObjects() as {{> rowType}};
+        return reader.getRowObjects()[0] as {{> rowType}} | undefined;
         {{else}}
         return reader.getRowObjects() as {{> rowType}}[];
         {{/if}}
@@ -51,12 +51,12 @@ export class {{className}} {
 
 {{#*inline "paramTypes"}}{{#each parameters}}{{type}} {{#unless @last}}, {{/unless}}{{/each}}{{/inline}}
 
-{{#*inline "columnTypes"}}{{#each columns}}{{name}}: {{type}}{{#unless @last}}, {{/unless}}{{/each}}{{/inline}}
+{{#*inline "columnTypes"}}{{#each columns}}{{name}}: {{{tsType .}}}{{#unless @last}}, {{/unless}}{{/each}}{{/inline}}
 
 {{#*inline "rowType"}}
 {{#if isQuery~}}
 {{#if isPluck~}}
-{{#if columns.length~}} {{columns.0.type}} {{else}}any{{/if~}}
+{{#if columns.length~}} {{{tsType (lookup columns 0)}}} {{else}}any{{/if~}}
 {{~else~}}
 {{#if columns.length}}{ {{> columnTypes}} }{{else}}any{{/if~}}
 {{/if~}}
@@ -79,7 +79,7 @@ any
 {{#if isOne~}}
 {{> rowType}} | undefined
 {{~else~}}
-{{> rowType}}[]
+({{> rowType}})[]
 {{/if~}}
 {{~else~}}
 DuckDBMaterializedResult

@@ -40,7 +40,6 @@ export const postgres = new (class implements DatabaseEngine {
       consola.error("Error creating database:", error);
     }
 
-   
     await this.db.connect();
 
     await initializeDatabase(queries, async (query) => {
