@@ -1,0 +1,219 @@
+---
+title: SQG - SQL Query Generator
+description: Generate type-safe database code from SQL queries for TypeScript and Java
+template: splash
+hero:
+  tagline: Write SQL. Get type-safe code. Ship faster.
+  actions:
+    - text: Try the Playground
+      link: /playground/
+      icon: rocket
+      variant: primary
+    - text: Get Started
+      link: /guides/getting-started/
+      icon: open-book
+---
+
+import { Card, CardGrid, LinkCard, Tabs, TabItem } from '@astrojs/starlight/components';
+
+## The Problem
+
+Every database project needs the same boilerplate: query functions, parameter binding, result mapping, type definitions. You write SQL, then manually translate it into typed code. It's tedious, error-prone, and slows you down.
+
+**SQG solves this.** Write your SQL queries with simple annotations, and SQG generates fully type-safe database access code. Types are introspected directly from your database schema at build time - no guessing, no runtime surprises.
+
+## See It In Action
+
+**Your SQL file:**
+
+```sql
+-- MIGRATE 1
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE
+);
+
+-- QUERY find_by_email :one
+@set email = 'test@example.com'
+SELECT * FROM users WHERE email = ${email};
+
+-- EXEC create_user
+@set name = 'John'
+@set email = 'john@example.com'
+INSERT INTO users (name, email) VALUES (${name}, ${email});
+```
+
+**Generated TypeScript:**
+
+```typescript
+export class Users {
+  constructor(private db: Database) {}
+
+  findByEmail(email: string): {
+    id: number | null;
+    name: string | null;
+    email: string | null;
+  } | undefined {
+    const sql = 'SELECT * FROM users WHERE email = ?;';
+    return this.db.prepare(sql).get(email);
+  }
+
+  createUser(name: string, email: string): RunResult {
+    const sql = 'INSERT INTO users (name, email) VALUES (?, ?);';
+    return this.db.prepare(sql).run(name, email);
+  }
+}
+```
+
+<CardGrid stagger>
+  <Card title="Write Real SQL" icon="pencil">
+    No proprietary query language. Write standard SQL with simple annotations. Your queries run directly against the database without translation.
+  </Card>
+  <Card title="True Type Safety" icon="approve-check">
+    Types are introspected from your actual database schema at build time. Catch errors before they reach production.
+  </Card>
+  <Card title="Multiple Databases" icon="server">
+    Support for **SQLite**, **DuckDB**, and **PostgreSQL**. Same SQL annotations work across all engines.
+  </Card>
+  <Card title="Multi-Language Output" icon="setting">
+    Generate **TypeScript** or **Java** code from the same SQL definitions. Extensible with custom Handlebars templates.
+  </Card>
+</CardGrid>
+
+## Develop Queries in DBeaver
+
+SQG's syntax is **fully compatible with [DBeaver](https://dbeaver.io)**, the popular open-source database IDE. The `@set` variable syntax works natively in DBeaver, so you can:
+
+- Develop queries with full autocomplete for tables and columns
+- Execute and test queries interactively
+- Modify parameter values and re-run to test different scenarios
+- Debug with query execution plans
+
+Develop your queries in DBeaver, then run SQG to generate type-safe code.
+
+## Query Annotations
+
+SQG uses simple comment annotations to define your queries:
+
+| Annotation | Purpose | Example |
+|------------|---------|---------|
+| `-- QUERY name` | Select data, returns rows | `-- QUERY get_users` |
+| `-- EXEC name` | Insert/Update/Delete operations | `-- EXEC delete_user` |
+| `-- MIGRATE n` | Schema migrations (numbered) | `-- MIGRATE 1` |
+| `-- TESTDATA` | Populate test data | `-- TESTDATA` |
+
+### Return Type Modifiers
+
+| Modifier | Description | Return Type |
+|----------|-------------|-------------|
+| `:all` | All matching rows (default) | `T[]` |
+| `:one` | Single row or undefined | `T \| undefined` |
+| `:pluck` | Extract single column | `value[]` |
+| `:one :pluck` | Single scalar value | `value \| undefined` |
+
+## Complex Types with DuckDB
+
+SQG handles DuckDB's rich type system - structs, lists, and maps become fully-typed TypeScript:
+
+```sql
+-- QUERY user_analytics :one
+SELECT {
+  'user': u.name,
+  'actions': LIST(a.type),
+  'metadata': MAP {'visits': COUNT(*)}
+} as data
+FROM users u JOIN actions a ON u.id = a.user_id
+GROUP BY u.id;
+```
+
+Generates:
+
+```typescript
+Promise<{
+  data: {
+    user: string | null;
+    actions: (string | null)[];
+    metadata: Map<string, number | null>;
+  };
+} | undefined>
+```
+
+## Supported Generators
+
+| Generator | Database | Runtime |
+|-----------|----------|---------|
+| `typescript/better-sqlite3` | SQLite | better-sqlite3 |
+| `typescript/duckdb` | DuckDB | @duckdb/node-api |
+| `java/jdbc` | Any JDBC-compatible | JDBC |
+| `java/duckdb-arrow` | DuckDB | DuckDB Arrow API |
+
+## Get Started
+
+<CardGrid>
+  <LinkCard
+    title="Installation Guide"
+    description="Install SQG and generate your first type-safe queries in minutes."
+    href="/guides/getting-started/"
+  />
+  <LinkCard
+    title="Interactive Playground"
+    description="Try SQG in your browser - no installation required."
+    href="/playground/"
+  />
+  <LinkCard
+    title="SQL Syntax Reference"
+    description="Complete reference for query annotations and modifiers."
+    href="/guides/sql-syntax/"
+  />
+  <LinkCard
+    title="FAQ"
+    description="Common questions and troubleshooting."
+    href="/guides/faq/"
+  />
+</CardGrid>
+
+## ORMs Hate This One Simple Trick
+
+Most code generators try to *parse* SQL to figure out what types your queries return. This is hard - SQL is complex, databases have quirks, and parsers can't handle every edge case.
+
+**SQG's trick: just run the query.**
+
+Instead of parsing SQL, SQG executes your queries against a real database at build time. The database itself tells us exactly what columns come back and what types they have. This means:
+
+- **100% accurate types** - No parser limitations or guessing
+- **Full SQL support** - Views, functions, CTEs, window functions, anything your database supports
+- **Complex types work** - DuckDB structs, arrays, and maps are introspected perfectly
+- **Database-specific behavior** - Types match exactly what you'll get at runtime
+
+```d2 sketch pad=50
+direction: right
+
+Your SQL \n queries -> Database\n(introspect) -> Type-safe code\n(generated) {style.animated: false}
+```
+
+
+Your migrations set up the schema, your queries run against it, and SQG captures the exact column names and types from the result. Simple, accurate, bulletproof.
+
+## Why Not Use an ORM?
+
+ORMs abstract away SQL, which can be helpful but also limiting:
+
+- **Performance opacity**: Hard to optimize queries you can't see
+- **Learning curve**: Learn the ORM's API instead of SQL
+- **Migration complexity**: Schema changes require ORM-specific tooling
+- **Vendor lock-in**: Switching ORMs means rewriting your data layer
+
+SQG takes a different approach:
+
+- **SQL is the source of truth**: Write the queries you want to run
+- **Transparent**: Generated code is readable and debuggable
+- **No runtime magic**: Just typed functions calling your SQL
+- **Database-native**: Use all features of your database
+
+## Open Source
+
+SQG is open source under the Apache 2.0 license. Contributions welcome!
+
+- [GitHub Repository](https://github.com/sqg-dev/sqg)
+- [Report Issues](https://github.com/sqg-dev/sqg/issues)

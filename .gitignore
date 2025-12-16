@@ -2,3 +2,5 @@ node_modules/
 *.swp
 *docker.tar
 
+dist
+.astro
