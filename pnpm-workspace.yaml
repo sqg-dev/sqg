@@ -1,6 +1,6 @@
 packages:
   - sqg
-  - editor
+  - website
 
 catalog:
   '@duckdb/node-api': ^1.4.2-r.1
