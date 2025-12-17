@@ -102,7 +102,7 @@ public class TestDuckdb {
         try (
             var stmt = connection.prepareStatement(
                 "insert into users (name, email) values (?,?);"
-            );
+            )
         ) {
             stmt.setObject(1, name);
             stmt.setObject(2, email);
@@ -122,7 +122,7 @@ public class TestDuckdb {
         try (
             var stmt = connection.prepareStatement(
                 "select 'abc' as a,1 as x,* from users;"
-            );
+            )
         ) {
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<AllResult>();
@@ -144,7 +144,7 @@ public class TestDuckdb {
 
     public List<String> allEmails() throws SQLException {
         try (
-            var stmt = connection.prepareStatement("select email from users;");
+            var stmt = connection.prepareStatement("select email from users;")
         ) {
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<String>();
@@ -162,16 +162,16 @@ public class TestDuckdb {
         try (
             var stmt = connection.prepareStatement(
                 "select * from users where id =? limit 1;"
-            );
+            )
         ) {
             stmt.setObject(1, id);
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
                     ? new ByIdResult(
-                        (Integer) rs.getObject(1),
-                        (String) rs.getObject(2),
-                        (String) rs.getObject(3)
-                    )
+                          (Integer) rs.getObject(1),
+                          (String) rs.getObject(2),
+                          (String) rs.getObject(3)
+                      )
                     : null;
             }
         }
@@ -183,16 +183,16 @@ public class TestDuckdb {
         try (
             var stmt = connection.prepareStatement(
                 "select * from users where email =?;"
-            );
+            )
         ) {
             stmt.setObject(1, email);
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
                     ? new ByEmailResult(
-                        (Integer) rs.getObject(1),
-                        (String) rs.getObject(2),
-                        (String) rs.getObject(3)
-                    )
+                          (Integer) rs.getObject(1),
+                          (String) rs.getObject(2),
+                          (String) rs.getObject(3)
+                      )
                     : null;
             }
         }
@@ -202,7 +202,7 @@ public class TestDuckdb {
         try (
             var stmt = connection.prepareStatement(
                 "select id from users where email =?;"
-            );
+            )
         ) {
             stmt.setObject(1, email);
             try (var rs = stmt.executeQuery()) {
@@ -215,7 +215,7 @@ public class TestDuckdb {
         try (
             var stmt = connection.prepareStatement(
                 "update users set email =? where id =?;"
-            );
+            )
         ) {
             stmt.setObject(1, email);
             stmt.setObject(2, id);
@@ -227,7 +227,7 @@ public class TestDuckdb {
         try (
             var stmt = connection.prepareStatement(
                 "delete from users where id =?;"
-            );
+            )
         ) {
             stmt.setObject(1, id);
             return stmt.executeUpdate();
@@ -247,7 +247,7 @@ public class TestDuckdb {
         try (
             var stmt = connection.prepareStatement(
                 "select * from actions where user_id =?;"
-            );
+            )
         ) {
             stmt.setObject(1, user_id);
             try (var rs = stmt.executeQuery()) {
@@ -288,7 +288,7 @@ public class TestDuckdb {
                   where user_id =? and action =?;
 
                  """
-            );
+            )
         ) {
             stmt.setObject(1, user_id);
             stmt.setObject(2, action);
@@ -316,7 +316,7 @@ public class TestDuckdb {
         try (
             var stmt = connection.prepareStatement(
                 "SELECT user_id, SUM(value) as total_value FROM actions GROUP BY user_id ORDER BY total_value DESC LIMIT 10;"
-            );
+            )
         ) {
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<TopUsersResult>();
@@ -339,7 +339,7 @@ public class TestDuckdb {
         try (
             var stmt = connection.prepareStatement(
                 "select 1 as n where? ::int is null; "
-            );
+            )
         ) {
             stmt.setObject(1, a);
             try (var rs = stmt.executeQuery()) {
@@ -370,7 +370,7 @@ public class TestDuckdb {
 
     public List<Test3Result> test3() throws SQLException {
         try (
-            var stmt = connection.prepareStatement("select '--ok' b,2 as a ");
+            var stmt = connection.prepareStatement("select '--ok' b,2 as a ")
         ) {
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<Test3Result>();
@@ -393,7 +393,7 @@ public class TestDuckdb {
         try (
             var stmt = connection.prepareStatement(
                 "select '/* lol */' s , 5 as z"
-            );
+            )
         ) {
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<Test4Result>();
@@ -416,7 +416,7 @@ public class TestDuckdb {
         try (
             var stmt = connection.prepareStatement(
                 "select 'a 	' x , 'a	 a' y, 1 as c"
-            );
+            )
         ) {
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<Test5Result>();
@@ -440,7 +440,7 @@ public class TestDuckdb {
         try (
             var stmt = connection.prepareStatement(
                 "select ['a','b', 'c'] as names"
-            );
+            )
         ) {
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<TestListResult>();
@@ -460,7 +460,7 @@ public class TestDuckdb {
         try (
             var stmt = connection.prepareStatement(
                 "select ['a','b', 'c'] as names"
-            );
+            )
         ) {
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<List<String>>();
@@ -478,7 +478,7 @@ public class TestDuckdb {
         try (
             var stmt = connection.prepareStatement(
                 "select ['a','b', 'c'] as names"
-            );
+            )
         ) {
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
@@ -494,7 +494,7 @@ public class TestDuckdb {
         try (
             var stmt = connection.prepareStatement(
                 "select props: MAP {'a' : 1}"
-            );
+            )
         ) {
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<TestMapResult>();
@@ -514,7 +514,7 @@ public class TestDuckdb {
                 """
 
                 select props: MAP { 1 : 2 }"""
-            );
+            )
         ) {
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<TestMap2Result>();
@@ -534,7 +534,7 @@ public class TestDuckdb {
                 """
 
                 select props: MAP { [1] : 2 }"""
-            );
+            )
         ) {
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<TestMap3Result>();
@@ -572,7 +572,7 @@ public class TestDuckdb {
         try (
             var stmt = connection.prepareStatement(
                 "select data: {'test' : 1, 'name' : 'abc', 'nested' : {'test' : true}}"
-            );
+            )
         ) {
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<TestStructResult>();
@@ -614,7 +614,7 @@ public class TestDuckdb {
         try (
             var stmt = connection.prepareStatement(
                 "select data: {'test' : 1, 'name' : 'abc', 'nested' : {'test' : true}}"
-            );
+            )
         ) {
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<TestStruct2Result>();
@@ -654,13 +654,13 @@ public class TestDuckdb {
         try (
             var stmt = connection.prepareStatement(
                 "select data: {'test' : 1, 'name' : 'abc', 'nested' : {'test' : true}}"
-            );
+            )
         ) {
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
                     ? TestStruct3Result.fromAttributes(
-                        getAttr((Struct) rs.getObject(1))
-                    )
+                          getAttr((Struct) rs.getObject(1))
+                      )
                     : null;
             }
         }
@@ -692,15 +692,15 @@ public class TestDuckdb {
         try (
             var stmt = connection.prepareStatement(
                 "select data: {'test' : 1, 'name' : 'abc', 'nested' : {'test' : true}}"
-            );
+            )
         ) {
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
                     ? new TestStruct4Result(
-                        TestStruct4Result.DataResult.fromAttributes(
-                            getAttr((Struct) rs.getObject(1))
-                        )
-                    )
+                          TestStruct4Result.DataResult.fromAttributes(
+                              getAttr((Struct) rs.getObject(1))
+                          )
+                      )
                     : null;
             }
         }
@@ -739,15 +739,15 @@ public class TestDuckdb {
         try (
             var stmt = connection.prepareStatement(
                 "select {v:1,'x' : {v:2,'y' : {v:3, 'z' : [1]}}} as data"
-            );
+            )
         ) {
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
                     ? new TestNestedStructsResult(
-                        TestNestedStructsResult.DataResult.fromAttributes(
-                            getAttr((Struct) rs.getObject(1))
-                        )
-                    )
+                          TestNestedStructsResult.DataResult.fromAttributes(
+                              getAttr((Struct) rs.getObject(1))
+                          )
+                      )
                     : null;
             }
         }
@@ -759,7 +759,7 @@ public class TestDuckdb {
         try (
             var stmt = connection.prepareStatement(
                 "select MAP {'x' : [{'a' : 1}]} as data"
-            );
+            )
         ) {
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<TestNestedResult>();
@@ -795,15 +795,15 @@ public class TestDuckdb {
                 """
                 select {'x' : [{'a' : 1}]} as data
                  """
-            );
+            )
         ) {
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
                     ? new TestNested2Result(
-                        TestNested2Result.DataResult.fromAttributes(
-                            getAttr((Struct) rs.getObject(1))
-                        )
-                    )
+                          TestNested2Result.DataResult.fromAttributes(
+                              getAttr((Struct) rs.getObject(1))
+                          )
+                      )
                     : null;
             }
         }
@@ -845,17 +845,17 @@ public class TestDuckdb {
 
 
                 """
-            );
+            )
         ) {
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
                     ? new TestNested3Result(
-                        arrayToList((Array) rs.getObject(1), Integer[].class),
-                        (Integer) rs.getObject(2),
-                        TestNested3Result.CResult.fromAttributes(
-                            getAttr((Struct) rs.getObject(3))
-                        )
-                    )
+                          arrayToList((Array) rs.getObject(1), Integer[].class),
+                          (Integer) rs.getObject(2),
+                          TestNested3Result.CResult.fromAttributes(
+                              getAttr((Struct) rs.getObject(3))
+                          )
+                      )
                     : null;
             }
         }

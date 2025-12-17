@@ -34,7 +34,14 @@
       },
       "suspicious": {
         "noExplicitAny": "warn",
-        "noDoubleEquals": "off"
+        "noDoubleEquals": "off",
+        "noUnknownAtRules": {
+          "options": {
+            "ignore": [
+              "tailwind"
+            ]
+          }
+        }
       },
       "complexity": {
         "noForEach": "off"
@@ -70,7 +77,7 @@
     "parser": {
       "tailwindDirectives": true,
       // this is to allow :global directive
-      "cssModules": true,
+      "cssModules": true
     }
   },
   "html": {

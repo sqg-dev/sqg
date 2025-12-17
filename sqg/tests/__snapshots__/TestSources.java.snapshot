@@ -98,10 +98,10 @@ public class TestSources {
         try (
             var stmt = connection.prepareStatement(
                 "attach '" +
-                sources_users +
-                """
-                ' as "users" (TYPE SQLITE);"""
-            );
+                    sources_users +
+                    """
+                    ' as "users" (TYPE SQLITE);"""
+            )
         ) {
             return stmt.executeUpdate();
         }
@@ -113,7 +113,7 @@ public class TestSources {
         try (
             var stmt = connection.prepareStatement(
                 "select * from users.users limit 10;"
-            );
+            )
         ) {
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<Test2Result>();

@@ -1,7 +1,6 @@
 {
-  "root": false,
   "extends": "//",
   "files": {
-    "includes": ["!src/sql-parser.ts", "!src/sql-parser.terms.ts", "!src/generated"]
+    "includes": ["!src/parser/sql-parser.ts", "!src/parser/sql-parser.terms.ts", "!src/generated"]
   }
 }

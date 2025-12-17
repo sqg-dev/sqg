@@ -1,5 +1,5 @@
-import { LRUCache } from 'lru-cache';
-import { type CacheEntry, type Cache, totalTtl, configure } from '@epic-web/cachified';
+import { type Cache, type CacheEntry, configure, totalTtl } from "@epic-web/cachified";
+import { LRUCache } from "lru-cache";
 
 const lruInstance = new LRUCache<string, CacheEntry>({ max: 5000 });
 
@@ -7,7 +7,7 @@ const lruCache: Cache = {
   set(key, value) {
     const ttl = totalTtl(value?.metadata);
     return lruInstance.set(key, value, {
-      ttl: ttl === Infinity ? undefined : ttl,
+      ttl: ttl === Number.POSITIVE_INFINITY ? undefined : ttl,
       start: value?.metadata?.createdTime,
     });
   },
@@ -20,6 +20,5 @@ const lruCache: Cache = {
 };
 
 export const cachified = configure({
-    cache: lruCache,
+  cache: lruCache,
 });
-  

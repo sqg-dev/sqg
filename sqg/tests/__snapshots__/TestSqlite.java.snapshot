@@ -111,7 +111,7 @@ public class TestSqlite {
         try (
             var stmt = connection.prepareStatement(
                 "select id from users where id = '1';"
-            );
+            )
         ) {
             try (var rs = stmt.executeQuery()) {
                 return rs.next() ? (String) rs.getObject(1) : null;
@@ -123,7 +123,7 @@ public class TestSqlite {
         try (
             var stmt = connection.prepareStatement(
                 "select name from users where id = '1';"
-            );
+            )
         ) {
             try (var rs = stmt.executeQuery()) {
                 return rs.next() ? (String) rs.getObject(1) : null;
@@ -137,14 +137,14 @@ public class TestSqlite {
         try (
             var stmt = connection.prepareStatement(
                 "select email, name from users where id = '1';"
-            );
+            )
         ) {
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
                     ? new Users4Result(
-                        (String) rs.getObject(1),
-                        (String) rs.getObject(2)
-                    )
+                          (String) rs.getObject(1),
+                          (String) rs.getObject(2)
+                      )
                     : null;
             }
         }
@@ -156,7 +156,7 @@ public class TestSqlite {
         try (
             var stmt = connection.prepareStatement(
                 "select 10 count, email from users where id = '1';"
-            );
+            )
         ) {
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<Users5Result>();
@@ -179,16 +179,16 @@ public class TestSqlite {
         try (
             var stmt = connection.prepareStatement(
                 "SELECT * FROM users WHERE name =?"
-            );
+            )
         ) {
             stmt.setObject(1, name);
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
                     ? new Users6Result(
-                        (String) rs.getObject(1),
-                        (String) rs.getObject(2),
-                        (String) rs.getObject(3)
-                    )
+                          (String) rs.getObject(1),
+                          (String) rs.getObject(2),
+                          (String) rs.getObject(3)
+                      )
                     : null;
             }
         }
@@ -200,7 +200,7 @@ public class TestSqlite {
         try (
             var stmt = connection.prepareStatement(
                 "SELECT * FROM users WHERE name =?"
-            );
+            )
         ) {
             stmt.setObject(1, name);
             try (var rs = stmt.executeQuery()) {

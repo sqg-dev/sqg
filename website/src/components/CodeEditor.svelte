@@ -1,8 +1,8 @@
 <script lang="ts">
-  import Editor from './Editor.svelte';
-  import { actions } from 'astro:actions';
+import { actions } from "astro:actions";
+import Editor from "./Editor.svelte";
 
-  let sqlCode = `-- MIGRATE 1 
+let sqlCode = `-- MIGRATE 1 
 
 create table  users (
     id text primary key,
@@ -27,51 +27,51 @@ select id from users where id = \${id};
 select email from users limit \${limit};
 `;
 
-  let generatedCode = '';
-  let highlightedCode = '';
-  let error: string | null = null;
-  let isGenerating = false;
-  let selectedDatabase: 'sqlite' | 'duckdb' = 'sqlite';
-  let selectedLanguage: 'java-jdbc' | 'java-arrow' | 'typescript' = 'java-jdbc';
+let generatedCode = "";
+let highlightedCode = "";
+let error: string | null = null;
+let isGenerating = false;
+let selectedDatabase: "sqlite" | "duckdb" = "sqlite";
+let selectedLanguage: "java-jdbc" | "java-arrow" | "typescript" = "java-jdbc";
 
-  function handleCodeUpdate(newCode: string) {
-    sqlCode = newCode;
-    // Clear generated code when SQL changes
-    if (generatedCode) {
-      generatedCode = '';
-      error = null;
-    }
-  }
-
-  async function generateCode() {
-    if (!sqlCode.trim()) {
-      error = 'Please enter some SQL code';
-      return;
-    }
-
+function handleCodeUpdate(newCode: string) {
+  sqlCode = newCode;
+  // Clear generated code when SQL changes
+  if (generatedCode) {
+    generatedCode = "";
     error = null;
-    generatedCode = '';
-    isGenerating = true;
-
-    try {
-      const { data, error: actionError } = await actions.generateCode({
-        sql: sqlCode,
-        database: selectedDatabase,
-        language: selectedLanguage,
-      });
-
-      if (actionError) {
-        error = actionError.message || 'An error occurred while generating code';
-      } else if (data) {
-        generatedCode = data.code || '';
-        highlightedCode = data.highlightedCode || '';
-      }
-    } catch (e) {
-      error = e instanceof Error ? e.message : 'An error occurred while generating code';
-    } finally {
-      isGenerating = false;
-    }
   }
+}
+
+async function generateCode() {
+  if (!sqlCode.trim()) {
+    error = "Please enter some SQL code";
+    return;
+  }
+
+  error = null;
+  generatedCode = "";
+  isGenerating = true;
+
+  try {
+    const { data, error: actionError } = await actions.generateCode({
+      sql: sqlCode,
+      database: selectedDatabase,
+      language: selectedLanguage,
+    });
+
+    if (actionError) {
+      error = actionError.message || "An error occurred while generating code";
+    } else if (data) {
+      generatedCode = data.code || "";
+      highlightedCode = data.highlightedCode || "";
+    }
+  } catch (e) {
+    error = e instanceof Error ? e.message : "An error occurred while generating code";
+  } finally {
+    isGenerating = false;
+  }
+}
 </script>
 
 <div class="flex h-screen w-screen">

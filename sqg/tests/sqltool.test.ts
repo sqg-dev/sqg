@@ -1,11 +1,11 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { processProject } from "../src/sqltool";
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
+import { beforeEach, describe, expect, it } from "vitest";
+import { processProject } from "../src/sqltool";
 
 export async function handleProject(projectPath: string, expectedFiles: string[]) {
   const files = await processProject(projectPath);
-  expect(files.map(file => basename(file))).toEqual(expectedFiles);
+  expect(files.map((file) => basename(file))).toEqual(expectedFiles);
   for (const file of files) {
     const fileContent = readFileSync(file, "utf-8");
     const snapshotFile = `./__snapshots__/${basename(file)}.snapshot`;
@@ -26,13 +26,11 @@ describe("sqg", () => {
     it("handle duckdb-arrow correctly", async () => {
       await handleProject("tests/test-duckdb-arrow.yaml", ["TestDuckDbArrow.java"]);
     });
-   
-   
+
     it("handle sources correctly", async () => {
       await handleProject("tests/test-sources.yaml", ["TestSources.java"]);
     });
   });
-
 
   describe("processProjectSqlite", () => {
     it("handle sqlite correctly", async () => {

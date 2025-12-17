@@ -1,9 +1,8 @@
 import consola from "consola";
 import { Client, type QueryResult } from "pg";
 import types from "pg-types";
-import type { DatabaseEngine } from "../database";
-import { initializeDatabase } from "../database";
-import type { SQLQuery } from "../sql-query";
+import type { SQLQuery } from "../sql-query.js";
+import { type DatabaseEngine, initializeDatabase } from "./types.js";
 
 const databaseName = "sqg-db-temp";
 
