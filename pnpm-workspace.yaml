@@ -7,7 +7,6 @@ catalog:
   '@astrojs/node': ^9.5.1
   '@astrojs/starlight': ^0.37.1
   '@astrojs/svelte': ^7.2.4
-  '@tailwindcss/vite': ^4.1.18
   '@biomejs/biome': 2.3.3
   '@codemirror/lang-sql': ^6.10.0
   '@codemirror/state': ^6.5.2
@@ -21,6 +20,7 @@ catalog:
   '@lezer/generator': ^1.8.0
   '@lezer/lr': ^1.4.5
   '@plausible-analytics/tracker': ^0.4.4
+  '@tailwindcss/vite': ^4.1.18
   '@types/better-sqlite3': ^7.6.13
   '@types/dockerode': ^3.3.47
   '@types/node': ^25.0.3
@@ -43,6 +43,7 @@ catalog:
   prettier: ^3.7.4
   prettier-plugin-java: ^2.7.7
   shiki: ^3.20.0
+  starlight-blog: ^0.25.2
   svelte: ^5.46.0
   tailwindcss: ^4.1.18
   tsdown: 0.18.0

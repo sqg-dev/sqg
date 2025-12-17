@@ -5,6 +5,7 @@ import starlight from "@astrojs/starlight";
 import svelte from "@astrojs/svelte";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
+import starlightBlog from "starlight-blog";
 
 import d2 from "astro-d2";
 
@@ -17,7 +18,11 @@ export default defineConfig({
   integrations: [
     starlight({
       title: "SQG",
-      social: [{ icon: "github", label: "GitHub", href: "https://github.com/sqg-dev/sqg" }],
+      plugins: [starlightBlog()],
+      social: [
+        { icon: "external", label: "Playground", href: "/playground/" },
+        { icon: "github", label: "GitHub", href: "https://github.com/sqg-dev/sqg" },
+      ],
       components: {
         Footer: "./src/components/Footer.astro",
       },
