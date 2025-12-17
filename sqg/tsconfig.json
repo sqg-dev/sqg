@@ -16,6 +16,6 @@
     "types": ["node", "vitest/globals"],
     "outDir": "./dist"
   },
-  "include": ["src/**/*", "tests/**/*"],
+  "include": ["src/**/*", "tests/**/*", "tsdown.config.ts"],
   "exclude": ["node_modules", "java"]
 }

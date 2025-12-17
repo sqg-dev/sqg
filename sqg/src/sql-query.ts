@@ -121,7 +121,7 @@ export class SQLQuery {
 export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[]): SQLQuery[] {
   const content = readFileSync(filePath, "utf-8");
   consola.info(`Parsing SQL file: ${filePath}`);
-  consola.info(`File start: ${content.slice(0, 200)}`);
+  consola.debug(`File start: ${content.slice(0, 200)}`);
   const queries: SQLQuery[] = [];
 
   const tree = parser.parse(content);
@@ -337,7 +337,7 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
         }
         sql.trim();
       }
-      consola.info("Parsed query:", {
+      consola.debug("Parsed query:", {
         type: queryType,
         name: name,
         modifiers,
@@ -368,7 +368,7 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
 
       queries.push(query);
 
-      consola.info(`Added query: ${name} (${queryType})`);
+      consola.debug(`Added query: ${name} (${queryType})`);
     }
   } while (cursor.next());
 

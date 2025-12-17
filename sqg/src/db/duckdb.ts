@@ -55,7 +55,7 @@ export const duckdb = new (class implements DatabaseEngine {
   private async executeQuery(connection: DuckDBConnection, query: SQLQuery) {
     const statement = query.queryAnonymous;
     try {
-      consola.info("Query:", statement.sql, statement.sqlParts);
+      consola.debug("Query:", statement.sql, statement.sqlParts);
       //consola.info("Parameters:", query.parameters);
       //consola.info("Parameter names:", query.parameterNames);
 

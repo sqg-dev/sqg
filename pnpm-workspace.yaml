@@ -58,6 +58,8 @@ injectWorkspacePackages: true
 onlyBuiltDependencies:
   - '@parcel/watcher'
   - better-sqlite3
+  - cpu-features
   - esbuild
   - protobufjs
   - sharp
+  - ssh2

@@ -12,8 +12,8 @@ COPY pnpm-workspace.yaml ./
 COPY pnpm-lock.yaml ./
 COPY sqg/package.json ./sqg/
 COPY sqg/tsconfig.json ./sqg/
+COPY sqg/tsdown.config.ts ./sqg/
 COPY sqg/src ./sqg/src
-COPY sqg/sqg ./sqg/sqg
 COPY sqg/biome.json ./sqg/
 
 # Install dependencies at workspace root (required for pnpm workspaces)

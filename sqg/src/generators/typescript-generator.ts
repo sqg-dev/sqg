@@ -127,7 +127,7 @@ export class TsGenerator extends BaseGenerator {
 
   async afterGenerate(outputPath: string): Promise<void> {
     try {
-      consola.info("Formatting file:", outputPath);
+      consola.debug("Formatting file:", outputPath);
       const code = readFileSync(outputPath, "utf-8");
       const formattedCode = await prettier.format(code, {
         parser: "typescript",

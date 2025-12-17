@@ -56,7 +56,7 @@ export const postgres = new (class implements DatabaseEngine {
       const executableQueries = queries.filter((q) => !q.skipGenerateFunction);
 
       for (const query of executableQueries) {
-        consola.info(`Executing query: ${query.id}`);
+        consola.debug(`Executing query: ${query.id}`);
         //consola.info("Variables:", Object.fromEntries(query.variables));
 
         await this.executeQuery(db, query);

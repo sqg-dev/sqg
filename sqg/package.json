@@ -1,15 +1,28 @@
 {
-  "name": "sqg",
+  "name": "@sqg-dev/sqg",
   "version": "0.1.0",
-  "description": "",
-  "main": "index.js",
+  "description": "SQG - SQL Query Generator - Type-safe code generation from SQL (https://sqg.dev)",
   "type": "module",
   "bin": {
-    "sqg": "./sqg",
-    "sqg-dist": "./dist"
+    "sqg": "./dist/sqg.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sqg-dev/sqg.git"
+  },
+  "homepage": "https://sqg.dev",
+  "bugs": {
+    "url": "https://github.com/sqg-dev/sqg/issues"
   },
   "scripts": {
-    "build": "tsc --noEmit && tsdown src/sqg.ts && cp -r src/templates dist",
+    "prepublishOnly": "pnpm run build",
+    "build": "tsc --noEmit && tsdown && cp -r src/templates dist",
     "lezer-gen": "lezer-generator src/parser/sql.grammar -o src/parser/sql-parser.ts",
     "test-grammar": "tsx src/test-grammar.ts",
     "check": "biome check --write src/",
@@ -17,12 +30,13 @@
     "test": "vitest",
     "coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "sqg": "tsx src/sqg.ts"
   },
   "keywords": [],
   "author": "Uwe Maurer",
   "license": "Apache-2.0",
-  "packageManager": "pnpm@10.12.1",
+  "packageManager": "pnpm@10.26.0",
   "dependencies": {
     "@duckdb/node-api": "catalog:",
     "@duckdb/node-bindings-linux-x64": "catalog:",
