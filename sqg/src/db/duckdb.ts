@@ -19,9 +19,8 @@ export const duckdb = new (class implements DatabaseEngine {
     this.db = await DuckDBInstance.create(":memory:");
     this.connection = await this.db.connect();
 
-    await initializeDatabase(queries, (query) => {
-      this.connection.run(query.rawQuery);
-      return Promise.resolve();
+    await initializeDatabase(queries, async (query) => {
+      await this.connection.run(query.rawQuery);
     });
   }
 
