@@ -160,7 +160,7 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
         getStr("LineCommentStartSpecial", true) ?? getStr("BlockCommentStartSpecial");
       const queryType = queryTypeRaw.replace("--", "").replace("/*", "").trim();
       const name = getStr("Name").trim();
-      const modifiers = cursor.node.getChildren("Modifiers").map((node) => nodeStr(node));
+      const modifiers = cursor.node.getChildren("Modifiers").map((node: SyntaxNode) => nodeStr(node));
       const isOne = modifiers.includes(":one");
       const isPluck = modifiers.includes(":pluck");
 
