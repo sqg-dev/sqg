@@ -38,6 +38,7 @@
   "license": "Apache-2.0",
   "packageManager": "pnpm@10.26.0",
   "dependencies": {
+    "@biomejs/biome": "catalog:",
     "@duckdb/node-api": "catalog:",
     "@duckdb/node-bindings-linux-x64": "catalog:",
     "@lezer-unofficial/printer": "catalog:",
@@ -63,8 +64,8 @@
     "@types/pg": "catalog:",
     "@vitest/ui": "catalog:",
     "tsdown": "catalog:",
-    "typescript": "catalog:",
     "tsx": "catalog:",
+    "typescript": "catalog:",
     "vitest": "catalog:"
   }
 }

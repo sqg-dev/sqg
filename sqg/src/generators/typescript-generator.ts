@@ -7,11 +7,11 @@ import estree from "prettier/plugins/estree";
 import prettier from "prettier/standalone";
 import {
   type ColumnInfo,
-  MapType,
   EnumType,
   ListType,
-  StructType,
+  MapType,
   type SQLQuery,
+  StructType,
 } from "../sql-query.js";
 import type { GeneratorConfig, SqlQueryHelper } from "../sqltool.js";
 import { TypeScriptTypeMapper } from "../type-mapping.js";

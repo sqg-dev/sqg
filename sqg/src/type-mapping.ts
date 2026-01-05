@@ -1,6 +1,6 @@
 import { camelCase, pascalCase } from "es-toolkit";
 import type { ColumnInfo } from "./sql-query";
-import { MapType, ListType, StructType } from "./sql-query";
+import { ListType, MapType, StructType } from "./sql-query";
 
 /**
  * Abstract base class for mapping SQL column types to target language types.
@@ -162,13 +162,59 @@ export class JavaTypeMapper extends TypeMapper {
 
   // Java reserved keywords that cannot be used as identifiers
   private static javaReservedKeywords = new Set([
-    "abstract", "assert", "boolean", "break", "byte", "case", "catch", "char",
-    "class", "const", "continue", "default", "do", "double", "else", "enum",
-    "extends", "final", "finally", "float", "for", "goto", "if", "implements",
-    "import", "instanceof", "int", "interface", "long", "native", "new", "package",
-    "private", "protected", "public", "return", "short", "static", "strictfp",
-    "super", "switch", "synchronized", "this", "throw", "throws", "transient",
-    "try", "void", "volatile", "while", "true", "false", "null",
+    "abstract",
+    "assert",
+    "boolean",
+    "break",
+    "byte",
+    "case",
+    "catch",
+    "char",
+    "class",
+    "const",
+    "continue",
+    "default",
+    "do",
+    "double",
+    "else",
+    "enum",
+    "extends",
+    "final",
+    "finally",
+    "float",
+    "for",
+    "goto",
+    "if",
+    "implements",
+    "import",
+    "instanceof",
+    "int",
+    "interface",
+    "long",
+    "native",
+    "new",
+    "package",
+    "private",
+    "protected",
+    "public",
+    "return",
+    "short",
+    "static",
+    "strictfp",
+    "super",
+    "switch",
+    "synchronized",
+    "this",
+    "throw",
+    "throws",
+    "transient",
+    "try",
+    "void",
+    "volatile",
+    "while",
+    "true",
+    "false",
+    "null",
   ]);
 
   // Language-specific implementations

@@ -1,11 +1,11 @@
 import Handlebars from "handlebars";
 import {
   type ColumnInfo,
-  MapType,
   EnumType,
   ListType,
-  StructType,
+  MapType,
   type SQLQuery,
+  StructType,
 } from "../sql-query.js";
 import type { GeneratorConfig } from "../sqltool.js";
 import { TsGenerator } from "./typescript-generator.js";

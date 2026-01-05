@@ -9,13 +9,7 @@ import {
 } from "@duckdb/node-api";
 import consola from "consola";
 import type { SQLQuery } from "../sql-query.js";
-import {
-  MapType,
-  type ColumnType,
-  EnumType,
-  ListType,
-  StructType,
-} from "../sql-query.js";
+import { type ColumnType, EnumType, ListType, MapType, StructType } from "../sql-query.js";
 import { type DatabaseEngine, initializeDatabase } from "./types.js";
 
 export const duckdb = new (class implements DatabaseEngine {
