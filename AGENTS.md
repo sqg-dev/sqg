@@ -4,6 +4,9 @@
 
 SQG (SQL Query Generator) is a **type-safe SQL code generator** that reads SQL queries from `.sql` files with special annotations and generates type-safe database access code in multiple target languages (TypeScript and Java). It introspects SQL queries at build time against real database engines to determine column types and generates strongly-typed wrapper functions.
 
+**Repository:** https://github.com/sqg-dev/sqg
+**Website:** https://sqg.dev
+
 **Key capabilities:**
 - Parse SQL files with metadata annotations
 - Execute queries against SQLite, DuckDB, or PostgreSQL to introspect types
@@ -12,11 +15,11 @@ SQG (SQL Query Generator) is a **type-safe SQL code generator** that reads SQL q
 
 ## Project Structure
 
-This is a **pnpm monorepo workspace** with two main packages:
+This is a **pnpm monorepo workspace**:
 
 ```
 sqg/
-├── sqg/                          # Core code generator package
+├── sqg/                          # Core code generator package (@sqg/sqg)
 │   ├── src/
 │   │   ├── sqg.ts               # CLI entry point
 │   │   ├── sqltool.ts           # Main orchestration
@@ -25,7 +28,12 @@ sqg/
 │   │   ├── database.ts          # Database engine adapters
 │   │   ├── type-mapping.ts      # Type system mapping
 │   │   ├── db/
-│   │   │   └── postgres.ts      # PostgreSQL adapter
+│   │   │   ├── sqlite.ts        # SQLite adapter
+│   │   │   ├── postgres.ts      # PostgreSQL adapter
+│   │   │   └── duckdb.ts        # DuckDB adapter
+│   │   ├── generators/          # Language-specific generators
+│   │   │   ├── typescript-generator.ts
+│   │   │   └── java-generator.ts
 │   │   ├── parser/
 │   │   │   ├── sql.grammar      # Lezer grammar definition
 │   │   │   └── sql-parser.ts    # Generated parser (do not edit)
@@ -42,12 +50,10 @@ sqg/
 │   │   └── __snapshots__/       # Snapshot test files
 │   ├── java/                    # Java test project (Gradle)
 │   └── justfile                 # Task runner recipes
-├── editor/                      # Web-based playground/documentation
-│   ├── src/
-│   │   ├── pages/playground.astro
-│   │   ├── actions/generate.ts  # Docker-based code generation API
-│   │   └── components/          # Svelte components
-│   └── astro.config.mjs
+├── website/                     # Astro + Starlight documentation site
+├── examples/
+│   ├── typescript-sqlite/       # Example: SQLite + TypeScript
+│   └── typescript-duckdb/       # Example: DuckDB + TypeScript
 └── pnpm-workspace.yaml
 ```
 
@@ -64,6 +70,18 @@ sqg/
 | `sqg/src/parser/sql.grammar` | Lezer grammar for annotated SQL syntax |
 | `sqg/src/templates/*.hbs` | Handlebars templates for generated code |
 
+## Tech Stack
+
+- **Runtime:** Node.js >= 20
+- **Package Manager:** pnpm
+- **Build:** tsdown, tsc
+- **Testing:** vitest
+- **Linting:** biome
+- **Parsing:** @lezer/lr (LR parser generator)
+- **Templates:** handlebars
+- **DB Drivers:** better-sqlite3, pg, @duckdb/node-api
+- **Validation:** zod
+
 ## Build & Test Commands
 
 **From the `sqg/` subdirectory:**
@@ -78,12 +96,16 @@ pnpm build
 # Run tests
 pnpm test        # Watch mode
 pnpm test:run    # Single run
+pnpm test:run -u # Update snapshots
 
 # Regenerate Lezer parser (after editing sql.grammar)
 pnpm lezer-gen
 
 # Lint and format
-pnpm biome check --write
+pnpm check
+
+# Run SQG directly
+pnpm sqg <path>
 ```
 
 **Using justfile (from `sqg/sqg/`):**
@@ -93,6 +115,51 @@ just all          # Build all test targets
 just build-duckdb # Generate from test-duckdb.yaml
 just build-sqlite # Generate from test-sqlite.yaml
 just start-pg     # Start PostgreSQL Docker container
+```
+
+## SQL File Format
+
+Queries use special comment annotations:
+
+```sql
+-- MIGRATE 1
+CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT);
+
+-- QUERY get_user_by_id :one
+@set id = 1
+SELECT * FROM users WHERE id = ${id};
+
+-- QUERY all_users
+SELECT * FROM users;
+
+-- EXEC insert_user
+@set name = 'John'
+INSERT INTO users (name) VALUES (${name});
+
+-- QUERY countUsers :one :pluck
+SELECT COUNT(*) FROM users;
+```
+
+**Query types:** `QUERY`, `EXEC`, `MIGRATE`, `TESTDATA`
+**Modifiers:** `:one` (single row), `:pluck` (single column), `:all` (default)
+**Variables:** `@set varName = value` to define, `${varName}` to reference
+
+## Project Configuration (sqg.yaml)
+
+```yaml
+version: 1
+name: my-project
+sql:
+  - engine: duckdb  # or: sqlite, postgres
+    files:
+      - queries.sql
+    gen:
+      - generator: typescript/duckdb
+        output: ./generated/
+      - generator: java/jdbc
+        output: ./java/src/main/java/generated/
+        config:
+          package: generated
 ```
 
 ## Development Workflow
@@ -114,47 +181,6 @@ just start-pg     # Start PostgreSQL Docker container
    - Add type mapper in `type-mapping.ts` if needed
    - Register in `getGenerator()` switch statement
 
-## SQL File Format
-
-Queries use special comment annotations:
-
-```sql
--- MIGRATE 1
-CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT);
-
--- QUERY get_user_by_id :one
-@set id = 1
-SELECT * FROM users WHERE id = ${id};
-
--- QUERY all_users
-SELECT * FROM users;
-
--- EXEC insert_user
-@set name = 'John'
-INSERT INTO users (name) VALUES (${name});
-```
-
-**Query types:** `QUERY`, `EXEC`, `MIGRATE`, `TESTDATA`
-**Modifiers:** `:one` (single row), `:pluck` (single column), `:all` (default)
-
-## Project Configuration (YAML)
-
-```yaml
-version: 1
-name: my-project
-sql:
-  - engine: duckdb  # or: sqlite, postgres
-    files:
-      - queries.sql
-    gen:
-      - generator: typescript/duckdb
-        output: ./generated/
-      - generator: java/jdbc
-        output: ./java/src/main/java/generated/
-        config:
-          package: generated
-```
-
 ## Testing Strategy
 
 - **Snapshot testing:** Generated code compared against `.snapshot` files
@@ -163,7 +189,7 @@ sql:
 - **In-memory databases:** SQLite and DuckDB for fast tests
 - **PostgreSQL tests:** Require Docker, may be skipped in CI
 
-**Update snapshots:** When generation changes are intentional, update snapshot files in `sqg/tests/__snapshots__/`
+**Update snapshots:** When generation changes are intentional, run `pnpm test:run -u`
 
 ## Code Conventions
 
@@ -197,13 +223,3 @@ sql:
 - Check that migrations run successfully in `database.ts`
 - Verify column types are captured correctly after query execution
 - Look at `SQLQuery.columns` after `executeQueries()`
-
-## Dependencies to Know
-
-- **@duckdb/node-api** - DuckDB bindings
-- **better-sqlite3** - SQLite bindings
-- **pg** - PostgreSQL client
-- **@lezer/lr** - Parser runtime
-- **handlebars** - Template engine
-- **zod** - Schema validation
-- **vitest** - Test framework
