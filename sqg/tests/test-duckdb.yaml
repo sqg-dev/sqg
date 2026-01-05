@@ -12,6 +12,6 @@ sql:
           config:
             package: sqg.generated
         - generator: typescript/duckdb
-          output: /tmp/
+          output: ./__generated__/
         
         

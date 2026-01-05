@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { JavaGenerator } from "../src/generators/index";
 import type { SQLQuery } from "../src/sql-query";
-import { ColumnTypeStruct } from "../src/sql-query";
+import { StructType } from "../src/sql-query";
 import type { SqlQueryPart } from "../src/sqltool";
 
 describe("JavaGenerator", () => {
@@ -53,7 +53,7 @@ describe("JavaGenerator", () => {
         generator.listType({ name: "test", type: "integer", nullable: false }),
       ).toMatchInlineSnapshot(`"List<Integer>"`);
       expect(
-        generator.listType({ name: "user", type: new ColumnTypeStruct([]), nullable: false }),
+        generator.listType({ name: "user", type: new StructType([]), nullable: false }),
       ).toMatchInlineSnapshot(`"List<UserResult>"`);
     });
   });
@@ -87,7 +87,7 @@ describe("JavaGenerator", () => {
       const mockQuery: Partial<SQLQuery> = {
         isPluck: true,
         columns,
-        allColumns: { name: "name", type: new ColumnTypeStruct(columns), nullable: false },
+        allColumns: { name: "name", type: new StructType(columns), nullable: false },
       };
 
       const result = generator.rowType(mockQuery as SQLQuery);

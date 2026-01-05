@@ -1,6 +1,6 @@
 import { camelCase, pascalCase } from "es-toolkit";
 import type { ColumnInfo } from "./sql-query";
-import { ColumnMapType, ColumnTypeList, ColumnTypeStruct } from "./sql-query";
+import { MapType, ListType, StructType } from "./sql-query";
 
 /**
  * Abstract base class for mapping SQL column types to target language types.
@@ -15,7 +15,7 @@ export abstract class TypeMapper {
    * @returns The fully qualified type name in the target language
    */
   getTypeName(column: ColumnInfo, path = ""): string {
-    if (column.type instanceof ColumnTypeList) {
+    if (column.type instanceof ListType) {
       const elementType = this.getTypeName({
         name: column.name,
         type: column.type.baseType,
@@ -23,10 +23,10 @@ export abstract class TypeMapper {
       });
       return path + this.formatListType(elementType);
     }
-    if (column.type instanceof ColumnTypeStruct) {
+    if (column.type instanceof StructType) {
       return path + this.formatStructTypeName(column.name);
     }
-    if (column.type instanceof ColumnMapType) {
+    if (column.type instanceof MapType) {
       return path + this.formatMapTypeName(column.name);
     }
     if (!column.type) {
@@ -54,10 +54,10 @@ export abstract class TypeMapper {
    * @returns Generated type declaration code, or empty string for primitive types
    */
   getDeclarations(column: ColumnInfo, path = ""): string {
-    if (column.type instanceof ColumnTypeStruct) {
+    if (column.type instanceof StructType) {
       return this.generateStructDeclaration(column, path);
     }
-    if (column.type instanceof ColumnTypeList) {
+    if (column.type instanceof ListType) {
       return this.getDeclarations(
         { name: column.name, type: column.type.baseType, nullable: true },
         path,
@@ -207,8 +207,8 @@ export class JavaTypeMapper extends TypeMapper {
   }
 
   protected generateStructDeclaration(column: ColumnInfo, path = ""): string {
-    if (!(column.type instanceof ColumnTypeStruct)) {
-      throw new Error(`Expected ColumnTypeStruct ${column}`);
+    if (!(column.type instanceof StructType)) {
+      throw new Error(`Expected StructType ${column}`);
     }
     const structName = this.formatStructTypeName(column.name);
     const newPath = `${path}${structName}.`;
@@ -250,7 +250,7 @@ export class JavaTypeMapper extends TypeMapper {
   }
 
   parseValue(column: ColumnInfo, value: string, path: string): string {
-    if (column.type instanceof ColumnTypeList) {
+    if (column.type instanceof ListType) {
       const elementType = this.getTypeName(
         {
           name: column.name,
@@ -259,26 +259,26 @@ export class JavaTypeMapper extends TypeMapper {
         },
         path,
       );
-      if (column.type.baseType instanceof ColumnTypeStruct) {
+      if (column.type.baseType instanceof StructType) {
         return `arrayOfStructToList((Array)${value}, ${elementType}::fromAttributes)`;
       }
-      if (column.type.baseType instanceof ColumnTypeList) {
+      if (column.type.baseType instanceof ListType) {
         // Multi-dimensional arrays - get the innermost element type for the class
         const innerType = this.getInnermostType(column.type);
         return `multiDimArrayToList((Array)${value}, ${innerType}[].class)`;
       }
       return `arrayToList((Array)${value}, ${elementType}[].class)`;
     }
-    if (column.type instanceof ColumnTypeStruct) {
+    if (column.type instanceof StructType) {
       return `${path}${this.formatStructTypeName(column.name)}.fromAttributes(getAttr((Struct)${value}))`;
     }
     const fieldType = this.getTypeName(column);
     return `(${fieldType})${value}`;
   }
 
-  private getInnermostType(type: ColumnTypeList): string {
+  private getInnermostType(type: ListType): string {
     let current = type.baseType;
-    while (current instanceof ColumnTypeList) {
+    while (current instanceof ListType) {
       current = current.baseType;
     }
     return this.getTypeName({ name: "", type: current, nullable: true });
@@ -296,7 +296,7 @@ export class TypeScriptTypeMapper extends TypeMapper {
    * Overrides base to handle DuckDB's map type with key-value entry arrays.
    */
   getTypeName(column: ColumnInfo, path = ""): string {
-    if (column.type instanceof ColumnMapType) {
+    if (column.type instanceof MapType) {
       const keyType = this.getTypeName({
         name: "key",
         type: column.type.keyType.type,
@@ -410,8 +410,8 @@ export class TypeScriptTypeMapper extends TypeMapper {
   }
 
   protected generateStructDeclaration(column: ColumnInfo): string {
-    if (!(column.type instanceof ColumnTypeStruct)) {
-      throw new Error("Expected ColumnTypeStruct");
+    if (!(column.type instanceof StructType)) {
+      throw new Error("Expected StructType");
     }
 
     const interfaceName = this.formatStructTypeName(column.name);

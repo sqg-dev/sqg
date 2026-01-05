@@ -8,7 +8,7 @@ import { z } from "zod";
 import { getDatabaseEngine } from "./db/index.js";
 import { type Generator, getGenerator } from "./generators/index.js";
 import type { ColumnInfo, SQLQuery } from "./sql-query.js";
-import { ColumnTypeStruct, parseSQLQueries } from "./sql-query.js";
+import { StructType, parseSQLQueries } from "./sql-query.js";
 import type { TypeMapper } from "./type-mapping.js";
 
 export const GENERATED_FILE_COMMENT =
@@ -148,10 +148,10 @@ export class SqlQueryHelper {
   }
 
   get columns(): ColumnInfo[] {
-    if (!(this.query.allColumns.type instanceof ColumnTypeStruct)) {
-      throw new Error(`Expected ColumnTypeStruct ${this.query.allColumns.type}`);
+    if (!(this.query.allColumns.type instanceof StructType)) {
+      throw new Error(`Expected StructType ${this.query.allColumns.type}`);
     }
-    return (this.query.allColumns.type as ColumnTypeStruct).fields;
+    return (this.query.allColumns.type as StructType).fields;
   }
 
   get variables(): { name: string; type: string }[] {
@@ -342,7 +342,7 @@ export function validateQueries(queries: SQLQuery[]) {
     query.allColumns = {
       name: query.id,
       nullable: false,
-      type: new ColumnTypeStruct(columns),
+      type: new StructType(columns),
     };
   }
 }

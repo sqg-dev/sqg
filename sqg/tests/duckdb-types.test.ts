@@ -2,8 +2,7 @@ import { DuckDBInstance, type DuckDBConnection } from "@duckdb/node-api";
 import { describe, expect, it, beforeAll, afterAll } from "vitest";
 
 // Import the generated class
-// Note: We need to dynamically import since it's generated to /tmp
-const { TestDuckdb } = await import("/tmp/test-duckdb");
+const { TestDuckdb } = await import("./__generated__/test-duckdb");
 
 describe("DuckDB test_all_types", () => {
   let db: DuckDBInstance;

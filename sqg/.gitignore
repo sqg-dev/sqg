@@ -1,5 +1,6 @@
 generated/
 dist/
 tests/gen
+tests/__generated__/
 tests/users.sqlite
 prod/

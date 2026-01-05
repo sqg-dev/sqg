@@ -10,11 +10,11 @@ import {
 import consola from "consola";
 import type { SQLQuery } from "../sql-query.js";
 import {
-  ColumnMapType,
+  MapType,
   type ColumnType,
-  ColumnTypeEnum,
-  ColumnTypeList,
-  ColumnTypeStruct,
+  EnumType,
+  ListType,
+  StructType,
 } from "../sql-query.js";
 import { type DatabaseEngine, initializeDatabase } from "./types.js";
 
@@ -92,10 +92,10 @@ export const duckdb = new (class implements DatabaseEngine {
 
         function convertType(type: DuckDBType): ColumnType {
           if (type instanceof DuckDBListType) {
-            return new ColumnTypeList(convertType(type.valueType));
+            return new ListType(convertType(type.valueType));
           }
           if (type instanceof DuckDBStructType) {
-            return new ColumnTypeStruct(
+            return new StructType(
               type.entryTypes.map((t, index) => ({
                 name: type.entryNames[index],
                 type: convertType(t),
@@ -104,7 +104,7 @@ export const duckdb = new (class implements DatabaseEngine {
             );
           }
           if (type instanceof DuckDBMapType) {
-            return new ColumnMapType(
+            return new MapType(
               {
                 name: "key",
                 type: convertType(type.keyType),
@@ -118,7 +118,7 @@ export const duckdb = new (class implements DatabaseEngine {
             );
           }
           if (type instanceof DuckDBEnumType) {
-            return new ColumnTypeEnum(type.values);
+            return new EnumType(type.values);
           }
 
           return type.toString();

@@ -1,10 +1,10 @@
 import Handlebars from "handlebars";
 import {
   type ColumnInfo,
-  ColumnMapType,
-  ColumnTypeEnum,
-  ColumnTypeList,
-  ColumnTypeStruct,
+  MapType,
+  EnumType,
+  ListType,
+  StructType,
   type SQLQuery,
 } from "../sql-query.js";
 import type { GeneratorConfig } from "../sqltool.js";
@@ -41,21 +41,21 @@ export class TsDuckDBGenerator extends TsGenerator {
           return `${base} | null`;
         };
 
-        if (t instanceof ColumnTypeList) {
+        if (t instanceof ListType) {
           // DuckDB returns arrays as { items: T[] }
           const element = inlineType({ name: col.name, type: t.baseType, nullable: true });
           const elementWrapped = element.includes(" | ") ? `(${element})` : element;
           return withNullability(`{ items: ${elementWrapped}[] }`);
         }
 
-        if (t instanceof ColumnMapType) {
+        if (t instanceof MapType) {
           // DuckDB returns maps as { entries: { key: K, value: V }[] }
           const key = inlineType({ name: "key", type: t.keyType.type, nullable: true });
           const value = inlineType({ name: "value", type: t.valueType.type, nullable: true });
           return withNullability(`{ entries: { key: ${key}; value: ${value} }[] }`);
         }
 
-        if (t instanceof ColumnTypeStruct) {
+        if (t instanceof StructType) {
           // DuckDB returns structs as { entries: { field1: T1, ... } }
           const isValidIdent = (name: string) => /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name);
           const fields = t.fields
@@ -68,7 +68,7 @@ export class TsDuckDBGenerator extends TsGenerator {
           return withNullability(`{ entries: { ${fields} } }`);
         }
 
-        if (t instanceof ColumnTypeEnum) {
+        if (t instanceof EnumType) {
           const unionType = t.values.map((v) => JSON.stringify(v)).join(" | ");
           return withNullability(unionType);
         }

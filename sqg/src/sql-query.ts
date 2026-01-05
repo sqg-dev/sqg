@@ -16,7 +16,7 @@ export interface IsColumnType {
   toString(): string;
 }
 
-export class ColumnTypeList implements IsColumnType {
+export class ListType implements IsColumnType {
   constructor(public baseType: ColumnType) {}
 
   toString(): string {
@@ -24,14 +24,14 @@ export class ColumnTypeList implements IsColumnType {
   }
 }
 
-export class ColumnTypeStruct implements IsColumnType {
+export class StructType implements IsColumnType {
   constructor(public fields: ColumnInfo[]) {}
 
   toString(): string {
     return `STRUCT(${this.fields.map((f) => `"${f.name}" ${f.type.toString()}`).join(", ")})`;
   }
 }
-export class ColumnMapType implements IsColumnType {
+export class MapType implements IsColumnType {
   constructor(
     public keyType: ColumnInfo,
     public valueType: ColumnInfo,
@@ -42,7 +42,7 @@ export class ColumnMapType implements IsColumnType {
   }
 }
 
-export class ColumnTypeEnum implements IsColumnType {
+export class EnumType implements IsColumnType {
   constructor(public values: readonly string[]) {}
 
   toString(): string {

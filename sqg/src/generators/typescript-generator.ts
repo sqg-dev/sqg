@@ -7,10 +7,10 @@ import estree from "prettier/plugins/estree";
 import prettier from "prettier/standalone";
 import {
   type ColumnInfo,
-  ColumnMapType,
-  ColumnTypeEnum,
-  ColumnTypeList,
-  ColumnTypeStruct,
+  MapType,
+  EnumType,
+  ListType,
+  StructType,
   type SQLQuery,
 } from "../sql-query.js";
 import type { GeneratorConfig, SqlQueryHelper } from "../sqltool.js";
@@ -53,21 +53,21 @@ export class TsGenerator extends BaseGenerator {
           return `${base} | null`;
         };
 
-        if (t instanceof ColumnTypeList) {
+        if (t instanceof ListType) {
           // Plain arrays for SQLite/better-sqlite3
           const element = inlineType({ name: col.name, type: t.baseType, nullable: true });
           const elementWrapped = element.includes(" | ") ? `(${element})` : element;
           return withNullability(`${elementWrapped}[]`);
         }
 
-        if (t instanceof ColumnMapType) {
+        if (t instanceof MapType) {
           // Map type for SQLite
           const key = inlineType({ name: "key", type: t.keyType.type, nullable: false });
           const value = inlineType({ name: "value", type: t.valueType.type, nullable: true });
           return withNullability(`Map<${key}, ${value}>`);
         }
 
-        if (t instanceof ColumnTypeStruct) {
+        if (t instanceof StructType) {
           // Plain object for SQLite
           const isValidIdent = (name: string) => /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name);
           const fields = t.fields
@@ -80,7 +80,7 @@ export class TsGenerator extends BaseGenerator {
           return withNullability(`{ ${fields} }`);
         }
 
-        if (t instanceof ColumnTypeEnum) {
+        if (t instanceof EnumType) {
           // Generate a union type of literal strings for enums
           const unionType = t.values.map((v) => JSON.stringify(v)).join(" | ");
           return withNullability(unionType);
@@ -99,12 +99,12 @@ export class TsGenerator extends BaseGenerator {
 
       const visit = (column: ColumnInfo) => {
         const t = column.type;
-        if (t instanceof ColumnTypeList) {
+        if (t instanceof ListType) {
           // Lists keep the same "field name" for struct naming
           visit({ name: column.name, type: t.baseType, nullable: true });
           return;
         }
-        if (t instanceof ColumnTypeStruct) {
+        if (t instanceof StructType) {
           const typeName = typeMapper.getTypeName(column);
           if (!declarations.has(typeName)) {
             declarations.set(typeName, typeMapper.getDeclarations(column));
@@ -114,7 +114,7 @@ export class TsGenerator extends BaseGenerator {
           }
           return;
         }
-        if (t instanceof ColumnMapType) {
+        if (t instanceof MapType) {
           // We currently model maps as `Map` in TS, but still collect struct declarations
           visit({ name: column.name, type: t.keyType.type, nullable: true });
           visit({ name: column.name, type: t.valueType.type, nullable: true });
