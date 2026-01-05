@@ -42,6 +42,14 @@ export class ColumnMapType implements IsColumnType {
   }
 }
 
+export class ColumnTypeEnum implements IsColumnType {
+  constructor(public values: readonly string[]) {}
+
+  toString(): string {
+    return `ENUM(${this.values.map((v) => `'${v}'`).join(", ")})`;
+  }
+}
+
 export type ParameterEntry = {
   name: string;
   value: string;

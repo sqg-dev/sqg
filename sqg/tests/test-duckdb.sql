@@ -176,3 +176,7 @@ select a:[1,2,3] ,b:2, c: {'x' : [{'a' : 1}], 'y' : {'z' : 3}}
 
 -- Q UERY testArrayOfArrays2 :one
 -- select a:[[[1]],[[2]], [[3]]]
+
+-- QUERY test_all_types
+-- this is a special duckdb function which returns all supported types
+select * from test_all_types();

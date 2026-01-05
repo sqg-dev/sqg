@@ -91,8 +91,8 @@ export const postgres = new (class implements DatabaseEngine {
           // Map dataTypeID to type name using pg-types builtins
           return typeIdToName.get(field.dataTypeID) || `type_${field.dataTypeID}`;
         });
-        consola.info("Columns:", columnNames);
-        consola.info("Types:", columnTypes);
+        consola.debug("Columns:", columnNames);
+        consola.debug("Types:", columnTypes);
         query.columns = columnNames.map((name, index) => ({
           name,
           type: columnTypes[index],

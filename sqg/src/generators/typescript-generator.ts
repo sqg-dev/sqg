@@ -8,6 +8,7 @@ import prettier from "prettier/standalone";
 import {
   type ColumnInfo,
   ColumnMapType,
+  ColumnTypeEnum,
   ColumnTypeList,
   ColumnTypeStruct,
   type SQLQuery,
@@ -53,19 +54,21 @@ export class TsGenerator extends BaseGenerator {
         };
 
         if (t instanceof ColumnTypeList) {
-          // DuckDB arrays can contain nulls
+          // Plain arrays for SQLite/better-sqlite3
           const element = inlineType({ name: col.name, type: t.baseType, nullable: true });
           const elementWrapped = element.includes(" | ") ? `(${element})` : element;
           return withNullability(`${elementWrapped}[]`);
         }
 
         if (t instanceof ColumnMapType) {
+          // Map type for SQLite
           const key = inlineType({ name: "key", type: t.keyType.type, nullable: false });
           const value = inlineType({ name: "value", type: t.valueType.type, nullable: true });
           return withNullability(`Map<${key}, ${value}>`);
         }
 
         if (t instanceof ColumnTypeStruct) {
+          // Plain object for SQLite
           const isValidIdent = (name: string) => /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name);
           const fields = t.fields
             .map((f) => {
@@ -73,8 +76,14 @@ export class TsGenerator extends BaseGenerator {
               const valueType = inlineType({ name: f.name, type: f.type, nullable: true });
               return `${key}: ${valueType}`;
             })
-            .join(", ");
+            .join("; ");
           return withNullability(`{ ${fields} }`);
+        }
+
+        if (t instanceof ColumnTypeEnum) {
+          // Generate a union type of literal strings for enums
+          const unionType = t.values.map((v) => JSON.stringify(v)).join(" | ");
+          return withNullability(unionType);
         }
 
         // primitives / unknown strings

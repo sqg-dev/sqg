@@ -1,5 +1,6 @@
 import {
   type DuckDBConnection,
+  DuckDBEnumType,
   DuckDBInstance,
   DuckDBListType,
   DuckDBMapType,
@@ -8,7 +9,13 @@ import {
 } from "@duckdb/node-api";
 import consola from "consola";
 import type { SQLQuery } from "../sql-query.js";
-import { ColumnMapType, type ColumnType, ColumnTypeList, ColumnTypeStruct } from "../sql-query.js";
+import {
+  ColumnMapType,
+  type ColumnType,
+  ColumnTypeEnum,
+  ColumnTypeList,
+  ColumnTypeStruct,
+} from "../sql-query.js";
 import { type DatabaseEngine, initializeDatabase } from "./types.js";
 
 export const duckdb = new (class implements DatabaseEngine {
@@ -77,8 +84,8 @@ export const duckdb = new (class implements DatabaseEngine {
         const result = await stmt.stream();
         const columnNames = result.columnNames();
         const columnTypes = result.columnTypes();
-        consola.info("Columns:", columnNames);
-        consola.info(
+        consola.debug("Columns:", columnNames);
+        consola.debug(
           "Types:",
           columnTypes.map((t) => `${t.toString()} / ${t.constructor.name}`),
         );
@@ -109,6 +116,9 @@ export const duckdb = new (class implements DatabaseEngine {
                 nullable: true,
               },
             );
+          }
+          if (type instanceof DuckDBEnumType) {
+            return new ColumnTypeEnum(type.values);
           }
 
           return type.toString();
