@@ -1,0 +1,20 @@
+{
+  "name": "typescript-duckdb-example",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "generate": "sqg sqg.yaml",
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "dev": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@duckdb/node-api": "catalog:"
+  },
+  "devDependencies": {
+    "@sqg/sqg": "workspace:",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

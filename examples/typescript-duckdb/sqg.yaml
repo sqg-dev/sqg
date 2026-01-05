@@ -1,0 +1,10 @@
+version: 1
+name: typescript-duckdb-example
+
+sql:
+  - engine: duckdb
+    files:
+      - queries.sql
+    gen:
+      - generator: typescript/duckdb
+        output: src/db.ts

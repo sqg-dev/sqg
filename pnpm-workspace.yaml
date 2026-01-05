@@ -1,6 +1,8 @@
 packages:
   - sqg
   - website
+  - examples/typescript-sqlite
+  - examples/typescript-duckdb
 
 catalog:
   '@astrojs/check': ^0.9.6
