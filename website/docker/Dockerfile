@@ -8,8 +8,7 @@ RUN corepack enable && corepack prepare pnpm@10.12.1 --activate
 WORKDIR /workspace
 
 # Copy workspace files
-COPY pnpm-workspace.yaml ./
-COPY pnpm-lock.yaml ./
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 COPY sqg/package.json ./sqg/
 COPY sqg/tsconfig.json ./sqg/
 COPY sqg/tsdown.config.ts ./sqg/
@@ -24,6 +23,9 @@ RUN pnpm --filter sqg --prod deploy /app-deploy
 
 # Final runtime image
 FROM node:24-slim
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@10.12.1 --activate
 
 # Create non-root user for security
 RUN useradd -m -u 1010 sqg && \
