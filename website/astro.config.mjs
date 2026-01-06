@@ -15,9 +15,10 @@ export default defineConfig({
   adapter: node({
     mode: "standalone",
   }),
+  site: 'https://sqg.dev',
   integrations: [
     starlight({
-      title: "SQG",
+      title: "SQG - SQL Query Generator",
       plugins: [starlightBlog()],
       social: [
         { icon: "external", label: "Playground", href: "/playground/" },
@@ -25,6 +26,9 @@ export default defineConfig({
       ],
       components: {
         Footer: "./src/components/Footer.astro",
+      },
+      editLink: {
+        baseUrl: 'https://github.com/sqg-dev/sqg/edit/main/website/',
       },
       sidebar: [
         {

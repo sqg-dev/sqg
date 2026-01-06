@@ -11,21 +11,14 @@ Before you begin, ensure you have:
 
 - **Node.js 18** or later
 - **pnpm** (recommended) or npm/yarn
-- A database engine: **SQLite**, **DuckDB**, or **PostgreSQL**
 
 ## Installation
 
-### From npm (recommended)
+### From pnpm (recommended)
 
 ```bash
-# Using pnpm
-pnpm add -D sqg
-
-# Using npm
-npm install --save-dev sqg
-
-# Using yarn
-yarn add -D sqg
+pnpm add -g @sqg/sqg
+pnpm approve-builds -g  # needed for sqlite dependency
 ```
 
 ### From source
@@ -89,7 +82,7 @@ sql:
 ### 3. Run the generator
 
 ```bash
-npx sqg sqg.yaml
+sqg sqg.yaml
 ```
 
 This creates `./src/generated/my-app.ts` with fully typed query functions.
