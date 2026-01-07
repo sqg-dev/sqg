@@ -33,7 +33,21 @@
     "test:run": "vitest run",
     "sqg": "tsx src/sqg.ts"
   },
-  "keywords": [],
+  "keywords": [
+    "sql",
+    "codegen",
+    "code-generation",
+    "typescript",
+    "java",
+    "sqlite",
+    "duckdb",
+    "postgres",
+    "postgresql",
+    "type-safe",
+    "database",
+    "orm-alternative",
+    "query-builder"
+  ],
   "author": "Uwe Maurer",
   "license": "Apache-2.0",
   "packageManager": "pnpm@10.26.0",

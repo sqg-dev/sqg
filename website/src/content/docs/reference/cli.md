@@ -5,31 +5,6 @@ description: Complete reference for SQG command-line interface
 
 Complete reference for the SQG command-line interface.
 
-## Installation
-
-```bash
-# Global installation (recommended)
-pnpm add -g @sqg/sqg        # pnpm
-npm install -g @sqg/sqg     # npm
-yarn global add @sqg/sqg    # yarn
-
-# Project-local installation
-pnpm add -D @sqg/sqg        # pnpm
-npm install -D @sqg/sqg     # npm
-yarn add -D @sqg/sqg        # yarn
-```
-
-## Basic Usage
-
-```bash
-sqg <config-file>           # Generate code from config
-sqg --validate <config>     # Validate without generating
-sqg --format json <config>  # Output as JSON
-sqg init                    # Initialize new project
-sqg syntax                  # Show SQL syntax reference
-sqg --help                  # Show help
-```
-
 ## Commands
 
 ### `sqg <config-file>`
