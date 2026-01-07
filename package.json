@@ -4,6 +4,5 @@
       "vite": "7.3.0",
       "@codemirror/state": "6.5.2"
     }
-  },
-  "version": "0.0.1"
+  }
 }
