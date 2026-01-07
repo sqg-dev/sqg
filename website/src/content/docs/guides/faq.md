@@ -65,14 +65,55 @@ Your workflow becomes: develop and test queries in DBeaver, then run `sqg` to ge
 ### How do I install SQG?
 
 ```bash
-# npm
-npm install --save-dev sqg
+# pnpm (recommended)
+pnpm add -D @sqg/sqg
+pnpm approve-builds  # needed for native dependencies
 
-# pnpm
-pnpm add -D sqg
+# npm
+npm install --save-dev @sqg/sqg
 
 # yarn
-yarn add -D sqg
+yarn add -D @sqg/sqg
+```
+
+### How do I start a new project quickly?
+
+Use the `sqg init` command to bootstrap a new project:
+
+```bash
+# Create a SQLite + TypeScript project (default)
+sqg init
+
+# Create a DuckDB project
+sqg init --engine duckdb
+
+# Create with specific generator and output directory
+sqg init --engine sqlite --generator typescript/better-sqlite3 --output ./src/db
+```
+
+This creates:
+- `sqg.yaml` - Project configuration
+- `queries.sql` - Example SQL file with migrations and sample queries
+- Output directory for generated code
+
+### How do I validate my configuration?
+
+Use the `--validate` flag to check your configuration without generating code:
+
+```bash
+sqg --validate sqg.yaml
+```
+
+This validates:
+- YAML syntax
+- Schema correctness
+- File existence
+- Generator/engine compatibility
+
+For CI/CD pipelines, use JSON output:
+
+```bash
+sqg --validate --format json sqg.yaml
 ```
 
 ### Do I need a running database?
@@ -80,7 +121,7 @@ yarn add -D sqg
 It depends on the database engine:
 
 - **SQLite/DuckDB**: No. SQG creates an in-memory database for introspection.
-- **PostgreSQL**: Yes. Set `DATABASE_URL` environment variable to connect.
+- **PostgreSQL**: Yes. Set `SQG_POSTGRES_URL` environment variable to connect.
 
 ### How do I integrate with my build process?
 
@@ -94,6 +135,57 @@ Add SQG to your build scripts:
     "dev": "npm run generate && vite"
   }
 }
+```
+
+### How do I use SQG in CI/CD?
+
+Example GitHub Actions workflow:
+
+```yaml
+# .github/workflows/build.yml
+name: Build
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - run: pnpm install
+
+      # Validate SQG config (fast, catches errors early)
+      - run: pnpm sqg --validate sqg.yaml
+
+      # Generate code
+      - run: pnpm sqg sqg.yaml
+
+      # Build and test
+      - run: pnpm build
+      - run: pnpm test
+```
+
+For PostgreSQL projects, add a service container:
+
+```yaml
+services:
+  postgres:
+    image: postgres:16
+    env:
+      POSTGRES_USER: sqg
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: sqg-db
+    ports:
+      - 5432:5432
+env:
+  SQG_POSTGRES_URL: postgresql://sqg:secret@localhost:5432/sqg-db
 ```
 
 ### Can I use SQG in a monorepo?
@@ -277,10 +369,10 @@ Check that:
 
 ### PostgreSQL connection fails
 
-Verify your `DATABASE_URL` environment variable:
+Verify your `SQG_POSTGRES_URL` environment variable:
 
 ```bash
-export DATABASE_URL="postgresql://user:password@localhost:5432/dbname"
+export SQG_POSTGRES_URL="postgresql://user:password@localhost:5432/dbname"
 ```
 
 SQG creates a temporary database for introspection, so the user needs CREATE DATABASE privileges.
@@ -295,8 +387,61 @@ This usually means type introspection failed. Check:
 Run SQG with verbose output for debugging:
 
 ```bash
-DEBUG=sqg npx sqg sqg.yaml
+sqg --verbose sqg.yaml
 ```
+
+### How do I debug configuration issues?
+
+Use the `--validate` flag to check configuration without running generation:
+
+```bash
+sqg --validate sqg.yaml
+```
+
+For machine-readable error output (useful for tooling):
+
+```bash
+sqg --format json sqg.yaml
+```
+
+Example error output:
+```json
+{
+  "status": "error",
+  "error": {
+    "code": "INVALID_GENERATOR",
+    "message": "Invalid generator 'typescript/sqlite'. Valid generators: typescript/better-sqlite3, typescript/duckdb, java/jdbc, java/duckdb-arrow",
+    "suggestion": "Use 'typescript/better-sqlite3' instead"
+  }
+}
+```
+
+### What error codes does SQG return?
+
+SQG provides structured error codes for programmatic handling:
+
+| Code | Description |
+|------|-------------|
+| `CONFIG_PARSE_ERROR` | Invalid YAML syntax |
+| `CONFIG_VALIDATION_ERROR` | Schema validation failed |
+| `FILE_NOT_FOUND` | SQL or config file missing |
+| `INVALID_ENGINE` | Unknown database engine |
+| `INVALID_GENERATOR` | Unknown code generator |
+| `GENERATOR_ENGINE_MISMATCH` | Incompatible generator/engine |
+| `SQL_PARSE_ERROR` | Invalid SQL annotation syntax |
+| `SQL_EXECUTION_ERROR` | Query failed during introspection |
+| `DUPLICATE_QUERY` | Two queries have the same name |
+| `MISSING_VARIABLE` | Variable used but not defined |
+
+### Where can I see the SQL annotation syntax?
+
+Use the built-in syntax reference:
+
+```bash
+sqg syntax
+```
+
+This displays all annotation types, modifiers, and examples.
 
 ## Performance
 

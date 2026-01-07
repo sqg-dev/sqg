@@ -5,6 +5,17 @@ description: Complete reference for SQG query annotations and modifiers
 
 This page documents all SQL annotations and modifiers supported by SQG.
 
+## DBeaver Compatibility
+
+SQG's syntax is designed to be **fully compatible with [DBeaver](https://dbeaver.io)**, the popular open-source database IDE. The `@set` variable syntax and `${variable}` references are native DBeaver features, which means you can:
+
+- **Develop queries interactively** with full autocomplete for tables and columns
+- **Execute and test queries** directly in DBeaver before generating code
+- **Modify `@set` values** and re-run to test different parameter scenarios
+- **Debug with query plans** to optimize performance
+
+This compatibility lets you use DBeaver as your primary SQL development environment—write and test queries there, then run `sqg` to generate type-safe code.
+
 ## File Structure
 
 An SQG SQL file contains multiple blocks, each starting with a comment annotation:
@@ -277,7 +288,12 @@ SELECT ['tag1', 'tag2', 'tag3'] as tags;
 ```
 
 ```typescript
-// Generated: { tags: (string | null)[] }
+// Generated:
+{
+  tags: {
+    items: (string | null)[]
+  } | null
+}
 ```
 
 ### Structs
@@ -288,7 +304,15 @@ SELECT {'name': 'John', 'age': 30} as user;
 ```
 
 ```typescript
-// Generated: { user: { name: string | null; age: number | null } }
+// Generated:
+{
+  user: {
+    entries: {
+      name: string | null;
+      age: number | null;
+    }
+  } | null
+}
 ```
 
 ### Maps
@@ -299,7 +323,12 @@ SELECT MAP {'key1': 'value1', 'key2': 'value2'} as meta;
 ```
 
 ```typescript
-// Generated: { meta: Map<string, string | null> }
+// Generated:
+{
+  meta: {
+    entries: { key: string; value: string | null }[]
+  } | null
+}
 ```
 
 ### Nested Structures
@@ -317,10 +346,12 @@ SELECT {
 // Generated:
 {
   data: {
-    user: { id: number | null; name: string | null };
-    tags: (string | null)[];
-    settings: Map<string, string | null>;
-  }
+    entries: {
+      user: { entries: { id: number | null; name: string | null } } | null;
+      tags: { items: (string | null)[] } | null;
+      settings: { entries: { key: string; value: string | null }[] } | null;
+    }
+  } | null
 }
 ```
 

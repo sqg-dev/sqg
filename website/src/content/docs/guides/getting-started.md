@@ -14,11 +14,31 @@ Before you begin, ensure you have:
 
 ## Installation
 
-### From pnpm (recommended)
+### Global installation (recommended)
 
 ```bash
+# pnpm (recommended)
 pnpm add -g @sqg/sqg
-pnpm approve-builds -g  # needed for sqlite dependency
+pnpm approve-builds -g  # needed for native dependencies
+
+# npm
+npm install -g @sqg/sqg
+
+# yarn
+yarn global add @sqg/sqg
+```
+
+### Project-local installation
+
+```bash
+# pnpm
+pnpm add -D @sqg/sqg
+
+# npm
+npm install --save-dev @sqg/sqg
+
+# yarn
+yarn add -D @sqg/sqg
 ```
 
 ### From source
@@ -33,7 +53,34 @@ pnpm link --global
 
 ## Quick Start
 
-### 1. Create your SQL file
+### Option A: Initialize a New Project (Recommended)
+
+The fastest way to get started is using the `sqg init` command:
+
+```bash
+# Create a new project with SQLite (default)
+sqg init
+
+# Or specify a different database engine
+sqg init --engine duckdb
+
+# Specify both engine and generator
+sqg init --engine sqlite --generator typescript/better-sqlite3
+```
+
+This creates:
+- `sqg.yaml` - Project configuration
+- `queries.sql` - Example SQL file with migrations and queries
+- `./generated/` - Output directory for generated code
+
+Then run:
+```bash
+sqg sqg.yaml
+```
+
+### Option B: Manual Setup
+
+#### 1. Create your SQL file
 
 Create a file called `queries.sql`:
 
@@ -62,7 +109,7 @@ INSERT INTO users (name, email) VALUES (${name}, ${email});
 DELETE FROM users WHERE id = ${id};
 ```
 
-### 2. Create a project configuration
+#### 2. Create a project configuration
 
 Create a file called `sqg.yaml`:
 
@@ -79,7 +126,7 @@ sql:
         output: ./src/generated/
 ```
 
-### 3. Run the generator
+#### 3. Run the generator
 
 ```bash
 sqg sqg.yaml
@@ -87,7 +134,7 @@ sqg sqg.yaml
 
 This creates `./src/generated/my-app.ts` with fully typed query functions.
 
-### 4. Use the generated code
+#### 4. Use the generated code
 
 ```typescript
 import Database from 'better-sqlite3';
@@ -141,91 +188,27 @@ sql:
 
 ### Available Generators
 
-| Generator | Description | Output |
-|-----------|-------------|--------|
-| `typescript/better-sqlite3` | TypeScript for SQLite | Sync functions using better-sqlite3 |
-| `typescript/duckdb` | TypeScript for DuckDB | Async functions using @duckdb/node-api |
-| `java/jdbc` | Java with JDBC | Standard JDBC with PreparedStatement |
-| `java/duckdb-arrow` | Java with Arrow API | High-performance DuckDB Arrow interface |
+| Generator | Description | Documentation |
+|-----------|-------------|---------------|
+| `typescript/better-sqlite3` | TypeScript for SQLite (sync API) | [TypeScript + SQLite](/generators/typescript-sqlite/) |
+| `typescript/duckdb` | TypeScript for DuckDB (async API) | [TypeScript + DuckDB](/generators/typescript-duckdb/) |
+| `java/jdbc` | Java with JDBC (any database) | [Java + JDBC](/generators/java-jdbc/) |
+| `java/duckdb-arrow` | Java with Arrow API (high-performance) | [Java + DuckDB Arrow](/generators/java-duckdb-arrow/) |
 
-### Generator Configuration
-
-#### TypeScript generators
-
-No additional configuration required.
-
-#### Java generators
-
-```yaml
-gen:
-  - generator: java/jdbc
-    output: ./java/src/main/java/mypackage/
-    config:
-      package: com.mycompany.mypackage
-```
+See individual generator documentation for configuration options, type mappings, and usage examples.
 
 ## Database Engines
 
-### SQLite
+| Engine | Description | TypeScript | Java |
+|--------|-------------|------------|------|
+| `sqlite` | Embedded, no server required | [typescript/better-sqlite3](/generators/typescript-sqlite/) | [java/jdbc](/generators/java-jdbc/) |
+| `duckdb` | Analytics, complex types | [typescript/duckdb](/generators/typescript-duckdb/) | [java/jdbc](/generators/java-jdbc/), [java/duckdb-arrow](/generators/java-duckdb-arrow/) |
+| `postgres` | Full-featured SQL server | — | [java/jdbc](/generators/java-jdbc/) |
 
-SQLite is the simplest option - no server required.
-
-**Project config:**
-```yaml
-sql:
-  - engine: sqlite
-    files: [queries.sql]
-    gen:
-      - generator: typescript/better-sqlite3
-        output: ./src/generated/
-```
-
-**Runtime dependency:**
-```bash
-pnpm add better-sqlite3
-pnpm add -D @types/better-sqlite3
-```
-
-### DuckDB
-
-DuckDB supports advanced analytics and complex types (structs, lists, maps).
-
-**Project config:**
-```yaml
-sql:
-  - engine: duckdb
-    files: [queries.sql]
-    gen:
-      - generator: typescript/duckdb
-        output: ./src/generated/
-```
-
-**Runtime dependency:**
-```bash
-pnpm add @duckdb/node-api
-```
-
-### PostgreSQL
-
-PostgreSQL requires a running database server for type introspection.
-
-**Project config:**
-```yaml
-sql:
-  - engine: postgres
-    files: [queries.sql]
-    gen:
-      - generator: java/jdbc
-        output: ./java/src/main/java/db/
-        config:
-          package: db
-```
-
-**Environment setup:**
-```bash
-# Set connection URL in environment
-export DATABASE_URL="postgresql://user:pass@localhost:5432/mydb"
-```
+**Notes:**
+- SQLite and DuckDB use in-memory databases for type introspection (no server needed)
+- PostgreSQL requires a running server; set `SQG_POSTGRES_URL` environment variable
+- See individual generator pages for installation and usage details
 
 ## Development Workflow with DBeaver
 
@@ -271,74 +254,48 @@ Select the entire block (including `@set` lines) and execute - DBeaver will subs
 
 ## SQL Syntax Overview
 
-### Query Types
+SQG uses comment annotations to define queries:
 
 ```sql
--- MIGRATE 1
--- Schema migrations, executed in order
-CREATE TABLE users (id INTEGER PRIMARY KEY);
-
--- MIGRATE 2
-ALTER TABLE users ADD COLUMN email TEXT;
-
--- TESTDATA
--- Populate test data (used during type introspection)
-INSERT INTO users (id, email) VALUES (1, 'test@example.com');
-
--- QUERY get_users
--- Select queries, return rows
-SELECT * FROM users;
-
--- EXEC insert_user
--- Execute statements (INSERT, UPDATE, DELETE)
-INSERT INTO users (email) VALUES (${email});
+-- MIGRATE 1              -- Schema migrations (numbered)
+-- TESTDATA               -- Test data for type introspection
+-- QUERY name             -- Select queries (returns rows)
+-- QUERY name :one        -- Returns single row or undefined
+-- QUERY name :pluck      -- Returns array of first column values
+-- EXEC name              -- Execute statements (INSERT/UPDATE/DELETE)
 ```
 
-### Parameters
-
-Define parameters with `@set` and reference them with `${name}`:
+Parameters use `@set` to define and `${name}` to reference:
 
 ```sql
--- QUERY find_users
-@set name = 'John'
-@set min_age = 18
-SELECT * FROM users WHERE name = ${name} AND age >= ${min_age};
-```
-
-Parameters become typed function arguments:
-
-```typescript
-findUsers(name: string, min_age: number): User[]
-```
-
-### Return Modifiers
-
-```sql
--- QUERY all_users
--- Returns: User[]
-SELECT * FROM users;
-
--- QUERY all_users :all
--- Explicit :all, same as default
-SELECT * FROM users;
-
--- QUERY get_user :one
--- Returns: User | undefined
+-- QUERY find_user :one
 @set id = 1
 SELECT * FROM users WHERE id = ${id};
-
--- QUERY all_emails :pluck
--- Returns: (string | null)[]
-SELECT email FROM users;
-
--- QUERY count_users :one :pluck
--- Returns: number | null | undefined
-SELECT COUNT(*) FROM users;
 ```
+
+See [SQL Syntax Reference](/guides/sql-syntax/) for complete documentation including complex types, modifiers, and best practices.
+
+## CLI Reference
+
+```bash
+sqg <config-file>           # Generate code from config
+sqg --validate <config>     # Validate without generating
+sqg --format json <config>  # Output as JSON
+sqg init                    # Initialize new project
+sqg syntax                  # Show SQL syntax reference
+sqg --help                  # Show help
+```
+
+See the [CLI Reference](/reference/cli/) for complete documentation including all commands, options, JSON output format, and error codes.
 
 ## Next Steps
 
+- **Generators:**
+  - [TypeScript + SQLite](/generators/typescript-sqlite/) - Sync API with better-sqlite3
+  - [TypeScript + DuckDB](/generators/typescript-duckdb/) - Async API with complex types
+  - [Java + JDBC](/generators/java-jdbc/) - Standard JDBC for any database
+  - [Java + DuckDB Arrow](/generators/java-duckdb-arrow/) - High-performance Arrow API
 - [SQL Syntax Reference](/guides/sql-syntax/) - Complete annotation reference
+- [CLI Reference](/reference/cli/) - Full command-line documentation
 - [Playground](/playground/) - Try SQG in your browser
 - [FAQ](/guides/faq/) - Common questions and troubleshooting
-- [Related Projects](/guides/related-projects/) - Similar tools and alternatives

@@ -39,6 +39,21 @@ export default defineConfig({
           ],
         },
         {
+          label: "Generators",
+          items: [
+            { label: "TypeScript + SQLite", slug: "generators/typescript-sqlite" },
+            { label: "TypeScript + DuckDB", slug: "generators/typescript-duckdb" },
+            { label: "Java + JDBC", slug: "generators/java-jdbc" },
+            { label: "Java + DuckDB Arrow", slug: "generators/java-duckdb-arrow" },
+          ],
+        },
+        {
+          label: "Reference",
+          items: [
+            { label: "CLI", slug: "reference/cli" },
+          ],
+        },
+        {
           label: "Resources",
           items: [
             { label: "Playground", link: "/playground/" },

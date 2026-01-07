@@ -1,0 +1,251 @@
+---
+title: TypeScript + SQLite
+description: Generate type-safe TypeScript code for SQLite using better-sqlite3
+---
+
+Generate synchronous TypeScript code for SQLite databases using the [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) driver.
+
+## Overview
+
+| Property | Value |
+|----------|-------|
+| Generator | `typescript/better-sqlite3` |
+| Engine | `sqlite` |
+| Runtime | Node.js |
+| API Style | Synchronous |
+| Driver | better-sqlite3 |
+
+## When to Use
+
+Choose `typescript/better-sqlite3` when:
+
+- Building **Node.js applications** with SQLite
+- Need **synchronous API** for simpler code flow
+- Want **maximum performance** for single-connection scenarios
+- Building **CLI tools**, **Electron apps**, or **local-first applications**
+
+Consider [TypeScript + DuckDB](/generators/typescript-duckdb/) instead when:
+- Need **complex types** (structs, arrays, maps)
+- Building **analytics applications**
+- Working with **Parquet/CSV files** directly
+
+## Installation
+
+```bash
+# Install SQG (choose one)
+pnpm add -D @sqg/sqg        # pnpm
+npm install -D @sqg/sqg     # npm
+yarn add -D @sqg/sqg        # yarn
+
+# Install runtime dependencies
+pnpm add better-sqlite3
+pnpm add -D @types/better-sqlite3
+```
+
+## Configuration
+
+```yaml
+# sqg.yaml
+version: 1
+name: my-app
+
+sql:
+  - engine: sqlite
+    files:
+      - queries.sql
+    gen:
+      - generator: typescript/better-sqlite3
+        output: ./src/generated/
+```
+
+## Quick Start
+
+### 1. Initialize a project
+
+```bash
+sqg init --engine sqlite --generator typescript/better-sqlite3
+```
+
+### 2. Write your SQL
+
+```sql
+-- queries.sql
+
+-- MIGRATE 1
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  email TEXT UNIQUE,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+-- QUERY all_users
+SELECT * FROM users ORDER BY created_at DESC;
+
+-- QUERY get_user :one
+@set id = 1
+SELECT * FROM users WHERE id = ${id};
+
+-- QUERY find_users_by_name
+@set name = 'John'
+SELECT * FROM users WHERE name LIKE '%' || ${name} || '%';
+
+-- EXEC create_user
+@set name = 'John Doe'
+@set email = 'john@example.com'
+INSERT INTO users (name, email) VALUES (${name}, ${email});
+
+-- EXEC update_user
+@set id = 1
+@set name = 'Jane Doe'
+UPDATE users SET name = ${name} WHERE id = ${id};
+
+-- EXEC delete_user
+@set id = 1
+DELETE FROM users WHERE id = ${id};
+```
+
+### 3. Generate code
+
+```bash
+sqg sqg.yaml
+```
+
+### 4. Use the generated code
+
+```typescript
+import Database from 'better-sqlite3';
+import { MyApp } from './generated/my-app';
+
+// Create database connection
+const db = new Database('app.db');
+
+// Run migrations
+for (const migration of MyApp.getMigrations()) {
+  db.exec(migration);
+}
+
+// Create query instance
+const queries = new MyApp(db);
+
+// Insert data
+queries.createUser('Alice', 'alice@example.com');
+queries.createUser('Bob', 'bob@example.com');
+
+// Query data
+const users = queries.allUsers();
+console.log(users);
+// [{ id: 1, name: 'Alice', email: 'alice@example.com', created_at: '...' }, ...]
+
+const user = queries.getUser(1);
+console.log(user?.name); // 'Alice'
+
+// Update data
+queries.updateUser(1, 'Alice Smith');
+
+// Delete data
+queries.deleteUser(2);
+```
+
+## Generated Code Structure
+
+The generator creates a single TypeScript file with:
+
+- **Type definitions** for each query result
+- **A class** with methods for each query/exec
+- **Static `getMigrations()`** method returning migration SQL strings
+
+Example generated types:
+
+```typescript
+// Generated types
+export interface AllUsersRow {
+  id: number;
+  name: string;
+  email: string | null;
+  created_at: string | null;
+}
+
+export interface GetUserRow {
+  id: number;
+  name: string;
+  email: string | null;
+  created_at: string | null;
+}
+
+// Generated class
+export class MyApp {
+  constructor(private db: Database) {}
+
+  static getMigrations(): string[] { ... }
+
+  allUsers(): AllUsersRow[] { ... }
+  getUser(id: number): GetUserRow | undefined { ... }
+  createUser(name: string, email: string): Database.RunResult { ... }
+  updateUser(id: number, name: string): Database.RunResult { ... }
+  deleteUser(id: number): Database.RunResult { ... }
+}
+```
+
+## Transactions
+
+Use better-sqlite3's built-in transaction support:
+
+```typescript
+const transfer = db.transaction((fromId: number, toId: number, amount: number) => {
+  queries.debit(fromId, amount);
+  queries.credit(toId, amount);
+});
+
+// Runs atomically
+transfer(1, 2, 100);
+```
+
+## Connection Management
+
+better-sqlite3 connections are synchronous and don't require pooling:
+
+```typescript
+// Simple single connection
+const db = new Database('app.db');
+const queries = new MyApp(db);
+
+// WAL mode for better concurrency
+db.pragma('journal_mode = WAL');
+
+// Close when done
+db.close();
+```
+
+## Type Mapping
+
+| SQLite Type | TypeScript Type |
+|-------------|-----------------|
+| `INTEGER` | `number` |
+| `REAL` | `number` |
+| `TEXT` | `string` |
+| `BLOB` | `Buffer` |
+| `NULL` | `null` |
+
+Nullable columns use union types: `string | null`
+
+## Best Practices
+
+1. **Use WAL mode** for better concurrent read performance
+2. **Run migrations on startup** before creating the query instance
+3. **Use transactions** for multiple related writes
+4. **Close the database** when your application shuts down
+
+## Limitations
+
+- **Synchronous only** - better-sqlite3 is synchronous by design
+- **No connection pooling** - single connection per Database instance
+- **Node.js only** - doesn't work in browsers or Deno
+
+## See Also
+
+- [TypeScript + DuckDB](/generators/typescript-duckdb/) - Async API with complex types
+- [Java + JDBC](/generators/java-jdbc/) - Java equivalent for SQLite
+- [SQL Syntax Reference](/guides/sql-syntax/)
+- [FAQ](/guides/faq/)
+- [better-sqlite3 documentation](https://github.com/WiseLibs/better-sqlite3/blob/master/docs/api.md)
