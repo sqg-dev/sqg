@@ -52,6 +52,18 @@ public class TestSources {
         }
     }
 
+    private static LocalDateTime toLocalDateTime(java.sql.Timestamp ts) {
+        return ts != null ? ts.toLocalDateTime() : null;
+    }
+
+    private static LocalDate toLocalDate(java.sql.Date d) {
+        return d != null ? d.toLocalDate() : null;
+    }
+
+    private static LocalTime toLocalTime(java.sql.Time t) {
+        return t != null ? t.toLocalTime() : null;
+    }
+
     private static <K> List<K> arrayToList(
         Array array,
         Class<? extends K[]> baseType

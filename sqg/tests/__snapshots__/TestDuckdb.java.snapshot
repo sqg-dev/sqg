@@ -52,6 +52,18 @@ public class TestDuckdb {
         }
     }
 
+    private static LocalDateTime toLocalDateTime(java.sql.Timestamp ts) {
+        return ts != null ? ts.toLocalDateTime() : null;
+    }
+
+    private static LocalDate toLocalDate(java.sql.Date d) {
+        return d != null ? d.toLocalDate() : null;
+    }
+
+    private static LocalTime toLocalTime(java.sql.Time t) {
+        return t != null ? t.toLocalTime() : null;
+    }
+
     private static <K> List<K> arrayToList(
         Array array,
         Class<? extends K[]> baseType
@@ -1013,9 +1025,11 @@ public class TestDuckdb {
                             (Long) rs.getObject(10),
                             (BigInteger) rs.getObject(11),
                             (BigDecimal) rs.getObject(12),
-                            (LocalDate) rs.getObject(13),
-                            (LocalTime) rs.getObject(14),
-                            (LocalDateTime) rs.getObject(15),
+                            toLocalDate((java.sql.Date) rs.getObject(13)),
+                            toLocalTime((java.sql.Time) rs.getObject(14)),
+                            toLocalDateTime(
+                                (java.sql.Timestamp) rs.getObject(15)
+                            ),
                             (Instant) rs.getObject(16),
                             (Instant) rs.getObject(17),
                             (Instant) rs.getObject(18),

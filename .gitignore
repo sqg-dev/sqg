@@ -5,3 +5,5 @@ node_modules/
 dist
 .astro
 .idea
+build/
+.gradle

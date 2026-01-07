@@ -1,0 +1,12 @@
+version: 1
+name: java-duckdb-example
+
+sql:
+  - engine: duckdb
+    files:
+      - queries.sql
+    gen:
+      - generator: java/jdbc
+        output: src/main/java/generated/
+        config:
+          package: generated

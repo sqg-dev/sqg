@@ -323,6 +323,17 @@ export class JavaTypeMapper extends TypeMapper {
       return `${path}${this.formatStructTypeName(column.name)}.fromAttributes(getAttr((Struct)${value}))`;
     }
     const fieldType = this.getTypeName(column);
+    // Handle JDBC type conversions for date/time types
+    const upperType = column.type?.toString().toUpperCase() ?? "";
+    if (upperType === "TIMESTAMP" || upperType === "DATETIME") {
+      return `toLocalDateTime((java.sql.Timestamp)${value})`;
+    }
+    if (upperType === "DATE") {
+      return `toLocalDate((java.sql.Date)${value})`;
+    }
+    if (upperType === "TIME") {
+      return `toLocalTime((java.sql.Time)${value})`;
+    }
     return `(${fieldType})${value}`;
   }
 
