@@ -1,13 +1,18 @@
 import consola from "consola";
 import { Client, type QueryResult } from "pg";
 import types from "pg-types";
+import { DatabaseError, SqlExecutionError } from "../errors.js";
 import type { SQLQuery } from "../sql-query.js";
 import { type DatabaseEngine, initializeDatabase } from "./types.js";
 
 const databaseName = "sqg-db-temp";
 
-const connectionString = "postgresql://sqg:secret@localhost:15432/sqg-db";
-const connectionStringTemp = `postgresql://sqg:secret@localhost:15432/${databaseName}`;
+// PostgreSQL connection configuration
+// TODO: Make this configurable via sqg.yaml
+const connectionString = process.env.SQG_POSTGRES_URL || "postgresql://sqg:secret@localhost:15432/sqg-db";
+const connectionStringTemp = process.env.SQG_POSTGRES_URL
+  ? process.env.SQG_POSTGRES_URL.replace(/\/[^/]+$/, `/${databaseName}`)
+  : `postgresql://sqg:secret@localhost:15432/${databaseName}`;
 
 const typeIdToName = new Map<number, string>();
 for (const [name, id] of Object.entries(types.builtins)) {
@@ -26,30 +31,64 @@ export const postgres = new (class implements DatabaseEngine {
       connectionString: connectionStringTemp,
     });
 
-    await this.dbInitial.connect();
+    try {
+      await this.dbInitial.connect();
+    } catch (e) {
+      throw new DatabaseError(
+        `Failed to connect to PostgreSQL: ${(e as Error).message}`,
+        "postgres",
+        `Check that PostgreSQL is running and accessible at ${connectionString}. ` +
+          "Set SQG_POSTGRES_URL environment variable to use a different connection string.",
+      );
+    }
 
     try {
       await this.dbInitial.query(`DROP DATABASE "${databaseName}";`);
     } catch (error) {
-      // consola.error("Error dropping database:", error);
+      // Database may not exist, that's OK
     }
     try {
       await this.dbInitial.query(`CREATE DATABASE "${databaseName}";`);
     } catch (error) {
-      consola.error("Error creating database:", error);
+      throw new DatabaseError(
+        `Failed to create temporary database: ${(error as Error).message}`,
+        "postgres",
+        "Check PostgreSQL user permissions to create databases",
+      );
     }
 
-    await this.db.connect();
+    try {
+      await this.db.connect();
+    } catch (e) {
+      throw new DatabaseError(
+        `Failed to connect to temporary database: ${(e as Error).message}`,
+        "postgres",
+      );
+    }
 
     await initializeDatabase(queries, async (query) => {
-      await this.db.query(query.rawQuery);
+      try {
+        await this.db.query(query.rawQuery);
+      } catch (e) {
+        throw new SqlExecutionError(
+          (e as Error).message,
+          query.id,
+          query.filename,
+          query.rawQuery,
+          e as Error,
+        );
+      }
     });
   }
 
   async executeQueries(queries: SQLQuery[]) {
     const db = this.db;
     if (!db) {
-      throw new Error("Database not initialized");
+      throw new DatabaseError(
+        "PostgreSQL database not initialized",
+        "postgres",
+        "This is an internal error. Check that migrations completed successfully.",
+      );
     }
     try {
       // Skip the setup query as it's already executed

@@ -1,6 +1,7 @@
 import BetterSqlite3, { type Database } from "better-sqlite3";
 import consola from "consola";
 import { isNotNil } from "es-toolkit";
+import { DatabaseError, SqlExecutionError, SqgError } from "../errors.js";
 import type { SQLQuery } from "../sql-query.js";
 import { type DatabaseEngine, initializeDatabase } from "./types.js";
 
@@ -11,7 +12,17 @@ export const sqlite = new (class implements DatabaseEngine {
     const db = new BetterSqlite3(":memory:");
 
     await initializeDatabase(queries, (query) => {
-      db.exec(query.rawQuery);
+      try {
+        db.exec(query.rawQuery);
+      } catch (e) {
+        throw new SqlExecutionError(
+          (e as Error).message,
+          query.id,
+          query.filename,
+          query.rawQuery,
+          e as Error,
+        );
+      }
       return Promise.resolve();
     });
 
@@ -21,7 +32,11 @@ export const sqlite = new (class implements DatabaseEngine {
   executeQueries(queries: SQLQuery[]) {
     const db = this.db;
     if (!db) {
-      throw new Error("Database not initialized");
+      throw new DatabaseError(
+        "SQLite database not initialized",
+        "sqlite",
+        "This is an internal error. Migrations may have failed silently.",
+      );
     }
     try {
       // Skip the setup query as it's already executed

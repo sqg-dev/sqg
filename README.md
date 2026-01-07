@@ -22,18 +22,32 @@ queries with it and then generate the code from the same file.
 
 ## Installation
 
-
 ```bash
 pnpm add -g @sqg/sqg
 pnpm approve-builds -g  # needed for sqlite dependency
 ```
 
-Check if the install was successful
+Check if the install was successful:
 ```bash
-sqg -h
+sqg --help
 ```
 
 ## Quick Start
+
+### Option 1: Use `sqg init` (Recommended)
+
+```bash
+# Initialize a new project (creates sqg.yaml and queries.sql)
+sqg init
+
+# Or with a specific database engine
+sqg init --engine duckdb
+
+# Generate code
+sqg sqg.yaml
+```
+
+### Option 2: Manual Setup
 
 1. Create `sqg.yaml` in your project root:
 
@@ -121,6 +135,17 @@ console.log(user?.name);
 | Java | DuckDB   | Apache Arrow | `java/duckdb-arrow` | Tested |
 | TypeScript | PostgreSQL | pg (node-postgres) | `typescript/pg` | under development |
 
+## CLI Commands
+
+```bash
+sqg <config>              # Generate code from config file
+sqg init                  # Initialize new project with example files
+sqg init --engine duckdb  # Initialize with specific database engine
+sqg --validate <config>   # Validate config without generating code
+sqg --format json <config> # Output as JSON (for tooling integration)
+sqg syntax                # Show SQL annotation syntax reference
+sqg --help                # Show all options
+```
 
 ## Documentation
 

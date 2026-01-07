@@ -1,11 +1,28 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import consola from "consola";
 import Handlebars from "handlebars";
 import YAML from "yaml";
 import { z } from "zod";
+import {
+  SUPPORTED_ENGINES,
+  SUPPORTED_GENERATORS,
+  GENERATOR_NAMES,
+  findSimilarGenerators,
+  type SupportedEngine,
+  type SupportedGenerator,
+} from "./constants.js";
 import { getDatabaseEngine } from "./db/index.js";
+import {
+  ConfigError,
+  FileNotFoundError,
+  GeneratorEngineMismatchError,
+  InvalidEngineError,
+  InvalidGeneratorError,
+  SqgError,
+  type ErrorContext,
+} from "./errors.js";
 import { type Generator, getGenerator } from "./generators/index.js";
 import type { ColumnInfo, SQLQuery } from "./sql-query.js";
 import { parseSQLQueries, StructType } from "./sql-query.js";
@@ -222,32 +239,66 @@ function generateSourceFile(
   return result;
 }
 
+/**
+ * Project configuration schema with descriptions for validation messages
+ */
 const ProjectSchema = z.object({
-  version: z.number(),
-  name: z.string(),
-  sql: z.array(
-    z.object({
-      engine: z.string(),
-      files: z.array(z.string()),
-      gen: z.array(
-        z.object({
-          generator: z.string(),
-          name: z.string().optional(),
-          template: z.string().optional(),
-          output: z.string(),
-          config: z.any().optional(),
-        }),
-      ),
-    }),
-  ),
+  version: z
+    .number()
+    .describe("Configuration version (currently 1)"),
+  name: z
+    .string()
+    .min(1, "Project name is required")
+    .describe("Project name used for generated class names"),
+  sql: z
+    .array(
+      z.object({
+        engine: z
+          .enum(SUPPORTED_ENGINES)
+          .describe(`Database engine: ${SUPPORTED_ENGINES.join(", ")}`),
+        files: z
+          .array(z.string().min(1))
+          .min(1, "At least one SQL file is required")
+          .describe("SQL files to process"),
+        gen: z
+          .array(
+            z.object({
+              generator: z
+                .enum(GENERATOR_NAMES as unknown as readonly [string, ...string[]])
+                .describe(`Code generator: ${GENERATOR_NAMES.join(", ")}`),
+              name: z
+                .string()
+                .optional()
+                .describe("Override the generated class/module name"),
+              template: z
+                .string()
+                .optional()
+                .describe("Custom Handlebars template path"),
+              output: z
+                .string()
+                .min(1, "Output path is required")
+                .describe("Output file or directory path"),
+              config: z
+                .any()
+                .optional()
+                .describe("Generator-specific configuration"),
+            }),
+          )
+          .min(1, "At least one generator is required")
+          .describe("Code generators to run"),
+      }),
+    )
+    .min(1, "At least one SQL configuration is required")
+    .describe("SQL file configurations"),
   sources: z
     .array(
       z.object({
-        path: z.string(),
-        name: z.string().optional(),
+        path: z.string().describe("Path to source file (supports $HOME)"),
+        name: z.string().optional().describe("Variable name override"),
       }),
     )
-    .optional(),
+    .optional()
+    .describe("External source files to include as variables"),
 });
 
 type Project = z.infer<typeof ProjectSchema>;
@@ -271,13 +322,77 @@ export function createExtraVariables(sources: Source[]): ExtraVariable[] {
   });
 }
 
+/**
+ * Parse and validate project configuration with helpful error messages
+ */
 export function parseProjectConfig(filePath: string): Project {
-  const content = readFileSync(filePath, "utf-8");
-  const result = ProjectSchema.safeParse(YAML.parse(content));
+  if (!existsSync(filePath)) {
+    throw new FileNotFoundError(filePath, process.cwd());
+  }
+
+  let content: string;
+  try {
+    content = readFileSync(filePath, "utf-8");
+  } catch (e) {
+    throw new SqgError(
+      `Cannot read config file: ${filePath}`,
+      "CONFIG_PARSE_ERROR",
+      "Check file permissions and that the path is correct",
+    );
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = YAML.parse(content);
+  } catch (e) {
+    const yamlError = e as Error;
+    throw new SqgError(
+      `Invalid YAML syntax in ${filePath}: ${yamlError.message}`,
+      "CONFIG_PARSE_ERROR",
+      "Check YAML syntax - common issues: incorrect indentation, missing colons, unquoted special characters",
+    );
+  }
+
+  // Pre-validate to give better error messages for common mistakes
+  if (parsed && typeof parsed === "object") {
+    const obj = parsed as Record<string, unknown>;
+
+    // Check for invalid engine before Zod validation
+    if (obj.sql && Array.isArray(obj.sql)) {
+      for (let i = 0; i < obj.sql.length; i++) {
+        const sqlConfig = obj.sql[i] as Record<string, unknown>;
+        if (sqlConfig.engine && !SUPPORTED_ENGINES.includes(sqlConfig.engine as SupportedEngine)) {
+          throw new InvalidEngineError(String(sqlConfig.engine), [...SUPPORTED_ENGINES]);
+        }
+
+        // Check for invalid generators
+        if (sqlConfig.gen && Array.isArray(sqlConfig.gen)) {
+          for (let j = 0; j < sqlConfig.gen.length; j++) {
+            const genConfig = sqlConfig.gen[j] as Record<string, unknown>;
+            if (genConfig.generator && !GENERATOR_NAMES.includes(genConfig.generator as SupportedGenerator)) {
+              const similar = findSimilarGenerators(String(genConfig.generator));
+              throw new InvalidGeneratorError(
+                String(genConfig.generator),
+                [...GENERATOR_NAMES],
+                similar.length > 0 ? similar[0] : undefined,
+              );
+            }
+          }
+        }
+      }
+    }
+  }
+
+  const result = ProjectSchema.safeParse(parsed);
   if (!result.success) {
     const prettyError = z.prettifyError(result.error);
-    throw new Error(`Error parsing project file ${filePath}:\n${prettyError}`);
+    throw new ConfigError(
+      `Configuration error in ${filePath}:\n${prettyError}`,
+      "Check the configuration format against the documentation at https://sqg.dev",
+      { file: filePath },
+    );
   }
+
   return result.data;
 }
 
@@ -327,8 +442,16 @@ export function getOutputPath(
 export function validateQueries(queries: SQLQuery[]) {
   for (const query of queries) {
     if (query.isQuery && query.isPluck && query.columns.length !== 1) {
-      throw new Error(
-        `Query ${query.id} in ${query.filename} has the ':pluck: option, must have exactly one column, but has ${query.columns.length} columns`,
+      throw SqgError.inQuery(
+        `':pluck' modifier requires exactly 1 column, but query has ${query.columns.length} columns`,
+        "VALIDATION_ERROR",
+        query.id,
+        query.filename,
+        {
+          suggestion: query.columns.length === 0
+            ? "Ensure the query returns at least one column"
+            : `Remove ':pluck' or select only one column. Current columns: ${query.columns.map((c) => c.name).join(", ")}`,
+        },
       );
     }
     const columns = query.columns.map((col) => {
@@ -365,6 +488,111 @@ export async function writeGeneratedFile(
   return outputPath;
 }
 
+/**
+ * Validation result for pre-flight checks
+ */
+export interface ValidationResult {
+  valid: boolean;
+  project?: {
+    name: string;
+    version: number;
+  };
+  sqlFiles?: string[];
+  generators?: string[];
+  errors?: Array<{
+    code: string;
+    message: string;
+    suggestion?: string;
+    context?: ErrorContext;
+  }>;
+}
+
+/**
+ * Validate project configuration without executing queries
+ * Use this for pre-flight checks before generation
+ */
+export async function validateProject(projectPath: string): Promise<ValidationResult> {
+  const errors: ValidationResult["errors"] = [];
+  const projectDir = resolve(dirname(projectPath));
+
+  // Parse and validate config
+  let project: Project;
+  try {
+    project = parseProjectConfig(projectPath);
+  } catch (e) {
+    if (e instanceof SqgError) {
+      return {
+        valid: false,
+        errors: [
+          {
+            code: e.code,
+            message: e.message,
+            suggestion: e.suggestion,
+            context: e.context,
+          },
+        ],
+      };
+    }
+    return {
+      valid: false,
+      errors: [{ code: "UNKNOWN_ERROR", message: String(e) }],
+    };
+  }
+
+  const sqlFiles: string[] = [];
+  const generators: string[] = [];
+
+  // Validate each SQL configuration
+  for (const sql of project.sql) {
+    for (const sqlFile of sql.files) {
+      const fullPath = join(projectDir, sqlFile);
+      sqlFiles.push(sqlFile);
+
+      // Check SQL file exists
+      if (!existsSync(fullPath)) {
+        errors.push({
+          code: "FILE_NOT_FOUND",
+          message: `SQL file not found: ${sqlFile}`,
+          suggestion: `Check that ${sqlFile} exists relative to ${projectDir}`,
+          context: { file: fullPath },
+        });
+      }
+
+      // Validate generator compatibility
+      for (const gen of sql.gen) {
+        generators.push(gen.generator);
+
+        const generatorInfo = SUPPORTED_GENERATORS[gen.generator as SupportedGenerator];
+        if (!(generatorInfo.compatibleEngines as readonly string[]).includes(sql.engine)) {
+          errors.push({
+            code: "GENERATOR_ENGINE_MISMATCH",
+            message: `Generator '${gen.generator}' is not compatible with engine '${sql.engine}'`,
+            suggestion: `For '${sql.engine}', use one of: ${Object.entries(SUPPORTED_GENERATORS)
+              .filter(([_, info]) => (info.compatibleEngines as readonly string[]).includes(sql.engine))
+              .map(([name]) => name)
+              .join(", ")}`,
+            context: { generator: gen.generator, engine: sql.engine },
+          });
+        }
+      }
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    project: {
+      name: project.name,
+      version: project.version,
+    },
+    sqlFiles: [...new Set(sqlFiles)],
+    generators: [...new Set(generators)],
+    errors: errors.length > 0 ? errors : undefined,
+  };
+}
+
+/**
+ * Process a project configuration and generate code
+ */
 export async function processProject(projectPath: string) {
   const projectDir = resolve(dirname(projectPath));
   const project = parseProjectConfig(projectPath);
@@ -377,28 +605,61 @@ export async function processProject(projectPath: string) {
   const files = [] as string[];
 
   for (const sql of project.sql) {
+    // Pre-validate generator compatibility before any work
+    for (const gen of sql.gen) {
+      const generatorInfo = SUPPORTED_GENERATORS[gen.generator as SupportedGenerator];
+      if (!(generatorInfo.compatibleEngines as readonly string[]).includes(sql.engine)) {
+        throw new GeneratorEngineMismatchError(
+          gen.generator,
+          sql.engine,
+          generatorInfo.compatibleEngines,
+        );
+      }
+    }
+
     for (const sqlFile of sql.files) {
+      const fullPath = join(projectDir, sqlFile);
+
+      // Check SQL file exists
+      if (!existsSync(fullPath)) {
+        throw new FileNotFoundError(fullPath, projectDir);
+      }
+
       let queries: SQLQuery[];
       try {
-        queries = parseSQLQueries(join(projectDir, sqlFile), extraVariables);
+        queries = parseSQLQueries(fullPath, extraVariables);
+      } catch (e) {
+        if (e instanceof SqgError) {
+          throw e;
+        }
+        throw SqgError.inFile(
+          `Failed to parse SQL file: ${(e as Error).message}`,
+          "SQL_PARSE_ERROR",
+          sqlFile,
+          { suggestion: "Check SQL syntax and annotation format" },
+        );
+      }
+
+      try {
         const dbEngine = getDatabaseEngine(sql.engine);
         await dbEngine.initializeDatabase(queries);
         await dbEngine.executeQueries(queries);
-
         validateQueries(queries);
         await dbEngine.close();
       } catch (e) {
-        consola.error(`Error processing SQL file ${sqlFile}: ${e}`);
-        throw e;
+        if (e instanceof SqgError) {
+          throw e;
+        }
+        throw new SqgError(
+          `Database error processing ${sqlFile}: ${(e as Error).message}`,
+          "DATABASE_ERROR",
+          `Check that the SQL is valid for engine '${sql.engine}'`,
+          { file: sqlFile, engine: sql.engine },
+        );
       }
 
       for (const gen of sql.gen) {
         const generator = getGenerator(gen.generator);
-        if (!generator.isCompatibleWith(sql.engine)) {
-          throw new Error(
-            `File ${sqlFile}: Generator ${gen.generator} is not compatible with engine ${sql.engine}`,
-          );
-        }
         const outputPath = await writeGeneratedFile(projectDir, gen, generator, sqlFile, queries);
         files.push(outputPath);
       }

@@ -22,10 +22,11 @@ sqg/
 ├── sqg/                          # Core code generator package (@sqg/sqg)
 │   ├── src/
 │   │   ├── sqg.ts               # CLI entry point
-│   │   ├── sqltool.ts           # Main orchestration
+│   │   ├── sqltool.ts           # Main orchestration, validation
 │   │   ├── sql-query.ts         # SQL parsing logic
-│   │   ├── generator.ts         # Code generation
-│   │   ├── database.ts          # Database engine adapters
+│   │   ├── constants.ts         # Supported engines/generators definitions
+│   │   ├── errors.ts            # Structured error classes
+│   │   ├── init.ts              # Project scaffolding (sqg init)
 │   │   ├── type-mapping.ts      # Type system mapping
 │   │   ├── db/
 │   │   │   ├── sqlite.ts        # SQLite adapter
@@ -61,11 +62,12 @@ sqg/
 
 | File | Purpose |
 |------|---------|
-| `sqg/src/sqg.ts` | CLI entry point, parses args and calls `processProject()` |
-| `sqg/src/sqltool.ts` | Main orchestrator: parses YAML config, coordinates generation |
+| `sqg/src/sqg.ts` | CLI entry point with commands (init, syntax) and options (--validate, --format) |
+| `sqg/src/sqltool.ts` | Main orchestrator: parses YAML config, validates, coordinates generation |
 | `sqg/src/sql-query.ts` | Custom SQL parser using Lezer, extracts query metadata |
-| `sqg/src/database.ts` | Database engine abstraction (SQLite, DuckDB, PostgreSQL) |
-| `sqg/src/generator.ts` | Code generators for TypeScript and Java |
+| `sqg/src/constants.ts` | Centralized definitions for supported engines/generators |
+| `sqg/src/errors.ts` | Structured error classes with codes, suggestions, context |
+| `sqg/src/init.ts` | Project scaffolding logic for `sqg init` command |
 | `sqg/src/type-mapping.ts` | Maps SQL types to target language types |
 | `sqg/src/parser/sql.grammar` | Lezer grammar for annotated SQL syntax |
 | `sqg/src/templates/*.hbs` | Handlebars templates for generated code |
@@ -106,6 +108,15 @@ pnpm check
 
 # Run SQG directly
 pnpm sqg <path>
+
+# Validate configuration without generating
+pnpm sqg --validate <path>
+
+# Get JSON output (for programmatic use)
+pnpm sqg --format json <path>
+
+# Initialize a new project
+pnpm sqg init --engine duckdb
 ```
 
 **Using justfile (from `sqg/sqg/`):**
@@ -223,3 +234,68 @@ sql:
 - Check that migrations run successfully in `database.ts`
 - Verify column types are captured correctly after query execution
 - Look at `SQLQuery.columns` after `executeQueries()`
+
+## CLI Reference (for AI Agents)
+
+### Commands
+
+```bash
+sqg <config>              # Generate code from config file
+sqg init [options]        # Initialize new project
+sqg syntax                # Show SQL annotation syntax reference
+sqg --help                # Show all options
+```
+
+### Key Options
+
+| Option | Description |
+|--------|-------------|
+| `--validate` | Validate config without generating code |
+| `--format json` | Output as JSON (useful for parsing errors programmatically) |
+| `--verbose` | Show detailed debug output |
+
+### JSON Output Mode
+
+Use `--format json` for machine-readable output:
+
+```bash
+sqg --validate --format json sqg.yaml
+```
+
+Returns structured JSON with validation results or errors:
+
+```json
+{
+  "valid": true,
+  "project": { "name": "my-project", "version": 1 },
+  "sqlFiles": ["queries.sql"],
+  "generators": ["typescript/better-sqlite3"]
+}
+```
+
+### Error Codes
+
+All errors include structured codes for programmatic handling:
+
+| Code | Description |
+|------|-------------|
+| `CONFIG_PARSE_ERROR` | Invalid YAML syntax |
+| `CONFIG_VALIDATION_ERROR` | Schema validation failed |
+| `FILE_NOT_FOUND` | SQL or config file missing |
+| `INVALID_ENGINE` | Unknown database engine |
+| `INVALID_GENERATOR` | Unknown code generator |
+| `GENERATOR_ENGINE_MISMATCH` | Incompatible generator/engine |
+| `SQL_PARSE_ERROR` | Invalid SQL annotation syntax |
+| `SQL_EXECUTION_ERROR` | Query failed during introspection |
+| `DUPLICATE_QUERY` | Two queries have the same name |
+| `MISSING_VARIABLE` | Variable used but not defined |
+
+### Supported Engines & Generators
+
+Defined in `sqg/src/constants.ts`:
+
+| Engine | Compatible Generators |
+|--------|----------------------|
+| `sqlite` | `typescript/better-sqlite3`, `java/jdbc` |
+| `duckdb` | `typescript/duckdb`, `java/jdbc`, `java/duckdb-arrow` |
+| `postgres` | `java/jdbc` |

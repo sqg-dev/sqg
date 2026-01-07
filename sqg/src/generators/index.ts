@@ -1,3 +1,5 @@
+import { GENERATOR_NAMES, findSimilarGenerators } from "../constants.js";
+import { InvalidGeneratorError } from "../errors.js";
 import { JavaDuckDBArrowGenerator } from "./java-duckdb-arrow-generator.js";
 import { JavaGenerator } from "./java-generator.js";
 import type { Generator } from "./types.js";
@@ -21,7 +23,13 @@ export function getGenerator(generator: string): Generator {
       return new TsGenerator("templates/better-sqlite3.hbs");
     case "typescript/duckdb":
       return new TsDuckDBGenerator("templates/typescript-duckdb.hbs");
-    default:
-      throw new Error(`Unsupported generator: ${generator}`);
+    default: {
+      const similar = findSimilarGenerators(generator);
+      throw new InvalidGeneratorError(
+        generator,
+        [...GENERATOR_NAMES],
+        similar.length > 0 ? similar[0] : undefined,
+      );
+    }
   }
 }

@@ -8,6 +8,7 @@ import {
   type DuckDBType,
 } from "@duckdb/node-api";
 import consola from "consola";
+import { DatabaseError, SqlExecutionError } from "../errors.js";
 import type { SQLQuery } from "../sql-query.js";
 import { type ColumnType, EnumType, ListType, MapType, StructType } from "../sql-query.js";
 import { type DatabaseEngine, initializeDatabase } from "./types.js";
@@ -21,14 +22,28 @@ export const duckdb = new (class implements DatabaseEngine {
     this.connection = await this.db.connect();
 
     await initializeDatabase(queries, async (query) => {
-      await this.connection.run(query.rawQuery);
+      try {
+        await this.connection.run(query.rawQuery);
+      } catch (e) {
+        throw new SqlExecutionError(
+          (e as Error).message,
+          query.id,
+          query.filename,
+          query.rawQuery,
+          e as Error,
+        );
+      }
     });
   }
 
   async executeQueries(queries: SQLQuery[]) {
     const connection = this.connection;
     if (!connection) {
-      throw new Error("Database not initialized");
+      throw new DatabaseError(
+        "DuckDB connection not initialized",
+        "duckdb",
+        "This is an internal error. Check that migrations completed successfully.",
+      );
     }
     try {
       // Skip the setup query as it's already executed

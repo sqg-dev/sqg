@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import type { SyntaxNode } from "@lezer/common";
 import consola from "consola";
+import { SqgError } from "./errors.js";
 import { parser } from "./parser/sql-parser.js";
 import { Config, type ExtraVariable } from "./sqltool.js";
 
@@ -194,22 +195,34 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
             return extraVariable.value;
           }
         }
-        throw error(`Variable '${varName}' not found`);
+        const definedVars = Array.from(variables.keys());
+        const suggestion = definedVars.length > 0
+          ? `Add '@set ${varName} = <value>' before the query. Defined variables: ${definedVars.join(", ")}`
+          : `Add '@set ${varName} = <value>' before the query`;
+        throw SqgError.inQuery(
+          `Variable '\${${varName}}' is referenced but not defined`,
+          "MISSING_VARIABLE",
+          name,
+          filePath,
+          { suggestion },
+        );
       }
 
       const sqlNode = cursor.node.getChild("SQLBlock");
       if (!sqlNode) {
-        throw new Error(`'SQLBlock' not found`);
+        throw SqgError.inQuery(
+          "SQL block not found",
+          "SQL_PARSE_ERROR",
+          name,
+          filePath,
+          { suggestion: "Ensure the query has valid SQL content after the annotation comment" },
+        );
       }
       const sqlContentStr = nodeStr(sqlNode).trim();
 
       const sqlCursor = sqlNode.cursor();
       let from = -1;
       let to = -1;
-
-      function error(message: string) {
-        return new Error(`${message} in ${filePath} query '${name}': ${message}`);
-      }
 
       class SQLQueryBuilder {
         sqlParts: SqlQueryPart[] = [];
@@ -267,40 +280,61 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
 
         toSqlWithPositionalPlaceholders() {
           const parameters: ParameterEntry[] = [];
+          const sqlParts: SqlQueryPart[] = [];
+          let paramIndex = 0;
 
-          return {
-            parameters,
-            sqlParts: [], // TODO
-            sql: this.sqlParts
-              .map((part) => {
-                if (typeof part === "string") {
-                  return part;
-                }
-                const varName = part.name;
-                const value = part.value;
+          for (const part of this.sqlParts) {
+            if (typeof part === "string") {
+              sqlParts.push(part);
+            } else {
+              const varName = part.name;
+              const value = part.value;
+
+              // Sources variables are inlined, not parameterized
+              if (varName.startsWith("sources_")) {
+                sqlParts.push(part);
+              } else {
                 let pos = parameters.findIndex((p) => p.name === varName);
                 if (pos < 0) {
                   parameters.push({ name: varName, value: value });
-                  pos = parameters.length - 1;
+                  pos = parameters.length;
+                } else {
+                  pos = pos + 1;
                 }
-                return ` $${pos + 1} `;
-              })
+                sqlParts.push(`$${pos}`);
+              }
+            }
+          }
+
+          return {
+            parameters,
+            sqlParts,
+            sql: sqlParts
+              .map((part) => (typeof part === "string" ? part : ` ${part.value} `))
               .join("")
               .trim(),
           };
         }
 
         toSqlWithNamedPlaceholders() {
+          const sqlParts: SqlQueryPart[] = [];
+
+          for (const part of this.sqlParts) {
+            if (typeof part === "string") {
+              sqlParts.push(part);
+            } else if (part.name.startsWith("sources_")) {
+              // Sources variables are inlined
+              sqlParts.push(part);
+            } else {
+              sqlParts.push(`$${part.name}`);
+            }
+          }
+
           return {
             parameters: this.parameters(),
-            sqlParts: [], // TODO
-            sql: this.sqlParts
-              .map((part) => {
-                if (typeof part === "string") {
-                  return part;
-                }
-                return `$${part.name}`;
-              })
+            sqlParts,
+            sql: sqlParts
+              .map((part) => (typeof part === "string" ? part : `$${(part as ParameterEntry).name}`))
               .join("")
               .trim(),
           };
@@ -323,7 +357,13 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
           if (child.name === "VarRef") {
             const varRef = nodeStr(child);
             if (!varRef.startsWith("${") || !varRef.endsWith("}")) {
-              throw error(`Invalid variable reference: ${varRef}`);
+              throw SqgError.inQuery(
+                `Invalid variable reference: ${varRef}`,
+                "SQL_PARSE_ERROR",
+                name,
+                filePath,
+                { suggestion: "Variables should be in the format ${varName}" },
+              );
             }
             const varName = varRef.replace("${", "").replace("}", "");
             const value = getVariable(varName);
@@ -370,7 +410,12 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
       );
 
       if (queryNames.has(name)) {
-        throw new Error(`Duplicate query name in ${filePath}: ${name}`);
+        throw SqgError.inFile(
+          `Duplicate query name '${name}'`,
+          "DUPLICATE_QUERY",
+          filePath,
+          { suggestion: `Rename one of the queries to have a unique name` },
+        );
       }
       queryNames.add(name);
 

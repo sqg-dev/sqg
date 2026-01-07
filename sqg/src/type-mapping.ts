@@ -1,4 +1,5 @@
 import { camelCase, pascalCase } from "es-toolkit";
+import { TypeMappingError } from "./errors.js";
 import type { ColumnInfo } from "./sql-query";
 import { ListType, MapType, StructType } from "./sql-query";
 
@@ -30,7 +31,10 @@ export abstract class TypeMapper {
       return path + this.formatMapTypeName(column.name);
     }
     if (!column.type) {
-      throw new Error(`Expected ColumnType ${JSON.stringify(column)}`);
+      throw new TypeMappingError(
+        `Missing type information`,
+        column.name,
+      );
     }
     return this.mapPrimitiveType(column.type.toString(), column.nullable);
   }
@@ -477,7 +481,34 @@ export class TypeScriptTypeMapper extends TypeMapper {
     return `interface ${interfaceName} {\n  entries: {\n${fields}\n  };\n}`;
   }
 
-  parseValue(column: ColumnInfo, value: string): string {
-    return "/// TODO: parseValue";
+  /**
+   * Generates code to parse/convert a raw DuckDB value to the target TypeScript type.
+   * DuckDB returns complex types with specific wrapper structures that need to be preserved.
+   */
+  parseValue(column: ColumnInfo, value: string, path = ""): string {
+    // For TypeScript/DuckDB, values are already in the correct structure
+    // DuckDB's node-api returns:
+    // - Structs as { entries: { field1, field2, ... } }
+    // - Lists as { items: [...] }
+    // - Maps as { entries: [{ key, value }, ...] }
+    // - Primitives as their JS equivalents
+
+    if (column.type instanceof ListType) {
+      // Lists are already wrapped as { items: T[] }
+      return value;
+    }
+
+    if (column.type instanceof StructType) {
+      // Structs are already wrapped as { entries: { ... } }
+      return value;
+    }
+
+    if (column.type instanceof MapType) {
+      // Maps are already wrapped as { entries: [{ key, value }, ...] }
+      return value;
+    }
+
+    // Primitives are passed through directly
+    return value;
   }
 }
