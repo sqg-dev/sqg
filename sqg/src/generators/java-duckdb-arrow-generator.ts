@@ -1,5 +1,5 @@
 import consola from "consola";
-import type { ColumnInfo, ColumnType, SQLQuery } from "../sql-query.js";
+import type { ColumnInfo, ColumnType, SQLQuery, TableInfo } from "../sql-query.js";
 import { type GeneratorConfig, writeGeneratedFile } from "../sqltool.js";
 import { JavaTypeMapper } from "../type-mapping.js";
 import { BaseGenerator } from "./base-generator.js";
@@ -19,6 +19,7 @@ export class JavaDuckDBArrowGenerator extends BaseGenerator {
     projectDir: string,
     gen: GeneratorConfig,
     queries: SQLQuery[],
+    tables: TableInfo[],
   ): Promise<void> {
     const q = queries.filter((q) => (q.isQuery && q.isOne) || q.isMigrate);
     const name = `${gen.name}-jdbc`;
@@ -33,6 +34,7 @@ export class JavaDuckDBArrowGenerator extends BaseGenerator {
       this.javaGenerator,
       name,
       q,
+      tables,
     );
   }
 

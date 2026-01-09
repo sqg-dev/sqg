@@ -1,4 +1,4 @@
-import { DuckDBInstance } from "@duckdb/node-api";
+import { DuckDBInstance, DuckDBTimestampValue } from "@duckdb/node-api";
 import { Queries } from "./db.js";
 
 async function main() {
@@ -78,6 +78,24 @@ async function main() {
     console.log(`  ${user.name}: ${count} posts`);
   }
 
+
+  const topicsAppender = await queries.createTopicsAppender();
+  for (let i = 0; i < 1000; i++) {
+    topicsAppender.append({
+      id: i,
+      name: "Test Topic " + i,
+      description: "Test Description " + i,
+      created_at: new DuckDBTimestampValue(BigInt(Date.now() * 1000)),
+    });
+  }
+  topicsAppender.flush();
+  topicsAppender.close();
+
+
+  const topics = await queries.getTopics().then((topics) => topics.slice(0, 10));
+  for (const topic of topics) {
+    console.log(`  - ${topic.name} (${topic.description}) created at ${topic.created_at?.toString()}`);
+  }
   // Close the connection
   conn.closeSync();
   console.log("\nDone!");

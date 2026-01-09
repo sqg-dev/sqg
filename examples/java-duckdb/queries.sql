@@ -19,6 +19,18 @@ CREATE TABLE IF NOT EXISTS posts (
     created_at TIMESTAMP DEFAULT current_timestamp
 );
 
+-- MIGRATE createTopics
+CREATE TABLE IF NOT EXISTS topics (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP
+);
+-- TABLE topics :appender
+
+--QUERY getTopics
+SELECT * from topics;
+
 -- EXEC insertUser
 @set name = 'John'
 @set email = 'john@example.com'

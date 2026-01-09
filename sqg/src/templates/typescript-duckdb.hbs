@@ -1,5 +1,5 @@
 // {{generatedComment}}
-import type { DuckDBConnection, DuckDBMaterializedResult } from "@duckdb/node-api";
+import type { DuckDBConnection, DuckDBMaterializedResult, DuckDBAppender, DuckDBDateValue, DuckDBTimeValue, DuckDBTimestampValue, DuckDBBlobValue } from "@duckdb/node-api";
 
 export class {{className}} {
     
@@ -46,7 +46,67 @@ export class {{className}} {
     {{/unless}}
 
     {{/each}}
+
+    {{#if tables.length}}
+    // ==================== Appenders ====================
+    {{#each tables}}
+
+    async {{functionName}}(): Promise<{{className}}> {
+        return new {{className}}(await this.conn.createAppender('{{tableName}}'));
+    }
+    {{/each}}
+    {{/if}}
 }
+
+{{#each tables}}
+/** Row type for {{tableName}} appender */
+export interface {{rowTypeName}} {
+    {{#each columns}}
+    {{name}}: {{{tsTypeForAppender this}}};
+    {{/each}}
+}
+
+/** Appender for bulk inserts into {{tableName}} */
+export class {{className}} {
+    constructor(public readonly appender: DuckDBAppender) {}
+
+    /** Append a single row */
+    append(row: {{rowTypeName}}): this {
+        {{#each columns}}
+        {{#if nullable}}
+        if (row.{{name}} === null || row.{{name}} === undefined) {
+            this.appender.appendNull();
+        } else {
+            this.appender.append{{appendMethod this}}(row.{{name}});
+        }
+        {{else}}
+        this.appender.append{{appendMethod this}}(row.{{name}});
+        {{/if}}
+        {{/each}}
+        this.appender.endRow();
+        return this;
+    }
+
+    /** Append multiple rows */
+    appendMany(rows: {{rowTypeName}}[]): this {
+        for (const row of rows) {
+            this.append(row);
+        }
+        return this;
+    }
+
+    /** Flush buffered data to the table */
+    flush(): this {
+        this.appender.flushSync();
+        return this;
+    }
+
+    /** Flush and close the appender */
+    close(): void {
+        this.appender.closeSync();
+    }
+}
+{{/each}}
 
 {{#*inline "params"}}{{#each parameterNames}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}{{/inline}}
 

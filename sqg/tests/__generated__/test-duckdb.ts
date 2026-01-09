@@ -2,6 +2,11 @@
 import type {
   DuckDBConnection,
   DuckDBMaterializedResult,
+  DuckDBAppender,
+  DuckDBDateValue,
+  DuckDBTimeValue,
+  DuckDBTimestampValue,
+  DuckDBBlobValue,
 } from "@duckdb/node-api";
 
 export class TestDuckdb {
@@ -1271,5 +1276,102 @@ select * from test_all_types();`;
         items: ({ items: (number | null)[] } | null)[];
       };
     }[];
+  }
+
+  // ==================== Appenders ====================
+
+  async createUsersAppender(): Promise<UsersAppender> {
+    return new UsersAppender(await this.conn.createAppender("users"));
+  }
+
+  async createActionsAppender(): Promise<ActionsAppender> {
+    return new ActionsAppender(await this.conn.createAppender("actions"));
+  }
+}
+
+/** Row type for users appender */
+export interface UsersRow {
+  id: number;
+  name: string;
+  email: string;
+}
+
+/** Appender for bulk inserts into users */
+export class UsersAppender {
+  constructor(public readonly appender: DuckDBAppender) {}
+
+  /** Append a single row */
+  append(row: UsersRow): this {
+    this.appender.appendInteger(row.id);
+    this.appender.appendVarchar(row.name);
+    this.appender.appendVarchar(row.email);
+    this.appender.endRow();
+    return this;
+  }
+
+  /** Append multiple rows */
+  appendMany(rows: UsersRow[]): this {
+    for (const row of rows) {
+      this.append(row);
+    }
+    return this;
+  }
+
+  /** Flush buffered data to the table */
+  flush(): this {
+    this.appender.flushSync();
+    return this;
+  }
+
+  /** Flush and close the appender */
+  close(): void {
+    this.appender.closeSync();
+  }
+}
+/** Row type for actions appender */
+export interface ActionsRow {
+  id: number;
+  action: string;
+  value: number | null;
+  user_id: number;
+  timestamp: number;
+}
+
+/** Appender for bulk inserts into actions */
+export class ActionsAppender {
+  constructor(public readonly appender: DuckDBAppender) {}
+
+  /** Append a single row */
+  append(row: ActionsRow): this {
+    this.appender.appendInteger(row.id);
+    this.appender.appendVarchar(row.action);
+    if (row.value === null || row.value === undefined) {
+      this.appender.appendNull();
+    } else {
+      this.appender.appendDouble(row.value);
+    }
+    this.appender.appendInteger(row.user_id);
+    this.appender.appendInteger(row.timestamp);
+    this.appender.endRow();
+    return this;
+  }
+
+  /** Append multiple rows */
+  appendMany(rows: ActionsRow[]): this {
+    for (const row of rows) {
+      this.append(row);
+    }
+    return this;
+  }
+
+  /** Flush buffered data to the table */
+  flush(): this {
+    this.appender.flushSync();
+    return this;
+  }
+
+  /** Flush and close the appender */
+  close(): void {
+    this.appender.closeSync();
   }
 }

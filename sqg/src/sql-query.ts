@@ -127,11 +127,42 @@ export class SQLQuery {
   }
 }
 
-export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[]): SQLQuery[] {
+/**
+ * Represents a TABLE annotation for generating appenders.
+ * TABLE annotations specify a table name for which to generate bulk insert appenders.
+ */
+export class TableInfo {
+  /** Columns introspected from the database table schema */
+  columns: ColumnInfo[] = [];
+
+  constructor(
+    public filename: string,
+    /** The identifier for the generated appender (e.g., "users_appender") */
+    public id: string,
+    /** The actual table name in the database */
+    public tableName: string,
+    /** Optional list of columns to include (if empty, all columns are included) */
+    public includeColumns: string[],
+    /** Whether :appender modifier was specified (required for generation) */
+    public hasAppender: boolean,
+  ) {}
+
+  get skipGenerateFunction(): boolean {
+    return !this.hasAppender;
+  }
+}
+
+export interface ParseResult {
+  queries: SQLQuery[];
+  tables: TableInfo[];
+}
+
+export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[]): ParseResult {
   const content = readFileSync(filePath, "utf-8");
   consola.info(`Parsing SQL file: ${filePath}`);
   consola.debug(`File start: ${content.slice(0, 200)}`);
   const queries: SQLQuery[] = [];
+  const tables: TableInfo[] = [];
 
   const tree = parser.parse(content);
   const cursor = tree.cursor();
@@ -385,6 +416,39 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
         }
         sql.trim();
       }
+      // Handle TABLE annotations specially - they declare tables for appender generation
+      if (queryType === "TABLE") {
+        const hasAppender = modifiers.includes(":appender");
+        // For TABLE, the SQL block contains the table name (optional)
+        // If empty, use the identifier as both the name and table name
+        const tableName = sqlContentStr.trim() || name;
+
+        // Parse column list from modifiers like :appender(col1,col2)
+        const includeColumns: string[] = [];
+        for (const mod of modifiers) {
+          const match = mod.match(/:appender\(([^)]+)\)/);
+          if (match) {
+            includeColumns.push(...match[1].split(",").map((c) => c.trim()));
+          }
+        }
+
+        const table = new TableInfo(filePath, name, tableName, includeColumns, hasAppender);
+
+        if (queryNames.has(name)) {
+          throw SqgError.inFile(
+            `Duplicate name '${name}'`,
+            "DUPLICATE_QUERY",
+            filePath,
+            { suggestion: `Rename one of the tables/queries to have a unique name` },
+          );
+        }
+        queryNames.add(name);
+
+        tables.push(table);
+        consola.debug(`Added table: ${name} -> ${tableName} (appender: ${hasAppender})`);
+        continue;
+      }
+
       consola.debug("Parsed query:", {
         type: queryType,
         name: name,
@@ -425,8 +489,11 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
     }
   } while (cursor.next());
 
-  consola.info(`Total queries parsed: ${queries.length}`);
+  consola.info(`Total queries parsed: ${queries.length}, tables: ${tables.length}`);
   consola.info(`Query names: ${queries.map((q) => q.id).join(", ")}`);
+  if (tables.length > 0) {
+    consola.info(`Table names: ${tables.map((t) => t.id).join(", ")}`);
+  }
 
-  return queries;
+  return { queries, tables };
 }

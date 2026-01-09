@@ -6,6 +6,7 @@ import {
   MapType,
   type SQLQuery,
   StructType,
+  type TableInfo,
 } from "../sql-query.js";
 import type { GeneratorConfig } from "../sqltool.js";
 import { TsGenerator } from "./typescript-generator.js";
@@ -26,9 +27,10 @@ export class TsDuckDBGenerator extends TsGenerator {
     projectDir: string,
     gen: GeneratorConfig,
     queries: SQLQuery[],
+    tables: TableInfo[],
   ): Promise<void> {
     // Call parent to register quote helper
-    await super.beforeGenerate(projectDir, gen, queries);
+    await super.beforeGenerate(projectDir, gen, queries, tables);
 
     // Override tsType helper with DuckDB-specific wrapper types
     Handlebars.registerHelper("tsType", (column: ColumnInfo) => {

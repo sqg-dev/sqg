@@ -4,6 +4,7 @@ import generated.Queries;
 
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 
 public class Main {
     public static void main(String[] args) throws SQLException {
@@ -59,6 +60,21 @@ public class Main {
             System.out.println("\nPublished posts:");
             for (var post : queries.getPublishedPosts()) {
                 System.out.printf("  \"%s\" by %s%n", post.title(), post.authorName());
+            }
+
+
+            // Insert some topics
+            System.out.println("\nInserting topics...");
+            try (var appender = queries.createTopicsAppender()) {
+                for (int i = 0; i < 1000; i++) {
+                    appender.append(i, "topic " + i, "description " + i, LocalDateTime.now());
+                }
+            }
+
+            // Get all topics
+            System.out.println("\nAll topics:");
+            for (var topic : queries.getTopics()) {
+                System.out.printf("  [%d] %s: %s%n", topic.id(), topic.name(), topic.description());
             }
 
             System.out.println("\nDone!");

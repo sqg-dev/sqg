@@ -1,4 +1,4 @@
-import type { ColumnInfo, ColumnType, SQLQuery } from "../sql-query.js";
+import type { ColumnInfo, ColumnType, SQLQuery, TableInfo } from "../sql-query.js";
 import type { GeneratorConfig, SqlQueryStatement } from "../sqltool.js";
 import type { TypeMapper } from "../type-mapping.js";
 
@@ -31,6 +31,6 @@ export interface Generator {
    * @param outputPath - the path to the generated file
    */
   afterGenerate(outputPath: string): Promise<void>;
-  beforeGenerate(projectDir: string, gen: GeneratorConfig, queries: SQLQuery[]): Promise<void>;
+  beforeGenerate(projectDir: string, gen: GeneratorConfig, queries: SQLQuery[], tables: TableInfo[]): Promise<void>;
   typeMapper: TypeMapper;
 }

@@ -84,6 +84,11 @@ sqg/
 - **DB Drivers:** better-sqlite3, pg, @duckdb/node-api
 - **Validation:** zod
 
+## External Documentation
+
+- **DuckDB Node.js API:** https://duckdb.org/docs/stable/clients/node_neo/overview
+- **DuckDB Java API:** https://duckdb.org/docs/stable/clients/java
+
 ## Build & Test Commands
 
 **From the `sqg/` subdirectory:**
@@ -149,11 +154,31 @@ INSERT INTO users (name) VALUES (${name});
 
 -- QUERY countUsers :one :pluck
 SELECT COUNT(*) FROM users;
+
+-- TABLE users :appender
 ```
 
-**Query types:** `QUERY`, `EXEC`, `MIGRATE`, `TESTDATA`
-**Modifiers:** `:one` (single row), `:pluck` (single column), `:all` (default)
+**Query types:** `QUERY`, `EXEC`, `MIGRATE`, `TESTDATA`, `TABLE`
+**Modifiers:** `:one` (single row), `:pluck` (single column), `:all` (default), `:appender` (generate bulk insert appender)
 **Variables:** `@set varName = value` to define, `${varName}` to reference
+
+### TABLE Annotation (Appenders)
+
+The `TABLE` annotation generates high-performance bulk insert appenders for DuckDB:
+
+```sql
+-- TABLE <table_name> :appender
+```
+
+- `<table_name>` is the database table name (also used as the identifier)
+- The `:appender` modifier is required to generate appender code
+- Appenders provide type-safe bulk insert methods that are much faster than individual INSERT statements
+
+For a different identifier, specify the table name on the next line:
+```sql
+-- TABLE user_bulk_insert :appender
+users
+```
 
 ## Project Configuration (sqg.yaml)
 

@@ -1,4 +1,4 @@
-import type { ColumnInfo, ColumnType, SQLQuery } from "../sql-query.js";
+import type { ColumnInfo, ColumnType, SQLQuery, TableInfo } from "../sql-query.js";
 import type { GeneratorConfig, SqlQueryStatement } from "../sqltool.js";
 import type { TypeMapper } from "../type-mapping.js";
 import type { Generator } from "./types.js";
@@ -28,6 +28,7 @@ export abstract class BaseGenerator implements Generator {
     _projectDir: string,
     _gen: GeneratorConfig,
     _queries: SQLQuery[],
+    _tables: TableInfo[],
   ): Promise<void> {}
   isCompatibleWith(_engine: string): boolean {
     return true;

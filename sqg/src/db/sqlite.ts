@@ -2,7 +2,7 @@ import BetterSqlite3, { type Database } from "better-sqlite3";
 import consola from "consola";
 import { isNotNil } from "es-toolkit";
 import { DatabaseError, SqlExecutionError, SqgError } from "../errors.js";
-import type { SQLQuery } from "../sql-query.js";
+import type { SQLQuery, TableInfo } from "../sql-query.js";
 import { type DatabaseEngine, initializeDatabase } from "./types.js";
 
 export const sqlite = new (class implements DatabaseEngine {
@@ -56,6 +56,29 @@ export const sqlite = new (class implements DatabaseEngine {
     } catch (error) {
       consola.error("Error executing queries:", (error as Error).message);
       throw error;
+    }
+  }
+
+  introspectTables(tables: TableInfo[]) {
+    // SQLite doesn't have an appender API, so we just introspect for documentation
+    const db = this.db;
+    if (!db) {
+      throw new DatabaseError(
+        "SQLite database not initialized",
+        "sqlite",
+        "This is an internal error. Migrations may have failed silently.",
+      );
+    }
+
+    for (const table of tables) {
+      consola.info(`Introspecting table schema: ${table.tableName}`);
+      const info = this.getTableInfo(db, table.tableName);
+      table.columns = Array.from(info.values()).map((col) => ({
+        name: col.name,
+        type: col.type || "TEXT",
+        nullable: col.notnull === 0 && col.pk === 0,
+      }));
+      consola.success(`Introspected table: ${table.tableName} (${table.columns.length} columns)`);
     }
   }
 

@@ -21,6 +21,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Function;
+import org.duckdb.DuckDBAppender;
+import org.duckdb.DuckDBConnection;
 
 public class TestDuckdb {
 
@@ -1108,6 +1110,151 @@ public class TestDuckdb {
                 }
                 return results;
             }
+        }
+    }
+
+    // ==================== Appenders ====================
+
+    /** Create an appender for bulk inserts into users */
+    public UsersAppender createUsersAppender() throws SQLException {
+        return new UsersAppender(
+            ((DuckDBConnection) connection).createAppender(
+                DuckDBConnection.DEFAULT_SCHEMA,
+                "users"
+            )
+        );
+    }
+
+    /** Create an appender for bulk inserts into actions */
+    public ActionsAppender createActionsAppender() throws SQLException {
+        return new ActionsAppender(
+            ((DuckDBConnection) connection).createAppender(
+                DuckDBConnection.DEFAULT_SCHEMA,
+                "actions"
+            )
+        );
+    }
+
+    /** Row type for users appender */
+    public record UsersRow(Integer id, String name, String email) {}
+
+    /** Appender for bulk inserts into users */
+    public static class UsersAppender implements AutoCloseable {
+
+        private final DuckDBAppender appender;
+
+        UsersAppender(DuckDBAppender appender) {
+            this.appender = appender;
+        }
+
+        /** Get the underlying DuckDB appender for advanced operations */
+        public DuckDBAppender getAppender() {
+            return appender;
+        }
+
+        /** Append a single row */
+        public UsersAppender append(UsersRow row) throws SQLException {
+            appender.beginRow();
+            appender.append(row.id());
+            appender.append(row.name());
+            appender.append(row.email());
+            appender.endRow();
+            return this;
+        }
+
+        /** Append a single row with individual values */
+        public UsersAppender append(Integer id, String name, String email)
+            throws SQLException {
+            appender.beginRow();
+            appender.append(id);
+            appender.append(name);
+            appender.append(email);
+            appender.endRow();
+            return this;
+        }
+
+        /** Append multiple rows */
+        public UsersAppender appendMany(Iterable<UsersRow> rows)
+            throws SQLException {
+            for (var row : rows) {
+                append(row);
+            }
+            return this;
+        }
+
+        /** Flush and close the appender */
+        @Override
+        public void close() throws SQLException {
+            appender.close();
+        }
+    }
+
+    /** Row type for actions appender */
+    public record ActionsRow(
+        Integer id,
+        String action,
+        Double value,
+        Integer user_id,
+        Integer timestamp
+    ) {}
+
+    /** Appender for bulk inserts into actions */
+    public static class ActionsAppender implements AutoCloseable {
+
+        private final DuckDBAppender appender;
+
+        ActionsAppender(DuckDBAppender appender) {
+            this.appender = appender;
+        }
+
+        /** Get the underlying DuckDB appender for advanced operations */
+        public DuckDBAppender getAppender() {
+            return appender;
+        }
+
+        /** Append a single row */
+        public ActionsAppender append(ActionsRow row) throws SQLException {
+            appender.beginRow();
+            appender.append(row.id());
+            appender.append(row.action());
+            appender.append(row.value());
+            appender.append(row.user_id());
+            appender.append(row.timestamp());
+            appender.endRow();
+            return this;
+        }
+
+        /** Append a single row with individual values */
+        public ActionsAppender append(
+            Integer id,
+            String action,
+            Double value,
+            Integer user_id,
+            Integer timestamp
+        ) throws SQLException {
+            appender.beginRow();
+            appender.append(id);
+            appender.append(action);
+            appender.append(value);
+            appender.append(user_id);
+            appender.append(timestamp);
+            appender.endRow();
+            return this;
+        }
+
+        /** Append multiple rows */
+        public ActionsAppender appendMany(Iterable<ActionsRow> rows)
+            throws SQLException {
+            for (var row : rows) {
+                append(row);
+            }
+            return this;
+        }
+
+        /** Flush and close the appender */
+        @Override
+        public void close() throws SQLException {
+            appender.close();
         }
     }
 }

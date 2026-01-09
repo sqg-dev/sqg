@@ -21,6 +21,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Function;
+import org.duckdb.DuckDBAppender;
+import org.duckdb.DuckDBConnection;
 
 public class Queries {
 
@@ -147,11 +149,46 @@ public class Queries {
             published BOOLEAN DEFAULT false,
             tags TEXT[],
             created_at TIMESTAMP DEFAULT current_timestamp
+        );""",
+        """
+        CREATE TABLE IF NOT EXISTS topics (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT,
+            created_at TIMESTAMP
         );"""
     );
 
     public static List<String> getMigrations() {
         return migrations;
+    }
+
+    public record GetTopicsResult(
+        Integer id,
+        String name,
+        String description,
+        LocalDateTime createdAt
+    ) {}
+
+    public List<GetTopicsResult> getTopics() throws SQLException {
+        try (var stmt = connection.prepareStatement("SELECT * from topics;")) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<GetTopicsResult>();
+                while (rs.next()) {
+                    results.add(
+                        new GetTopicsResult(
+                            (Integer) rs.getObject(1),
+                            (String) rs.getObject(2),
+                            (String) rs.getObject(3),
+                            toLocalDateTime(
+                                (java.sql.Timestamp) rs.getObject(4)
+                            )
+                        )
+                    );
+                }
+                return results;
+            }
+        }
     }
 
     public int insertUser(String name, String email) throws SQLException {
@@ -339,6 +376,83 @@ public class Queries {
                 }
                 return results;
             }
+        }
+    }
+
+    // ==================== Appenders ====================
+
+    /** Create an appender for bulk inserts into topics */
+    public TopicsAppender createTopicsAppender() throws SQLException {
+        return new TopicsAppender(
+            ((DuckDBConnection) connection).createAppender(
+                DuckDBConnection.DEFAULT_SCHEMA,
+                "topics"
+            )
+        );
+    }
+
+    /** Row type for topics appender */
+    public record TopicsRow(
+        Integer id,
+        String name,
+        String description,
+        LocalDateTime created_at
+    ) {}
+
+    /** Appender for bulk inserts into topics */
+    public static class TopicsAppender implements AutoCloseable {
+
+        private final DuckDBAppender appender;
+
+        TopicsAppender(DuckDBAppender appender) {
+            this.appender = appender;
+        }
+
+        /** Get the underlying DuckDB appender for advanced operations */
+        public DuckDBAppender getAppender() {
+            return appender;
+        }
+
+        /** Append a single row */
+        public TopicsAppender append(TopicsRow row) throws SQLException {
+            appender.beginRow();
+            appender.append(row.id());
+            appender.append(row.name());
+            appender.append(row.description());
+            appender.append(row.created_at());
+            appender.endRow();
+            return this;
+        }
+
+        /** Append a single row with individual values */
+        public TopicsAppender append(
+            Integer id,
+            String name,
+            String description,
+            LocalDateTime created_at
+        ) throws SQLException {
+            appender.beginRow();
+            appender.append(id);
+            appender.append(name);
+            appender.append(description);
+            appender.append(created_at);
+            appender.endRow();
+            return this;
+        }
+
+        /** Append multiple rows */
+        public TopicsAppender appendMany(Iterable<TopicsRow> rows)
+            throws SQLException {
+            for (var row : rows) {
+                append(row);
+            }
+            return this;
+        }
+
+        /** Flush and close the appender */
+        @Override
+        public void close() throws SQLException {
+            appender.close();
         }
     }
 }

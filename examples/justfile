@@ -1,0 +1,10 @@
+update:
+  #!/usr/bin/env bash
+  set -e
+  for dir in java-duckdb typescript-duckdb typescript-sqlite; do
+    echo "Updating $dir..."
+    d=$(realpath $dir)
+    (cd ../sqg && pnpm sqg $d/sqg.yaml)
+  done
+  echo "All examples updated"
+

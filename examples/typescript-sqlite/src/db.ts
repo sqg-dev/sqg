@@ -166,8 +166,8 @@ WHERE p.published = 1;`,
     );
     return stmt.all();
   }
-  countUserPosts(userId: number): any | undefined {
-    const stmt = this.prepare<[number], any>(
+  countUserPosts(userId: number): unknown | undefined {
+    const stmt = this.prepare<[number], unknown>(
       "countUserPosts",
       "SELECT COUNT(*) FROM posts WHERE user_id =?;",
       true,

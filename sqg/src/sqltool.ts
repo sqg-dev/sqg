@@ -24,7 +24,7 @@ import {
   type ErrorContext,
 } from "./errors.js";
 import { type Generator, getGenerator } from "./generators/index.js";
-import type { ColumnInfo, SQLQuery } from "./sql-query.js";
+import type { ColumnInfo, SQLQuery, ParseResult, TableInfo } from "./sql-query.js";
 import { parseSQLQueries, StructType } from "./sql-query.js";
 import type { TypeMapper } from "./type-mapping.js";
 
@@ -206,9 +206,56 @@ export class SqlQueryHelper {
   }
 }
 
+/** Util class to help generating appenders for tables */
+export class TableHelper {
+  constructor(
+    public table: TableInfo,
+    public generator: Generator,
+  ) {}
+
+  get id(): string {
+    return this.table.id;
+  }
+
+  get tableName(): string {
+    return this.table.tableName;
+  }
+
+  get columns(): ColumnInfo[] {
+    // Filter columns if includeColumns is specified
+    if (this.table.includeColumns.length > 0) {
+      return this.table.columns.filter((c) =>
+        this.table.includeColumns.includes(c.name),
+      );
+    }
+    return this.table.columns;
+  }
+
+  get skipGenerateFunction(): boolean {
+    return this.table.skipGenerateFunction;
+  }
+
+  get functionName(): string {
+    return this.generator.getFunctionName(`create_${this.table.id}_appender`);
+  }
+
+  get className(): string {
+    return this.generator.getClassName(`${this.table.id}_appender`);
+  }
+
+  get rowTypeName(): string {
+    return this.generator.getClassName(`${this.table.id}_row`);
+  }
+
+  get typeMapper(): TypeMapper {
+    return this.generator.typeMapper;
+  }
+}
+
 function generateSourceFile(
   name: string,
   queries: SQLQuery[],
+  tables: TableInfo[],
   templatePath: string,
   generator: Generator,
   config?: any,
@@ -222,11 +269,18 @@ function generateSourceFile(
   const migrations = queries
     .filter((q) => q.isMigrate)
     .map((q) => new SqlQueryHelper(q, generator, generator.getStatement(q)));
+
+  // Create table helpers for appender generation
+  const tableHelpers = tables
+    .filter((t) => !t.skipGenerateFunction)
+    .map((t) => new TableHelper(t, generator));
+
   const result = template(
     {
       generatedComment: GENERATED_FILE_COMMENT,
       migrations,
       queries: queries.map((q) => new SqlQueryHelper(q, generator, generator.getStatement(q))),
+      tables: tableHelpers,
       className: generator.getClassName(name),
       config,
     },
@@ -475,12 +529,13 @@ export async function writeGeneratedFile(
   generator: Generator,
   file: string,
   queries: SQLQuery[],
+  tables: TableInfo[] = [],
 ) {
-  await generator.beforeGenerate(projectDir, gen, queries);
+  await generator.beforeGenerate(projectDir, gen, queries, tables);
   const templateDir = dirname(new URL(import.meta.url).pathname);
   const templatePath = join(templateDir, gen.template ?? generator.template);
   const name = gen.name ?? basename(file, extname(file));
-  const sourceFile = generateSourceFile(name, queries, templatePath, generator, gen.config);
+  const sourceFile = generateSourceFile(name, queries, tables, templatePath, generator, gen.config);
   const outputPath = getOutputPath(projectDir, name, gen, generator);
   writeFileSync(outputPath, sourceFile);
   consola.success(`Generated ${outputPath}`);
@@ -626,8 +681,11 @@ export async function processProject(projectPath: string) {
       }
 
       let queries: SQLQuery[];
+      let tables: TableInfo[];
       try {
-        queries = parseSQLQueries(fullPath, extraVariables);
+        const parseResult = parseSQLQueries(fullPath, extraVariables);
+        queries = parseResult.queries;
+        tables = parseResult.tables;
       } catch (e) {
         if (e instanceof SqgError) {
           throw e;
@@ -644,6 +702,10 @@ export async function processProject(projectPath: string) {
         const dbEngine = getDatabaseEngine(sql.engine);
         await dbEngine.initializeDatabase(queries);
         await dbEngine.executeQueries(queries);
+        // Introspect table schemas for appenders
+        if (tables.length > 0) {
+          await dbEngine.introspectTables(tables);
+        }
         validateQueries(queries);
         await dbEngine.close();
       } catch (e) {
@@ -660,7 +722,7 @@ export async function processProject(projectPath: string) {
 
       for (const gen of sql.gen) {
         const generator = getGenerator(gen.generator);
-        const outputPath = await writeGeneratedFile(projectDir, gen, generator, sqlFile, queries);
+        const outputPath = await writeGeneratedFile(projectDir, gen, generator, sqlFile, queries, tables);
         files.push(outputPath);
       }
     }

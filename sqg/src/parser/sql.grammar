@@ -17,7 +17,7 @@ QueryBlock {
 }
 
 SQLBlock {
- sqlStuff  (sqlStuff | BR)*
+ (sqlStuff  (sqlStuff | BR)*)?
 }
 
 sqlStuff {
@@ -62,7 +62,7 @@ Value {
   Modifiers { ":" nameChar+ }
 
   QueryType {
-    "EXEC" | "QUERY" | "MIGRATE" | "TESTDATA"
+    "EXEC" | "QUERY" | "MIGRATE" | "TESTDATA" | "TABLE"
   }
 
   lineCommentStart {  "--" }

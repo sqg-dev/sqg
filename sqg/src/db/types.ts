@@ -1,10 +1,12 @@
 import consola from "consola";
 import { sortBy } from "es-toolkit";
-import type { SQLQuery } from "../sql-query.js";
+import type { SQLQuery, TableInfo } from "../sql-query.js";
 
 export interface DatabaseEngine {
   executeQueries(queries: SQLQuery[]): Promise<void> | void;
   initializeDatabase(queries: SQLQuery[]): Promise<void> | void;
+  /** Introspect table schemas for appender generation */
+  introspectTables(tables: TableInfo[]): Promise<void> | void;
 
   close(): Promise<void> | void;
 }

@@ -4,7 +4,7 @@ import { camelCase, pascalCase } from "es-toolkit/string";
 import Handlebars from "handlebars";
 import prettier from "prettier/standalone";
 import prettierPluginJava from "prettier-plugin-java";
-import type { ColumnInfo, SQLQuery } from "../sql-query.js";
+import type { ColumnInfo, SQLQuery, TableInfo } from "../sql-query.js";
 import type { GeneratorConfig, SqlQueryHelper, SqlQueryPart } from "../sqltool.js";
 import { JavaTypeMapper } from "../type-mapping.js";
 import { BaseGenerator } from "./base-generator.js";
@@ -69,6 +69,7 @@ export class JavaGenerator extends BaseGenerator {
     _projectDir: string,
     _gen: GeneratorConfig,
     _queries: SQLQuery[],
+    _tables: TableInfo[],
   ): Promise<void> {
     Handlebars.registerHelper("partsToString", (parts: SqlQueryPart[]) =>
       this.partsToString(parts),

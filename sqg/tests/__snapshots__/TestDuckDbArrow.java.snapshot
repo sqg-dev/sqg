@@ -12,6 +12,7 @@ import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.*;
 import org.apache.arrow.vector.complex.ListVector;
 import org.apache.arrow.vector.ipc.ArrowReader;
+import org.duckdb.DuckDBAppender;
 import org.duckdb.DuckDBConnection;
 import org.duckdb.DuckDBResultSet;
 import sqg.generated.TestDuckDbArrowJdbc.*;
@@ -507,5 +508,12 @@ public class TestDuckDbArrow {
             (VarCharVector) root.getVector("y"),
             (IntVector) root.getVector("c")
         );
+    }
+
+    // ==================== Appenders ====================
+
+    /** Create an appender for bulk inserts into actions */
+    public ActionsAppender createActionsAppender() throws SQLException {
+        return jdbc.createActionsAppender();
     }
 }

@@ -2,7 +2,7 @@ import consola from "consola";
 import { Client, type QueryResult } from "pg";
 import types from "pg-types";
 import { DatabaseError, SqlExecutionError } from "../errors.js";
-import type { SQLQuery } from "../sql-query.js";
+import type { SQLQuery, TableInfo } from "../sql-query.js";
 import { type DatabaseEngine, initializeDatabase } from "./types.js";
 
 const databaseName = "sqg-db-temp";
@@ -149,6 +149,39 @@ export const postgres = new (class implements DatabaseEngine {
     } catch (error) {
       consola.error(`Failed to execute query '${query.id}':`, error);
       throw error;
+    }
+  }
+
+  async introspectTables(tables: TableInfo[]) {
+    const db = this.db;
+    if (!db) {
+      throw new DatabaseError(
+        "PostgreSQL database not initialized",
+        "postgres",
+        "This is an internal error. Check that migrations completed successfully.",
+      );
+    }
+
+    for (const table of tables) {
+      consola.info(`Introspecting table schema: ${table.tableName}`);
+      try {
+        const result = await db.query(
+          `SELECT column_name, data_type, is_nullable
+           FROM information_schema.columns
+           WHERE table_name = $1
+           ORDER BY ordinal_position`,
+          [table.tableName],
+        );
+        table.columns = result.rows.map((row) => ({
+          name: row.column_name,
+          type: row.data_type.toUpperCase(),
+          nullable: row.is_nullable === "YES",
+        }));
+        consola.success(`Introspected table: ${table.tableName} (${table.columns.length} columns)`);
+      } catch (error) {
+        consola.error(`Failed to introspect table '${table.tableName}':`, error);
+        throw error;
+      }
     }
   }
 

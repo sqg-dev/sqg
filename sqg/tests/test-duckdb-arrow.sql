@@ -17,6 +17,8 @@ create table if not exists actions (
     timestamp integer not null
 );
 
+-- TABLE actions :appender
+
 -- EXEC insert
 
 @set name = 'John Doe'

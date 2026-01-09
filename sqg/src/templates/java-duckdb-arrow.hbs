@@ -14,6 +14,9 @@ import org.apache.arrow.vector.complex.ListVector;
 import org.apache.arrow.vector.ipc.ArrowReader;
 import org.duckdb.DuckDBConnection;
 import org.duckdb.DuckDBResultSet;
+{{#if tables.length}}
+import org.duckdb.DuckDBAppender;
+{{/if}}
 import {{config.package}}.{{className}}Jdbc.*;
 
 public class {{className}} {
@@ -46,9 +49,18 @@ public class {{className}} {
     {{/if}}
     {{/unless}}
     {{/each}}
+
+    {{#if tables.length}}
+    // ==================== Appenders ====================
+    {{#each tables}}
+
+    /** Create an appender for bulk inserts into {{tableName}} */
+    public {{className}} {{functionName}}() throws SQLException {
+        return jdbc.{{functionName}}();
+    }
+    {{/each}}
+    {{/if}}
 }
-
-
 
 
 {{#*inline "columnTypesRecord"}}

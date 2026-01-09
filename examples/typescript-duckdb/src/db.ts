@@ -2,6 +2,11 @@
 import type {
   DuckDBConnection,
   DuckDBMaterializedResult,
+  DuckDBAppender,
+  DuckDBDateValue,
+  DuckDBTimeValue,
+  DuckDBTimestampValue,
+  DuckDBBlobValue,
 } from "@duckdb/node-api";
 
 export class Queries {
@@ -27,11 +32,18 @@ CREATE TABLE IF NOT EXISTS posts (
     metadata STRUCT(views INTEGER, likes INTEGER, featured BOOLEAN),
     created_at TIMESTAMP DEFAULT current_timestamp
 );`,
+      `CREATE TABLE IF NOT EXISTS topics (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP
+);`,
     ];
   }
 
   static getQueryNames(): Map<string, keyof Queries> {
     return new Map([
+      ["getTopics", "getTopics"],
       ["insertUser", "insertUser"],
       ["getUsers", "getUsers"],
       ["getUserById", "getUserById"],
@@ -41,6 +53,24 @@ CREATE TABLE IF NOT EXISTS posts (
       ["getPublishedPosts", "getPublishedPosts"],
       ["countUserPosts", "countUserPosts"],
     ]);
+  }
+
+  async getTopics(): Promise<
+    {
+      id: number | null;
+      name: string | null;
+      description: string | null;
+      created_at: { micros: bigint } | null;
+    }[]
+  > {
+    const sql = "SELECT * from topics;";
+    const reader = await this.conn.runAndReadAll(sql, []);
+    return reader.getRowObjects() as {
+      id: number | null;
+      name: string | null;
+      description: string | null;
+      created_at: { micros: bigint } | null;
+    }[];
   }
 
   async insertUser(
@@ -194,5 +224,61 @@ WHERE p.published = true;`;
     const sql = "SELECT COUNT(*) FROM posts WHERE user_id =?;";
     const reader = await this.conn.runAndReadAll(sql, [userId]);
     return reader.getRows()[0]?.[0] as bigint | null | undefined;
+  }
+
+  // ==================== Appenders ====================
+
+  async createTopicsAppender(): Promise<TopicsAppender> {
+    return new TopicsAppender(await this.conn.createAppender("topics"));
+  }
+}
+
+/** Row type for topics appender */
+export interface TopicsRow {
+  id: number;
+  name: string;
+  description: string | null;
+  created_at: DuckDBTimestampValue | null;
+}
+
+/** Appender for bulk inserts into topics */
+export class TopicsAppender {
+  constructor(public readonly appender: DuckDBAppender) {}
+
+  /** Append a single row */
+  append(row: TopicsRow): this {
+    this.appender.appendInteger(row.id);
+    this.appender.appendVarchar(row.name);
+    if (row.description === null || row.description === undefined) {
+      this.appender.appendNull();
+    } else {
+      this.appender.appendVarchar(row.description);
+    }
+    if (row.created_at === null || row.created_at === undefined) {
+      this.appender.appendNull();
+    } else {
+      this.appender.appendTimestamp(row.created_at);
+    }
+    this.appender.endRow();
+    return this;
+  }
+
+  /** Append multiple rows */
+  appendMany(rows: TopicsRow[]): this {
+    for (const row of rows) {
+      this.append(row);
+    }
+    return this;
+  }
+
+  /** Flush buffered data to the table */
+  flush(): this {
+    this.appender.flushSync();
+    return this;
+  }
+
+  /** Flush and close the appender */
+  close(): void {
+    this.appender.closeSync();
   }
 }

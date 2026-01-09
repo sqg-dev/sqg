@@ -43,14 +43,16 @@ SQL Annotation Syntax:
   -- EXEC <name>                    Execute statement (INSERT/UPDATE/DELETE)
   -- MIGRATE <number>               Schema migration (run in order)
   -- TESTDATA <name>                Test data setup (not generated)
+  -- TABLE <name> :appender         Table for bulk insert appender (DuckDB only)
 
   @set <varName> = <value>          Define a variable
   \${varName}                        Reference a variable in SQL
 
 Modifiers:
-  :one    Return single row (or null) instead of array
-  :pluck  Return single column value (requires exactly 1 column)
-  :all    Return all rows (default)
+  :one      Return single row (or null) instead of array
+  :pluck    Return single column value (requires exactly 1 column)
+  :all      Return all rows (default)
+  :appender Generate bulk insert appender for TABLE annotation
 
 Example:
   -- MIGRATE 1
@@ -59,6 +61,8 @@ Example:
   -- QUERY get_user :one
   @set id = 1
   SELECT * FROM users WHERE id = \${id};
+
+  -- TABLE users :appender
 `.trim();
 
 /**
