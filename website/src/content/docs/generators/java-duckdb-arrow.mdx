@@ -41,9 +41,10 @@ Use `java/jdbc` instead when:
 ```groovy
 // build.gradle
 dependencies {
-    implementation 'org.duckdb:duckdb_jdbc:1.0.0'
-    implementation 'org.apache.arrow:arrow-vector:15.0.0'
-    implementation 'org.apache.arrow:arrow-memory-netty:15.0.0'
+    implementation 'org.duckdb:duckdb_jdbc:1.4.2.0'
+    implementation 'org.apache.arrow:arrow-vector:18.3.0'
+    implementation 'org.apache.arrow:arrow-c-data:18.3.0'
+    implementation 'org.apache.arrow:arrow-memory-netty:18.3.0'
 }
 ```
 
@@ -55,17 +56,22 @@ dependencies {
     <dependency>
         <groupId>org.duckdb</groupId>
         <artifactId>duckdb_jdbc</artifactId>
-        <version>1.0.0</version>
+        <version>1.4.2.0</version>
     </dependency>
     <dependency>
         <groupId>org.apache.arrow</groupId>
         <artifactId>arrow-vector</artifactId>
-        <version>15.0.0</version>
+        <version>18.3.0</version>
+    </dependency>
+        <dependency>
+        <groupId>org.apache.arrow</groupId>
+        <artifactId>arrow-c-data</artifactId>
+        <version>18.3.0</version>
     </dependency>
     <dependency>
         <groupId>org.apache.arrow</groupId>
         <artifactId>arrow-memory-netty</artifactId>
-        <version>15.0.0</version>
+        <version>18.3.0</version>
     </dependency>
 </dependencies>
 ```

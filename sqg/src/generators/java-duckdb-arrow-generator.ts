@@ -1,5 +1,5 @@
 import consola from "consola";
-import type { ColumnInfo, ColumnType, SQLQuery, TableInfo } from "../sql-query.js";
+import { ListType, MapType, StructType, type ColumnInfo, type ColumnType, type SQLQuery, type TableInfo } from "../sql-query.js";
 import { type GeneratorConfig, writeGeneratedFile } from "../sqltool.js";
 import { JavaTypeMapper } from "../type-mapping.js";
 import { BaseGenerator } from "./base-generator.js";
@@ -58,16 +58,20 @@ export class JavaDuckDBArrowGenerator extends BaseGenerator {
   }
 
   mapType(column: ColumnInfo): string {
-    const { type, nullable } = column;
+    const { type } = column;
     // For DuckDB Arrow, we need special vector types
     if (typeof type === "string") {
       const typeMap: { [key: string]: string } = {
         INTEGER: "IntVector",
+        BIGINT: "BigIntVector",
         BOOLEAN: "BitVector",
         DOUBLE: "Float8Vector",
         FLOAT: "Float4Vector",
         VARCHAR: "VarCharVector",
         TEXT: "VarCharVector",
+        TIMESTAMP: "TimeStampVector",
+        DATE: "DateDayVector",
+        TIME: "TimeMicroVector",
       };
       const mappedType = typeMap[type.toUpperCase()];
       if (!mappedType) {
@@ -75,9 +79,18 @@ export class JavaDuckDBArrowGenerator extends BaseGenerator {
       }
       return mappedType ?? "Object";
     }
-    // For complex types, fall back to base TypeMapper
-    const mockColumn = { name: "", type, nullable };
-    return this.typeMapper.getTypeName(mockColumn);
+    // For complex types, use Arrow vector types
+    if (type instanceof ListType) {
+      return "ListVector";
+    }
+    if (type instanceof StructType) {
+      return "StructVector";
+    }
+    if (type instanceof MapType) {
+      return "MapVector";
+    }
+    consola.warn("(duckdb-arrow) Unknown complex type:", type);
+    return "Object";
   }
 
   mapParameterType(type: ColumnType, nullable: boolean): string {

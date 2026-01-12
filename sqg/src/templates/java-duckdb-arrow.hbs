@@ -69,7 +69,7 @@ public class {{className}} {
 public record {{rowType}}({{#each columns}}{{type}} {{name}}{{#unless @last}}, {{/unless}}{{/each}}) {}
 {{else}}
 public record {{rowType}}(PreparedStatement statement, RootAllocator allocator, ArrowReader reader,
-{{#each columns}}{{mapType this}} {{name}}{{#unless @last}}, {{/unless}}{{/each}}) implements AutoCloseable {
+{{#each columns}}{{{mapType this}}} {{name}}{{#unless @last}}, {{/unless}}{{/each}}) implements AutoCloseable {
     public boolean loadNextBatch() throws IOException {
         return reader.loadNextBatch();
     }
@@ -99,7 +99,7 @@ int
 {{#*inline "readVectors"}}
 var root = reader.getVectorSchemaRoot();
 
-return new {{rowType}}(stmt, allocator, reader, {{#each columns}}({{mapType this}})root.getVector("{{name}}"){{#unless @last}}, {{/unless}}{{/each}});
+return new {{rowType}}(stmt, allocator, reader, {{#each columns}}({{{mapType this}}})root.getVector("{{name}}"){{#unless @last}}, {{/unless}}{{/each}});
 
 {{/inline~}}
 

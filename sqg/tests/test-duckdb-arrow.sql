@@ -104,7 +104,25 @@ SELECT user_id, SUM(value) as total_value FROM actions GROUP BY user_id ORDER BY
 -- QUERY test4         
  select '/* lol */' s /* ok */, 5 as z
  
--- QUERY test5         
- select 'a 	' x , 'a	 a' y, 1 as c 
- 
- 
+-- QUERY test5
+ select 'a 	' x , 'a	 a' y, 1 as c
+
+-- MIGRATE 2
+create table if not exists events (
+    id integer primary key not null,
+    name text not null,
+    tags varchar[] not null
+);
+
+-- TESTDATA seed_events
+insert into events (id, name, tags) values
+    (1, 'pageview', ['web', 'mobile']),
+    (2, 'click', ['web']);
+
+-- QUERY all_events
+select * from events;
+
+-- QUERY events_with_tag
+@set tag = 'web'
+select * from events where list_contains(tags, ${tag});
+

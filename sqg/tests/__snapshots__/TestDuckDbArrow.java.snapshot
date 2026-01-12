@@ -510,6 +510,94 @@ public class TestDuckDbArrow {
         );
     }
 
+    public record AllEventsResult(
+        PreparedStatement statement,
+        RootAllocator allocator,
+        ArrowReader reader,
+        IntVector id,
+        VarCharVector name,
+        ListVector tags
+    ) implements AutoCloseable {
+        public boolean loadNextBatch() throws IOException {
+            return reader.loadNextBatch();
+        }
+
+        public int getRowCount() throws IOException {
+            return reader.getVectorSchemaRoot().getRowCount();
+        }
+
+        public void close() throws IOException, SQLException {
+            reader.close();
+            allocator.close();
+            statement.close();
+        }
+    }
+
+    public AllEventsResult allEvents() throws SQLException, IOException {
+        var stmt = connection.prepareStatement(
+            """
+            select * from events;"""
+        );
+        var rs = (DuckDBResultSet) stmt.executeQuery();
+        var allocator = new RootAllocator();
+        var reader = (ArrowReader) rs.arrowExportStream(allocator, 65536);
+        var root = reader.getVectorSchemaRoot();
+
+        return new AllEventsResult(
+            stmt,
+            allocator,
+            reader,
+            (IntVector) root.getVector("id"),
+            (VarCharVector) root.getVector("name"),
+            (ListVector) root.getVector("tags")
+        );
+    }
+
+    public record EventsWithTagResult(
+        PreparedStatement statement,
+        RootAllocator allocator,
+        ArrowReader reader,
+        IntVector id,
+        VarCharVector name,
+        ListVector tags
+    ) implements AutoCloseable {
+        public boolean loadNextBatch() throws IOException {
+            return reader.loadNextBatch();
+        }
+
+        public int getRowCount() throws IOException {
+            return reader.getVectorSchemaRoot().getRowCount();
+        }
+
+        public void close() throws IOException, SQLException {
+            reader.close();
+            allocator.close();
+            statement.close();
+        }
+    }
+
+    public EventsWithTagResult eventsWithTag(String tag)
+        throws SQLException, IOException {
+        var stmt = connection.prepareStatement(
+            """
+            select * from events where list_contains(tags, ?);"""
+        );
+        stmt.setObject(1, tag);
+        var rs = (DuckDBResultSet) stmt.executeQuery();
+        var allocator = new RootAllocator();
+        var reader = (ArrowReader) rs.arrowExportStream(allocator, 65536);
+        var root = reader.getVectorSchemaRoot();
+
+        return new EventsWithTagResult(
+            stmt,
+            allocator,
+            reader,
+            (IntVector) root.getVector("id"),
+            (VarCharVector) root.getVector("name"),
+            (ListVector) root.getVector("tags")
+        );
+    }
+
     // ==================== Appenders ====================
 
     /** Create an appender for bulk inserts into actions */
