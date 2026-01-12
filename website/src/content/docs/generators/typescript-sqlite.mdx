@@ -26,17 +26,11 @@ Choose `typescript/better-sqlite3` when:
 - Building **Node.js applications** with SQLite
 - Need **synchronous API** for simpler code flow
 - Want **maximum performance** for single-connection scenarios
-- Building **CLI tools**, **Electron apps**, or **local-first applications**
 
-Consider [TypeScript + DuckDB](/generators/typescript-duckdb/) instead when:
-- Need **complex types** (structs, arrays, maps)
-- Building **analytics applications**
-- Working with **Parquet/CSV files** directly
 
 ## Installation
 
 ```bash
-# Install SQG (choose one)
 pnpm add -D @sqg/sqg        # pnpm
 npm install -D @sqg/sqg     # npm
 yarn add -D @sqg/sqg        # yarn
@@ -46,7 +40,7 @@ pnpm add better-sqlite3
 pnpm add -D @types/better-sqlite3
 ```
 
-## Configuration
+## Example Configuration
 
 ```yaml
 # sqg.yaml
@@ -179,16 +173,7 @@ Nullable columns use union types: `string | null`
 3. **Use transactions** for multiple related writes
 4. **Close the database** when your application shuts down
 
-## Limitations
-
-- **Synchronous only** - better-sqlite3 is synchronous by design
-- **No connection pooling** - single connection per Database instance
-- **Node.js only** - doesn't work in browsers or Deno
 
 ## See Also
 
-- [TypeScript + DuckDB](/generators/typescript-duckdb/) - Async API with complex types
-- [Java + JDBC](/generators/java-jdbc/) - Java equivalent for SQLite
-- [SQL Syntax Reference](/guides/sql-syntax/)
-- [FAQ](/guides/faq/)
 - [better-sqlite3 documentation](https://github.com/WiseLibs/better-sqlite3/blob/master/docs/api.md)

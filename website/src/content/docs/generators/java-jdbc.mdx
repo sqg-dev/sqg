@@ -70,7 +70,7 @@ implementation 'org.postgresql:postgresql:42.7.0'
 </dependency>
 ```
 
-## Configuration
+## Example Configuration
 
 ```yaml
 # sqg.yaml
@@ -162,68 +162,8 @@ The generator creates a single Java file with:
 
 <GeneratedCode id="java-jdbc-full" title="Generated Java"  startMatch="allUsers()" endMatch="GetUserResult"/>
 
-## Connection Management
 
-### Simple Connection
 
-```java
-Connection conn = DriverManager.getConnection("jdbc:sqlite:app.db");
-MyApp queries = new MyApp(conn);
-// ... use queries ...
-conn.close();
-```
-
-### Connection Pooling (HikariCP)
-
-```java
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
-
-HikariConfig config = new HikariConfig();
-config.setJdbcUrl("jdbc:postgresql://localhost:5432/mydb");
-config.setUsername("user");
-config.setPassword("password");
-
-HikariDataSource ds = new HikariDataSource(config);
-
-try (Connection conn = ds.getConnection()) {
-    MyApp queries = new MyApp(conn);
-    // ... use queries ...
-}
-```
-
-### Try-with-resources
-
-```java
-try (Connection conn = DriverManager.getConnection(url)) {
-    MyApp queries = new MyApp(conn);
-
-    for (var user : queries.allUsers()) {
-        System.out.println(user.name());
-    }
-} // Connection automatically closed
-```
-
-## Transactions
-
-```java
-Connection conn = DriverManager.getConnection(url);
-conn.setAutoCommit(false);
-
-try {
-    MyApp queries = new MyApp(conn);
-
-    queries.debit(fromAccount, amount);
-    queries.credit(toAccount, amount);
-
-    conn.commit();
-} catch (SQLException e) {
-    conn.rollback();
-    throw e;
-} finally {
-    conn.setAutoCommit(true);
-}
-```
 
 ## Type Mapping
 
@@ -244,69 +184,3 @@ try {
 
 All types are nullable (using wrapper classes).
 
-## Database-Specific Notes
-
-### SQLite
-
-```java
-// JDBC URL
-String url = "jdbc:sqlite:path/to/database.db";
-
-// In-memory database
-String url = "jdbc:sqlite::memory:";
-```
-
-### DuckDB
-
-```java
-// JDBC URL
-String url = "jdbc:duckdb:path/to/database.duckdb";
-
-// In-memory database
-String url = "jdbc:duckdb:";
-```
-
-### PostgreSQL
-
-```java
-// JDBC URL
-String url = "jdbc:postgresql://localhost:5432/mydb";
-
-// With credentials
-String url = "jdbc:postgresql://localhost:5432/mydb?user=myuser&password=mypass";
-```
-
-## Integration with Spring
-
-```java
-@Repository
-public class UserRepository {
-    private final MyApp queries;
-
-    public UserRepository(DataSource dataSource) throws SQLException {
-        this.queries = new MyApp(dataSource.getConnection());
-    }
-
-    public List<MyApp.AllUsersRow> findAll() throws SQLException {
-        return queries.allUsers();
-    }
-
-    public Optional<MyApp.GetUserRow> findById(int id) throws SQLException {
-        return Optional.ofNullable(queries.getUser(id));
-    }
-}
-```
-
-## Limitations
-
-- **No async support** - JDBC is synchronous
-- **Manual connection management** - You handle connections and pooling
-- **SQLException handling** - All methods throw SQLException
-
-## See Also
-
-- [Java + DuckDB Arrow](/generators/java-duckdb-arrow/) - Higher performance Arrow API for DuckDB
-- [TypeScript + SQLite](/generators/typescript-sqlite/) - TypeScript equivalent for SQLite
-- [TypeScript + DuckDB](/generators/typescript-duckdb/) - TypeScript equivalent for DuckDB
-- [SQL Syntax Reference](/guides/sql-syntax/)
-- [FAQ](/guides/faq/)

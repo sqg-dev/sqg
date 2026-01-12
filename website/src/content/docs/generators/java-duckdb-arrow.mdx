@@ -24,15 +24,11 @@ Generate Java code for DuckDB using the high-performance Apache Arrow API. This 
 Choose `java/duckdb-arrow` over `java/jdbc` when:
 
 - Processing **large result sets** (millions of rows)
-- Building **analytics applications**
 - Need **maximum performance** for data processing
-- Working with **complex types** (structs, lists, maps)
 - Integrating with **Arrow-based tools** (Pandas, Spark)
 
 Use `java/jdbc` instead when:
 - Working with small result sets
-- Need portability across databases
-- Simpler integration requirements
 
 ## Installation
 
@@ -108,7 +104,13 @@ sql:
    sqg sqg.yaml
    ```
 
+
 3. **Use the generated code**
+   
+    <GeneratedCode id="java-duckdb-arrow-full" title="Generated Java (Arrow)"  startMatch="EventCountsResult" endMatch="EventsWithTagResult"/>
+
+
+   Example usage:
 
    ```java
    import com.myapp.analytics.Analytics;
@@ -224,9 +226,8 @@ for (var metric : report.data().metrics()) {
 | `T[]` | `List<T>` |
 | `MAP(K,V)` | `HashMap<K,V>` |
 
-## Performance Considerations
 
-### Batch Processing
+## Batch Processing
 
 Arrow enables efficient batch processing:
 
@@ -240,34 +241,6 @@ try (var result = queries.largeQuery()) {
 }
 ```
 
-### Memory Management
-
-Arrow uses off-heap memory. For large queries:
-
-```java
-// Increase Arrow memory allocation
-System.setProperty("arrow.memory.max", "4g");
-```
-
-### Connection Reuse
-
-Reuse connections for multiple queries:
-
-```java
-DuckDBConnection conn = (DuckDBConnection) DriverManager
-    .getConnection("jdbc:duckdb:analytics.duckdb");
-Analytics queries = new Analytics(conn);
-
-// Reuse for multiple operations
-var users = queries.allUsers();
-var events = queries.recentEvents();
-var metrics = queries.calculateMetrics();
-```
-
-## Generated Code Structure
-
-<GeneratedCode id="java-duckdb-arrow-full" title="Generated Java (Arrow)"  startMatch="EventCountsResult" endMatch="EventsWithTagResult"/>
-
 ## Use Cases
 
 - **Real-time analytics dashboards**
@@ -278,44 +251,8 @@ var metrics = queries.calculateMetrics();
 
 ## Example: Analytics Dashboard
 
-```sql
--- QUERY daily_metrics
-@set start_date = '2024-01-01'
-@set end_date = '2024-01-31'
-SELECT
-  DATE_TRUNC('day', timestamp) as day,
-  COUNT(*) as events,
-  COUNT(DISTINCT user_id) as unique_users,
-  COUNT(*) FILTER (WHERE event_type = 'conversion') as conversions
-FROM events
-WHERE timestamp BETWEEN ${start_date} AND ${end_date}
-GROUP BY 1
-ORDER BY 1;
-
--- QUERY top_pages
-@set limit_count = 10
-SELECT
-  properties.page as page,
-  COUNT(*) as views,
-  COUNT(DISTINCT user_id) as unique_visitors
-FROM events
-WHERE event_type = 'pageview'
-GROUP BY 1
-ORDER BY views DESC
-LIMIT ${limit_count};
-```
-
-## Limitations
-
-- **DuckDB only** - Not portable to other databases
-- **More dependencies** - Requires Arrow libraries
-- **Memory usage** - Arrow vectors use off-heap memory
-- **Java 17+ required** - Uses modern Java features
+<CodeExample id="java-duckdb-analytics" />
 
 ## See Also
-
-- [Java + JDBC](/generators/java-jdbc/) - Simpler JDBC-based option (also supports DuckDB)
-- [TypeScript + DuckDB](/generators/typescript-duckdb/) - TypeScript equivalent
-- [SQL Syntax Reference](/guides/sql-syntax/)
-- [FAQ](/guides/faq/)
+- [Apache Arrow](https://arrow.apache.org/)
 - [DuckDB Java Documentation](https://duckdb.org/docs/api/java)

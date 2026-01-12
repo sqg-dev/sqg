@@ -9,7 +9,7 @@ sql: |
   -- MIGRATE 2
   ALTER TABLE users ADD COLUMN email TEXT;
 
-  -- TESTDATA
+  -- TESTDATA test1
   INSERT INTO users VALUES (1, 'Test User', 'test@example.com');
 
   -- QUERY get_all_users

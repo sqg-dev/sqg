@@ -7,7 +7,9 @@ import { Steps } from '@astrojs/starlight/components';
 import CodeExample from '@components/CodeExample.astro';
 import GeneratedCode from '@components/GeneratedCode.astro';
 
-Generate asynchronous TypeScript code for DuckDB databases using the [@duckdb/node-api](https://duckdb.org/docs/stable/clients/node_neo/overview) driver (DuckDB Node.js Neo). Includes support for DuckDB's advanced types like structs, lists, and maps.
+Generate asynchronous TypeScript code for DuckDB databases using the
+ [@duckdb/node-api](https://duckdb.org/docs/stable/clients/node_neo/overview) driver 
+ (DuckDB Node.js Neo). Includes support for DuckDB's advanced types like structs, lists, and maps.
 
 ## Overview
 
@@ -31,7 +33,7 @@ yarn add -D @sqg/sqg        # yarn
 pnpm add @duckdb/node-api   # or: npm install / yarn add
 ```
 
-## Configuration
+## Example Configuration
 
 ```yaml
 # sqg.yaml
@@ -273,19 +275,7 @@ DuckDB's [Appender API](https://duckdb.org/docs/data/appender) provides high-per
 
 Use the `TABLE` annotation with the `:appender` modifier:
 
-```sql
--- queries.sql
-
--- MIGRATE 1
-CREATE TABLE events (
-    id INTEGER PRIMARY KEY,
-    event_type VARCHAR NOT NULL,
-    payload VARCHAR,
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- TABLE events :appender
-```
+<CodeExample id="duckdb-appender" />
 
 ### Generated Code
 
@@ -295,29 +285,7 @@ SQG generates three components:
 2. **Appender class** - Wrapper with `append()`, `appendMany()`, `flush()`, and `close()` methods
 3. **Factory method** - Creates appender instances from your queries class
 
-```typescript
-// Generated types
-import type { DuckDBTimestampValue } from "@duckdb/node-api";
-
-interface EventsRow {
-  id: number;
-  event_type: string;
-  payload: string | null;
-  timestamp: DuckDBTimestampValue | null;
-}
-
-class EventsAppender {
-  append(row: EventsRow): this;
-  appendMany(rows: EventsRow[]): this;
-  flush(): this;
-  close(): void;
-}
-
-// In your queries class
-class Queries {
-  async createEventsAppender(): Promise<EventsAppender>;
-}
-```
+<GeneratedCode id="duckdb-appender" title="Generated TypeScript" startMatch="interface EventsRow" />
 
 ### Basic Usage
 
@@ -389,53 +357,13 @@ appender.append({
 });
 ```
 
-### When to Use Appenders
-
-Appenders are ideal for:
-- ETL pipelines and data imports
-- Log ingestion and event streaming
-- Bulk data migrations
-- Loading CSV/Parquet files into tables
-
-For single-row inserts or small batches, regular `EXEC` statements are simpler.
-
-## Use Cases
-
-DuckDB + TypeScript is ideal for:
-
-- **Analytics applications** - Fast OLAP queries
-- **Data pipelines** - ETL processing with complex transformations
-- **Embedded analytics** - Local analytics without a database server
-- **Parquet/CSV processing** - Direct querying of file formats
-
 ## Example: Analytics Query
 
-```sql
--- QUERY sales_by_region
-@set start_date = '2024-01-01'
-@set end_date = '2024-12-31'
-SELECT
-  region,
-  COUNT(*) as order_count,
-  SUM(amount) as total_sales,
-  AVG(amount) as avg_order_value
-FROM orders
-WHERE order_date BETWEEN ${start_date} AND ${end_date}
-GROUP BY region
-ORDER BY total_sales DESC;
-```
+<CodeExample id="duckdb-analytics" />
 
-## Limitations
-
-- **No browser support** - @duckdb/node-api is Node.js only
-- **Async required** - All operations are asynchronous
-- **Complex type wrappers** - Structs/lists/maps have wrapper objects
+<GeneratedCode id="duckdb-analytics" title="Generated TypeScript" startMatch="async salesByRegion" />
 
 ## See Also
 
-- [TypeScript + SQLite](/generators/typescript-sqlite/) - Simpler sync API for SQLite
-- [Java + DuckDB Arrow](/generators/java-duckdb-arrow/) - Java equivalent with Arrow API
-- [SQL Syntax Reference](/guides/sql-syntax/)
-- [FAQ](/guides/faq/)
 - [DuckDB Documentation](https://duckdb.org/docs/)
 - [@duckdb/node-api (Node.js Neo)](https://duckdb.org/docs/stable/clients/node_neo/overview)

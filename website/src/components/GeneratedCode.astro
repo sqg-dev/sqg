@@ -34,7 +34,6 @@ const generator = generatorOverride || getGeneratorFromExample(example.data.engi
 
 // Determine file extension and language for syntax highlighting
 const isJava = generator.startsWith("java-");
-const extension = isJava ? "java" : "ts";
 const lang = isJava ? "java" : "typescript";
 
 // Load generated code from raw file

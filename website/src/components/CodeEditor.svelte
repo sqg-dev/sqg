@@ -1,6 +1,6 @@
 <script lang="ts">
 import { actions } from "astro:actions";
-import { onMount } from "svelte";
+import { onMount, tick } from "svelte";
 import Editor from "./Editor.svelte";
 
 export let initialCode: string | undefined = undefined;
@@ -69,7 +69,7 @@ let sqlCode = DEFAULT_TEMPLATE;
 let initialized = false;
 
 // Read URL params on mount
-onMount(() => {
+onMount(async () => {
   const params = new URLSearchParams(window.location.search);
   const exampleId = params.get("example");
   
@@ -107,6 +107,12 @@ onMount(() => {
   }
   
   initialized = true;
+  
+  // Auto-generate code after template is set
+  await tick();
+  if (sqlCode.trim()) {
+    generateCode();
+  }
 });
 
 // Update URL when selections change
@@ -125,12 +131,17 @@ function updateUrl() {
   window.history.replaceState({}, "", newUrl);
 }
 // Handle database change - update template if using default
-function handleDatabaseChange() {
+async function handleDatabaseChange() {
   // Check if current code matches a default template
   const isDefault = sqlCode.trim() === DEFAULT_TEMPLATE.trim();
   const isDefaultDuckdb = sqlCode.trim() === DUCKDB_TEMPLATE.trim();
   if (isDefault || isDefaultDuckdb) {
     sqlCode = selectedDatabase === "duckdb" ? DUCKDB_TEMPLATE : DEFAULT_TEMPLATE;
+    // Auto-generate code after template is updated
+    await tick();
+    if (sqlCode.trim()) {
+      generateCode();
+    }
   }
   if (selectedDatabase !== "duckdb" && selectedLanguage === "java-arrow") {
     selectedLanguage = "java-jdbc";
@@ -179,13 +190,46 @@ async function generateCode() {
     isGenerating = false;
   }
 }
+
+function downloadFile(content: string, filename: string, mimeType: string) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function downloadSQL() {
+  downloadFile(sqlCode, "queries.sql", "text/plain");
+}
+
+function downloadGeneratedCode() {
+  if (!generatedCode) return;
+  const extension = selectedLanguage === "typescript" ? "ts" : "java";
+  const filename = `generated.${extension}`;
+  const mimeType = extension === "ts" ? "text/typescript" : "text/x-java-source";
+  downloadFile(generatedCode, filename, mimeType);
+}
 </script>
 
 <div class="flex h-screen w-screen">
   <div class="flex flex-1 flex-col border-r border-gray-200">
     <div class="px-4 py-4 bg-gray-50 border-b border-gray-200 h-20 flex items-center">
       <div class="flex items-center justify-between w-full">
-        <h2 class="m-0 text-xl font-semibold text-gray-900">SQL Editor</h2>
+        <div class="flex items-center gap-4">
+          <a
+            href="/"
+            class="text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center gap-1.5 transition-colors px-2 py-1 rounded hover:bg-gray-100"
+            title="SQG documentation"
+          >
+          <h2 class="m-0 text-xl font-semibold text-gray-900">SQG - Compile SQL to Type-Safe Code</h2>
+          </a>
+          
+        </div>
         <div class="flex items-center gap-4">
           <div class="flex items-center gap-2">
             <label for="database-select" class="text-sm font-medium text-gray-700">Database:</label>
@@ -224,6 +268,30 @@ async function generateCode() {
     <div class="flex-1 overflow-auto bg-white">
       <Editor value={sqlCode} onUpdate={handleCodeUpdate} />
     </div>
+    <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-end">
+      <button
+        on:click={downloadSQL}
+        class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center gap-1.5"
+        title="Download SQL file"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
+        <span>Download SQL</span>
+      </button>
+    </div>
   </div>
 
   <div class="flex flex-1 flex-col border-l border-gray-200">
@@ -254,5 +322,31 @@ async function generateCode() {
         <div class="py-8 text-center text-gray-500">Generated code will appear here</div>
       {/if}
     </div>
+    {#if generatedCode}
+      <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-end">
+        <button
+          on:click={downloadGeneratedCode}
+          class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center gap-1.5"
+          title="Download generated code file"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          <span>Download Code</span>
+        </button>
+      </div>
+    {/if}
   </div>
 </div>

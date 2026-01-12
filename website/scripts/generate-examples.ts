@@ -114,7 +114,9 @@ async function generateExample(exampleFile: string): Promise<void> {
     });
   } catch (error) {
     const execError = error as { stderr?: Buffer; stdout?: Buffer };
+    const sourceFile = join(EXAMPLES_DIR, exampleFile);
     console.error(`  Error generating ${id}:`);
+    console.error(`  Source file: ${sourceFile}`);
     if (execError.stderr) console.error(execError.stderr.toString());
     if (execError.stdout) console.error(execError.stdout.toString());
     return;

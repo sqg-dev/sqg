@@ -166,6 +166,11 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
 
   const tree = parser.parse(content);
   const cursor = tree.cursor();
+  
+  function getLineNumber(position: number): number {
+    return content.slice(0, position).split("\n").length;
+  }
+
   function getStr(nodeName: string, optional: true): string | undefined;
   function getStr(nodeName: string, optional?: false): string;
 
@@ -175,7 +180,8 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
       if (optional) {
         return undefined;
       }
-      throw new Error(`${nodeName} not found`);
+      const lineNumber = getLineNumber(cursor.node.from);
+      throw new Error(`Node '${nodeName}' not found at line ${lineNumber}`);
     }
     return nodeStr(node);
   }

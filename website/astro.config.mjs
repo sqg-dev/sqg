@@ -22,7 +22,7 @@ export default defineConfig({
   site: 'https://sqg.dev',
   integrations: [
     starlight({
-      title: "SQG - SQL Query Generator",
+      title: "SQG - Compile SQL to Type-Safe Code",
       plugins: [starlightBlog()],
       social: [
         { icon: "external", label: "Playground", href: "/playground/" },
