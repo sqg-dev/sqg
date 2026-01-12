@@ -1,5 +1,7 @@
 // @ts-check
 
+import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import node from "@astrojs/node";
 import starlight from "@astrojs/starlight";
 import svelte from "@astrojs/svelte";
@@ -8,6 +10,8 @@ import { defineConfig } from "astro/config";
 import starlightBlog from "starlight-blog";
 
 import d2 from "astro-d2";
+
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 // https://astro.build/config
 export default defineConfig({
@@ -68,5 +72,11 @@ export default defineConfig({
   ],
   vite: {
     plugins: [tailwindcss()],
+    resolve: {
+      alias: {
+        "@components": resolve(__dirname, "./src/components"),
+        "@content": resolve(__dirname, "./src/content"),
+      },
+    },
   },
 });

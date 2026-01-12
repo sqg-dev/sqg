@@ -1,8 +1,44 @@
 ---
-import CodeEditor from "../components/CodeEditor.svelte";
+import CodeEditor from "@components/CodeEditor.svelte";
 import Layout from "../layouts/Layout.astro";
+import { getEntry } from "astro:content";
+
+const exampleId = Astro.url.searchParams.get("example");
+let initialCode: string | undefined;
+let initialEngine: "sqlite" | "duckdb" | undefined;
+let initialLanguage: "java-jdbc" | "java-arrow" | "typescript" | undefined;
+
+if (exampleId) {
+  try {
+    const example = await getEntry("examples", exampleId);
+    if (example) {
+      initialCode = example.data.sql;
+      initialEngine = example.data.engine;
+      initialLanguage = example.data.language;
+      
+      // Override with URL params if provided
+      const engineParam = Astro.url.searchParams.get("engine");
+      if (engineParam === "sqlite" || engineParam === "duckdb") {
+        initialEngine = engineParam;
+      }
+      
+      const langParam = Astro.url.searchParams.get("lang");
+      if (langParam === "java-jdbc" || langParam === "java-arrow" || langParam === "typescript") {
+        initialLanguage = langParam;
+      }
+    }
+  } catch (error) {
+    // Example not found, use defaults
+    console.warn(`Example "${exampleId}" not found`);
+  }
+}
 ---
 
 <Layout>
-	<CodeEditor client:load />
+	<CodeEditor 
+		client:load 
+		{initialCode}
+		{initialEngine}
+		{initialLanguage}
+	/>
 </Layout>

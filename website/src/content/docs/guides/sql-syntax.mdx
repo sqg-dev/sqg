@@ -3,6 +3,8 @@ title: SQL Syntax Reference
 description: Complete reference for SQG query annotations and modifiers
 ---
 
+import CodeExample from '@components/CodeExample.astro';
+
 This page documents all SQL annotations and modifiers supported by SQG.
 
 ## DBeaver Compatibility
@@ -20,28 +22,7 @@ This compatibility lets you use DBeaver as your primary SQL development environm
 
 An SQG SQL file contains multiple blocks, each starting with a comment annotation:
 
-```sql
--- MIGRATE 1
-CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT);
-
--- MIGRATE 2
-ALTER TABLE users ADD COLUMN email TEXT;
-
--- TESTDATA
-INSERT INTO users VALUES (1, 'Test User', 'test@example.com');
-
--- QUERY get_all_users
-SELECT * FROM users;
-
--- QUERY get_user :one
-@set id = 1
-SELECT * FROM users WHERE id = ${id};
-
--- EXEC create_user
-@set name = 'John'
-@set email = 'john@example.com'
-INSERT INTO users (name, email) VALUES (${name}, ${email});
-```
+<CodeExample id="file-structure" />
 
 ## Block Types
 

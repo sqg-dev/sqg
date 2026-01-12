@@ -1,8 +1,13 @@
 <script lang="ts">
 import { actions } from "astro:actions";
+import { onMount } from "svelte";
 import Editor from "./Editor.svelte";
 
-let sqlCode = `-- MIGRATE 1 
+export let initialCode: string | undefined = undefined;
+export let initialEngine: "sqlite" | "duckdb" | undefined = undefined;
+export let initialLanguage: "java-jdbc" | "java-arrow" | "typescript" | undefined = undefined;
+
+const DEFAULT_TEMPLATE = `-- MIGRATE 1
 
 create table  users (
     id text primary key,
@@ -22,9 +27,36 @@ select count(*) from users;
 select id from users where id = \${id};
 
 
--- QUERY get_emails :pluck 
+-- QUERY get_emails :pluck
 @set limit = 5
 select email from users limit \${limit};
+`;
+
+const DUCKDB_TEMPLATE = `-- MIGRATE 1
+
+create table  users (
+    id text primary key,
+    name text not null,
+    email text unique
+);
+
+
+-- QUERY all_users
+select * from users;
+
+-- QUERY total_users_count :pluck :one
+select count(*) from users;
+
+-- QUERY get_user_by_id :pluck :one
+@set id = 1
+select id from users where id = \${id};
+
+
+-- QUERY get_emails :pluck
+@set limit = 5
+select email from users limit \${limit};
+
+-- TABLE users :appender
 `;
 
 let generatedCode = "";
@@ -33,6 +65,81 @@ let error: string | null = null;
 let isGenerating = false;
 let selectedDatabase: "sqlite" | "duckdb" = "sqlite";
 let selectedLanguage: "java-jdbc" | "java-arrow" | "typescript" = "java-jdbc";
+let sqlCode = DEFAULT_TEMPLATE;
+let initialized = false;
+
+// Read URL params on mount
+onMount(() => {
+  const params = new URLSearchParams(window.location.search);
+  const exampleId = params.get("example");
+  
+  // Use initial props if provided, otherwise fall back to URL params or defaults
+  if (initialCode !== undefined) {
+    sqlCode = initialCode;
+  } else {
+    const engine = params.get("engine");
+    if (engine === "sqlite" || engine === "duckdb") {
+      sqlCode = engine === "duckdb" ? DUCKDB_TEMPLATE : DEFAULT_TEMPLATE;
+    }
+  }
+  
+  if (initialEngine !== undefined) {
+    selectedDatabase = initialEngine;
+  } else {
+    const engine = params.get("engine");
+    if (engine === "sqlite" || engine === "duckdb") {
+      selectedDatabase = engine;
+    }
+  }
+  
+  if (initialLanguage !== undefined) {
+    selectedLanguage = initialLanguage;
+  } else {
+    const lang = params.get("lang");
+    if (lang === "java-jdbc" || lang === "java-arrow" || lang === "typescript") {
+      selectedLanguage = lang;
+    }
+  }
+  
+  // Update URL to include example ID if present
+  if (exampleId) {
+    updateUrl();
+  }
+  
+  initialized = true;
+});
+
+// Update URL when selections change
+function updateUrl() {
+  if (!initialized) return;
+  const params = new URLSearchParams(window.location.search);
+  const exampleId = params.get("example");
+  
+  // Preserve example ID if present
+  if (exampleId) {
+    params.set("example", exampleId);
+  }
+  params.set("engine", selectedDatabase);
+  params.set("lang", selectedLanguage);
+  const newUrl = `${window.location.pathname}?${params.toString()}`;
+  window.history.replaceState({}, "", newUrl);
+}
+// Handle database change - update template if using default
+function handleDatabaseChange() {
+  // Check if current code matches a default template
+  const isDefault = sqlCode.trim() === DEFAULT_TEMPLATE.trim();
+  const isDefaultDuckdb = sqlCode.trim() === DUCKDB_TEMPLATE.trim();
+  if (isDefault || isDefaultDuckdb) {
+    sqlCode = selectedDatabase === "duckdb" ? DUCKDB_TEMPLATE : DEFAULT_TEMPLATE;
+  }
+  if (selectedDatabase !== "duckdb" && selectedLanguage === "java-arrow") {
+    selectedLanguage = "java-jdbc";
+  }
+
+  updateUrl();
+}
+
+$: if (initialized && selectedLanguage) updateUrl();
 
 function handleCodeUpdate(newCode: string) {
   sqlCode = newCode;
@@ -85,6 +192,7 @@ async function generateCode() {
             <select
               id="database-select"
               bind:value={selectedDatabase}
+              on:change={handleDatabaseChange}
               class="px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="sqlite">SQLite</option>
@@ -126,14 +234,21 @@ async function generateCode() {
       {#if isGenerating}
         <div class="py-8 text-center text-gray-500">Generating...</div>
       {:else if error}
-        <div class="p-8 text-red-600 bg-red-50 m-4 rounded-lg whitespace-pre-wrap font-mono text-sm">{error}</div>
+        <div
+          class="p-8 text-red-600 bg-red-50 m-4 rounded-lg whitespace-pre-wrap font-mono text-sm"
+        >
+          {error}
+        </div>
       {:else if generatedCode}
         {#if highlightedCode}
           <div class="m-0 p-4 h-full overflow-x-auto">
             {@html highlightedCode}
           </div>
         {:else}
-          <pre class="m-0 p-4 bg-slate-800 text-slate-200 font-mono text-sm leading-relaxed overflow-x-auto h-full"><code>{generatedCode}</code></pre>
+          <pre
+            class="m-0 p-4 bg-slate-800 text-slate-200 font-mono text-sm leading-relaxed overflow-x-auto h-full"><code
+              >{generatedCode}</code
+            ></pre>
         {/if}
       {:else}
         <div class="py-8 text-center text-gray-500">Generated code will appear here</div>
@@ -141,4 +256,3 @@ async function generateCode() {
     </div>
   </div>
 </div>
-

@@ -1,0 +1,198 @@
+---
+import { getEntry } from "astro:content";
+import { Code } from '@astrojs/starlight/components';
+
+interface Props {
+  id: string;
+  engine?: "sqlite" | "duckdb";
+  language?: "java-jdbc" | "java-arrow" | "typescript";
+}
+
+const { id, engine: engineOverride, language: languageOverride } = Astro.props;
+
+let example = await getEntry("examples", id);
+if (!example) {
+  throw new Error(`Example with id '${id}' not found`);
+}
+const sql = example.data.sql;
+const engine = engineOverride || example.data.engine;
+const language = languageOverride || example.data.language;
+export const highlights = [];
+
+// Build playground URL
+const playgroundUrl = `/playground/?example=${id}&engine=${engine}&lang=${language}`;
+---
+
+<div class="code-example-wrapper">
+  <div class="code-example-tab-bar">
+    <div class="code-example-tab">
+      {example.data.title && (
+        <div class="code-example-tab-label">{example.data.title}</div>
+      )}
+      {example.data.description && (
+        <div class="code-example-tab-description">{example.data.description}</div>
+      )}
+    </div>
+    <a href={playgroundUrl} class="code-example-playground-link">
+      <span>Try in Playground</span>
+      <svg
+        class="code-example-link-icon"
+        xmlns="http://www.w3.org/2000/svg"
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+        <polyline points="15 3 21 3 21 9" />
+        <line x1="10" y1="14" x2="21" y2="3" />
+      </svg>
+    </a>
+  </div>
+  <div class="code-example-content">
+    <Code code={sql} lang="sql" mark={highlights} />
+  </div>
+</div>
+
+<style>
+  .code-example-wrapper {
+    margin: 1.5rem 0;
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--sl-color-bg);
+    box-shadow: 
+      0 1px 3px rgba(0, 0, 0, 0.05),
+      0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Dark mode - Starlight uses data-theme attribute */
+  :global([data-theme="dark"]) .code-example-wrapper {
+    box-shadow: 
+      0 1px 3px rgba(0, 0, 0, 0.3),
+      0 1px 2px rgba(0, 0, 0, 0.4);
+  }
+
+  .code-example-tab-bar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 0.875rem 1rem;
+    background: var(--sl-color-bg-nav);
+    border-bottom: 1px solid var(--sl-color-hairline);
+    gap: 1rem;
+  }
+
+  .code-example-tab {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .code-example-tab-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--sl-color-text);
+    line-height: 1.4;
+  }
+
+  .code-example-tab-description {
+    font-size: 0.8125rem;
+    color: var(--sl-color-text);
+    opacity: 0.7;
+    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .code-example-playground-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.4375rem 0.875rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--sl-color-accent);
+    text-decoration: none;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+    background: transparent;
+  }
+
+  .code-example-playground-link:hover {
+    background: var(--sl-color-accent-low);
+    color: var(--sl-color-accent);
+  }
+
+  :global([data-theme="dark"]) .code-example-playground-link:hover {
+    background: var(--sl-color-accent-low);
+    color: var(--sl-color-accent-high);
+  }
+
+  .code-example-playground-link:active {
+    transform: translateY(0.5px);
+  }
+
+  .code-example-link-icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    opacity: 0.8;
+    transition: opacity 0.2s ease;
+  }
+
+  .code-example-playground-link:hover .code-example-link-icon {
+    opacity: 1;
+  }
+
+  .code-example-content {
+    overflow: hidden;
+    background: var(--sl-color-bg);
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Remove any spacing from direct children (Code component wrapper) */
+  .code-example-content :global(> *) {
+    margin: 0;
+    padding: 0;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  /* Ensure Code component styling is preserved and no gaps */
+  .code-example-content :global(pre) {
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  @media (max-width: 768px) {
+    .code-example-tab-bar {
+      flex-direction: column;
+      padding: 0.75rem 0.875rem;
+    }
+
+    .code-example-tab {
+      width: 100%;
+    }
+
+    .code-example-playground-link {
+      width: 100%;
+      justify-content: center;
+      padding: 0.5rem 1rem;
+      margin-top: 0.5rem;
+    }
+  }
+</style>
+

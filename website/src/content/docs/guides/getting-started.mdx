@@ -3,6 +3,8 @@ title: Getting Started
 description: Install SQG and generate your first type-safe database code
 ---
 
+import CodeExample from '@components/CodeExample.astro';
+
 This guide will walk you through installing SQG and generating your first type-safe database access code.
 
 ## Prerequisites
@@ -84,30 +86,7 @@ sqg sqg.yaml
 
 Create a file called `queries.sql`:
 
-```sql
--- MIGRATE 1
-CREATE TABLE users (
-    id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    email TEXT UNIQUE
-);
-
--- QUERY all_users
-SELECT * FROM users;
-
--- QUERY get_user :one
-@set id = 1
-SELECT * FROM users WHERE id = ${id};
-
--- EXEC create_user
-@set name = 'John Doe'
-@set email = 'john@example.com'
-INSERT INTO users (name, email) VALUES (${name}, ${email});
-
--- EXEC delete_user
-@set id = 1
-DELETE FROM users WHERE id = ${id};
-```
+<CodeExample id="getting-started-full" />
 
 #### 2. Create a project configuration
 
