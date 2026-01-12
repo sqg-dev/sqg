@@ -3,7 +3,9 @@ title: TypeScript + DuckDB
 description: Generate type-safe TypeScript code for DuckDB with complex type support
 ---
 
+import { Steps } from '@astrojs/starlight/components';
 import CodeExample from '@components/CodeExample.astro';
+import GeneratedCode from '@components/GeneratedCode.astro';
 
 Generate asynchronous TypeScript code for DuckDB databases using the [@duckdb/node-api](https://duckdb.org/docs/stable/clients/node_neo/overview) driver (DuckDB Node.js Neo). Includes support for DuckDB's advanced types like structs, lists, and maps.
 
@@ -47,58 +49,66 @@ sql:
 
 ## Quick Start
 
-### 1. Initialize a project
+<Steps>
 
-```bash
-sqg init --engine duckdb
-```
+1. **Initialize a project**
 
-### 2. Write your SQL
+   ```bash
+   sqg init --engine duckdb
+   ```
 
-<CodeExample id="duckdb-structs-arrays" />
+2. **Write your SQL**
 
-### 3. Generate code
+   <CodeExample id="duckdb-structs-arrays" />
 
-```bash
-sqg sqg.yaml
-```
+3. **Generate code**
 
-### 4. Use the generated code
+   ```bash
+   sqg sqg.yaml
+   ```
 
-```typescript
-import { DuckDBInstance } from '@duckdb/node-api';
-import { MyApp } from './generated/my-app';
+4. **Use the generated code**
 
-async function main() {
-  // Create database connection
-  const instance = await DuckDBInstance.create(':memory:');
-  const connection = await instance.connect();
+   ```typescript
+   import { DuckDBInstance } from '@duckdb/node-api';
+   import { MyApp } from './generated/my-app';
 
-  // Run migrations
-  for (const migration of MyApp.getMigrations()) {
-    await connection.run(migration);
-  }
+   async function main() {
+     // Create database connection
+     const instance = await DuckDBInstance.create(':memory:');
+     const connection = await instance.connect();
 
-  // Create query instance
-  const queries = new MyApp(connection);
+     // Run migrations
+     for (const migration of MyApp.getMigrations()) {
+       await connection.run(migration);
+     }
 
-  // Insert data
-  await queries.createUser(2, 'Bob', 'bob@example.com');
+     // Create query instance
+     const queries = new MyApp(connection);
 
-  // Query data
-  const users = await queries.allUsers();
-  console.log(users);
+     // Insert data
+     await queries.createUser(2, 'Bob', 'bob@example.com');
 
-  const user = await queries.getUser(1);  // Gets Alice from TESTDATA
-  console.log(user?.name); // 'Alice'
+     // Query data
+     const users = await queries.allUsers();
+     console.log(users);
 
-  // Access complex types
-  console.log(user?.metadata?.entries.role); // 'admin'
-  console.log(user?.tags?.items); // ['developer', 'lead']
-}
+     const user = await queries.getUser(1);  // Gets Alice from TESTDATA
+     console.log(user?.name); // 'Alice'
 
-main();
-```
+     // Access complex types
+     console.log(user?.metadata?.entries.role); // 'admin'
+     console.log(user?.tags?.items); // ['developer', 'lead']
+   }
+
+   main();
+   ```
+
+5. **See the generated code**
+
+   <GeneratedCode id="duckdb-structs-arrays" title="Generated TypeScript" startMatch="allUsers(" endMatch="getUser(" />
+
+</Steps>
 
 ## Complex Types
 

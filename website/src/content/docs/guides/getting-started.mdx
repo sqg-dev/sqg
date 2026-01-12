@@ -3,6 +3,7 @@ title: Getting Started
 description: Install SQG and generate your first type-safe database code
 ---
 
+import { Steps } from '@astrojs/starlight/components';
 import CodeExample from '@components/CodeExample.astro';
 
 This guide will walk you through installing SQG and generating your first type-safe database access code.
@@ -82,65 +83,69 @@ sqg sqg.yaml
 
 ### Option B: Manual Setup
 
-#### 1. Create your SQL file
+<Steps>
 
-Create a file called `queries.sql`:
+1. **Create your SQL file**
 
-<CodeExample id="getting-started-full" />
+   Create a file called `queries.sql`:
 
-#### 2. Create a project configuration
+   <CodeExample id="getting-started-full" />
 
-Create a file called `sqg.yaml`:
+2. **Create a project configuration**
 
-```yaml
-version: 1
-name: my-app
+   Create a file called `sqg.yaml`:
 
-sql:
-  - engine: sqlite
-    files:
-      - queries.sql
-    gen:
-      - generator: typescript/better-sqlite3
-        output: ./src/generated/
-```
+   ```yaml
+   version: 1
+   name: my-app
 
-#### 3. Run the generator
+   sql:
+     - engine: sqlite
+       files:
+         - queries.sql
+       gen:
+         - generator: typescript/better-sqlite3
+           output: ./src/generated/
+   ```
 
-```bash
-sqg sqg.yaml
-```
+3. **Run the generator**
 
-This creates `./src/generated/my-app.ts` with fully typed query functions.
+   ```bash
+   sqg sqg.yaml
+   ```
 
-#### 4. Use the generated code
+   This creates `./src/generated/my-app.ts` with fully typed query functions.
 
-```typescript
-import Database from 'better-sqlite3';
-import { MyApp } from './generated/my-app';
+4. **Use the generated code**
 
-// Initialize database
-const db = new Database('app.db');
+   ```typescript
+   import Database from 'better-sqlite3';
+   import { MyApp } from './generated/my-app';
 
-// Run migrations
-for (const migration of MyApp.getMigrations()) {
-  db.exec(migration);
-}
+   // Initialize database
+   const db = new Database('app.db');
 
-// Create query instance
-const queries = new MyApp(db);
+   // Run migrations
+   for (const migration of MyApp.getMigrations()) {
+     db.exec(migration);
+   }
 
-// Use typed queries
-queries.createUser('Alice', 'alice@example.com');
-queries.createUser('Bob', 'bob@example.com');
+   // Create query instance
+   const queries = new MyApp(db);
 
-const users = queries.allUsers();
-console.log(users);
-// [{ id: 1, name: 'Alice', email: 'alice@example.com' }, ...]
+   // Use typed queries
+   queries.createUser('Alice', 'alice@example.com');
+   queries.createUser('Bob', 'bob@example.com');
 
-const user = queries.getUser(1);
-console.log(user?.name); // 'Alice'
-```
+   const users = queries.allUsers();
+   console.log(users);
+   // [{ id: 1, name: 'Alice', email: 'alice@example.com' }, ...]
+
+   const user = queries.getUser(1);
+   console.log(user?.name); // 'Alice'
+   ```
+
+</Steps>
 
 ## Project Configuration
 

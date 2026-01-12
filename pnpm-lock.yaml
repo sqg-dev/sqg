@@ -364,6 +364,9 @@ importers:
       tailwindcss:
         specifier: 'catalog:'
         version: 4.1.18
+      tsx:
+        specifier: 'catalog:'
+        version: 4.21.0
 
 packages:
 

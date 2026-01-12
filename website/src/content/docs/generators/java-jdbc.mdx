@@ -3,7 +3,9 @@ title: Java + JDBC
 description: Generate type-safe Java code using standard JDBC for any database
 ---
 
+import { Steps } from '@astrojs/starlight/components';
 import CodeExample from '@components/CodeExample.astro';
+import GeneratedCode from '@components/GeneratedCode.astro';
 
 Generate Java code using standard JDBC APIs. Works with any JDBC-compatible database including SQLite, DuckDB, PostgreSQL, MySQL, and more.
 
@@ -90,61 +92,65 @@ The `config.package` option specifies the Java package name for generated classe
 
 ## Quick Start
 
-### 1. Write your SQL
+<Steps>
 
-<CodeExample id="java-jdbc-full" />
+1. **Write your SQL**
 
-### 2. Generate code
+   <CodeExample id="java-jdbc-full" />
 
-```bash
-sqg sqg.yaml
-```
+2. **Generate code**
 
-### 3. Use the generated code
+   ```bash
+   sqg sqg.yaml
+   ```
 
-```java
-import com.myapp.db.MyApp;
-import java.sql.Connection;
-import java.sql.DriverManager;
+3. **Use the generated code**
 
-public class Main {
-    public static void main(String[] args) throws Exception {
-        // Connect to database
-        Connection conn = DriverManager.getConnection("jdbc:sqlite:app.db");
+   ```java
+   import com.myapp.db.MyApp;
+   import java.sql.Connection;
+   import java.sql.DriverManager;
 
-        // Run migrations
-        for (String migration : MyApp.getMigrations()) {
-            conn.createStatement().execute(migration);
-        }
+   public class Main {
+       public static void main(String[] args) throws Exception {
+           // Connect to database
+           Connection conn = DriverManager.getConnection("jdbc:sqlite:app.db");
 
-        // Create query instance
-        MyApp queries = new MyApp(conn);
+           // Run migrations
+           for (String migration : MyApp.getMigrations()) {
+               conn.createStatement().execute(migration);
+           }
 
-        // Insert data
-        queries.createUser("Alice", "alice@example.com");
-        queries.createUser("Bob", "bob@example.com");
+           // Create query instance
+           MyApp queries = new MyApp(conn);
 
-        // Query data
-        for (MyApp.AllUsersRow user : queries.allUsers()) {
-            System.out.println(user.name() + ": " + user.email());
-        }
+           // Insert data
+           queries.createUser("Alice", "alice@example.com");
+           queries.createUser("Bob", "bob@example.com");
 
-        // Get single row
-        MyApp.GetUserRow user = queries.getUser(1);
-        if (user != null) {
-            System.out.println("Found: " + user.name());
-        }
+           // Query data
+           for (MyApp.AllUsersRow user : queries.allUsers()) {
+               System.out.println(user.name() + ": " + user.email());
+           }
 
-        // Update data
-        queries.updateUser(1, "Alice Smith", "alice.smith@example.com");
+           // Get single row
+           MyApp.GetUserRow user = queries.getUser(1);
+           if (user != null) {
+               System.out.println("Found: " + user.name());
+           }
 
-        // Delete data
-        queries.deleteUser(2);
+           // Update data
+           queries.updateUser(1, "Alice Smith", "alice.smith@example.com");
 
-        conn.close();
-    }
-}
-```
+           // Delete data
+           queries.deleteUser(2);
+
+           conn.close();
+       }
+   }
+   ```
+
+</Steps>
 
 ## Generated Code Structure
 
@@ -154,46 +160,7 @@ The generator creates a single Java file with:
 - **A class** with methods for each query/exec
 - **Static `getMigrations()`** method returning migration SQL strings
 
-Example generated code:
-
-```java
-package com.myapp.db;
-
-import java.sql.*;
-import java.util.*;
-
-public class MyApp {
-    private final Connection connection;
-
-    public MyApp(Connection connection) {
-        this.connection = connection;
-    }
-
-    public static String[] getMigrations() {
-        return new String[] {
-            "CREATE TABLE users (...)"
-        };
-    }
-
-    // Query result records
-    public record AllUsersRow(Integer id, String name, String email, Integer active) {}
-    public record GetUserRow(Integer id, String name, String email, Integer active) {}
-
-    // Query methods
-    public List<AllUsersRow> allUsers() throws SQLException {
-        // Implementation using PreparedStatement
-    }
-
-    public GetUserRow getUser(Integer id) throws SQLException {
-        // Returns null if not found
-    }
-
-    // Exec methods
-    public void createUser(String name, String email) throws SQLException {
-        // Implementation using PreparedStatement
-    }
-}
-```
+<GeneratedCode id="java-jdbc-full" title="Generated Java"  startMatch="allUsers()" endMatch="GetUserResult"/>
 
 ## Connection Management
 

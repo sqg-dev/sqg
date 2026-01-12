@@ -9,7 +9,8 @@
     "start": "node dist/server/entry.mjs",
     "astro": "astro",
     "check": "biome check --write src/",
-    "check:errors": "biome check --write --diagnostic-level=error src/"
+    "check:errors": "biome check --write --diagnostic-level=error src/",
+    "generate-examples": "tsx scripts/generate-examples.ts"
   },
   "dependencies": {
     "@astrojs/check": "catalog:",
@@ -27,6 +28,7 @@
   },
   "devDependencies": {
     "@astrojs/node": "catalog:",
+    "tsx": "catalog:",
     "@astrojs/svelte": "catalog:",
     "@codemirror/lang-sql": "catalog:",
     "@codemirror/state": "catalog:",

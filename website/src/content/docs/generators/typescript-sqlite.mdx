@@ -3,7 +3,9 @@ title: TypeScript + SQLite
 description: Generate type-safe TypeScript code for SQLite using better-sqlite3
 ---
 
+import { Steps } from '@astrojs/starlight/components';
 import CodeExample from '@components/CodeExample.astro';
+import GeneratedCode from '@components/GeneratedCode.astro';
 
 Generate synchronous TypeScript code for SQLite databases using the [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) driver.
 
@@ -62,57 +64,61 @@ sql:
 
 ## Quick Start
 
-### 1. Initialize a project
+<Steps>
 
-```bash
-sqg init --engine sqlite --generator typescript/better-sqlite3
-```
+1. **Initialize a project**
 
-### 2. Write your SQL
+   ```bash
+   sqg init --engine sqlite --generator typescript/better-sqlite3
+   ```
 
-<CodeExample id="typescript-sqlite-full" />
+2. **Write your SQL**
 
-### 3. Generate code
+   <CodeExample id="typescript-sqlite-full" />
 
-```bash
-sqg sqg.yaml
-```
+3. **Generate code**
 
-### 4. Use the generated code
+   ```bash
+   sqg sqg.yaml
+   ```
 
-```typescript
-import Database from 'better-sqlite3';
-import { MyApp } from './generated/my-app';
+4. **Use the generated code**
 
-// Create database connection
-const db = new Database('app.db');
+   ```typescript
+   import Database from 'better-sqlite3';
+   import { MyApp } from './generated/my-app';
 
-// Run migrations
-for (const migration of MyApp.getMigrations()) {
-  db.exec(migration);
-}
+   // Create database connection
+   const db = new Database('app.db');
 
-// Create query instance
-const queries = new MyApp(db);
+   // Run migrations
+   for (const migration of MyApp.getMigrations()) {
+     db.exec(migration);
+   }
 
-// Insert data
-queries.createUser('Alice', 'alice@example.com');
-queries.createUser('Bob', 'bob@example.com');
+   // Create query instance
+   const queries = new MyApp(db);
 
-// Query data
-const users = queries.allUsers();
-console.log(users);
-// [{ id: 1, name: 'Alice', email: 'alice@example.com', created_at: '...' }, ...]
+   // Insert data
+   queries.createUser('Alice', 'alice@example.com');
+   queries.createUser('Bob', 'bob@example.com');
 
-const user = queries.getUser(1);
-console.log(user?.name); // 'Alice'
+   // Query data
+   const users = queries.allUsers();
+   console.log(users);
+   // [{ id: 1, name: 'Alice', email: 'alice@example.com', created_at: '...' }, ...]
 
-// Update data
-queries.updateUser(1, 'Alice Smith');
+   const user = queries.getUser(1);
+   console.log(user?.name); // 'Alice'
 
-// Delete data
-queries.deleteUser(2);
-```
+   // Update data
+   queries.updateUser(1, 'Alice Smith');
+
+   // Delete data
+   queries.deleteUser(2);
+   ```
+
+</Steps>
 
 ## Generated Code Structure
 
@@ -122,37 +128,7 @@ The generator creates a single TypeScript file with:
 - **A class** with methods for each query/exec
 - **Static `getMigrations()`** method returning migration SQL strings
 
-Example generated types:
-
-```typescript
-// Generated types
-export interface AllUsersRow {
-  id: number;
-  name: string;
-  email: string | null;
-  created_at: string | null;
-}
-
-export interface GetUserRow {
-  id: number;
-  name: string;
-  email: string | null;
-  created_at: string | null;
-}
-
-// Generated class
-export class MyApp {
-  constructor(private db: Database) {}
-
-  static getMigrations(): string[] { ... }
-
-  allUsers(): AllUsersRow[] { ... }
-  getUser(id: number): GetUserRow | undefined { ... }
-  createUser(name: string, email: string): Database.RunResult { ... }
-  updateUser(id: number, name: string): Database.RunResult { ... }
-  deleteUser(id: number): Database.RunResult { ... }
-}
-```
+<GeneratedCode id="typescript-sqlite-full" title="Generated TypeScript" startMatch="allUsers(" endMatch="getUser(" />
 
 ## Transactions
 
