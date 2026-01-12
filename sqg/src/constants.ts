@@ -4,8 +4,8 @@
  */
 
 /** Supported database engines */
-export const SUPPORTED_ENGINES = ["sqlite", "duckdb", "postgres"] as const;
-export type SupportedEngine = (typeof SUPPORTED_ENGINES)[number];
+export const DB_ENGINES = ["sqlite", "duckdb", "postgres"] as const;
+export type DbEngine = (typeof DB_ENGINES)[number];
 
 /** Supported code generators with their descriptions */
 export const SUPPORTED_GENERATORS = {
@@ -100,5 +100,5 @@ export function formatGeneratorsHelp(): string {
  * Format engines for CLI help output
  */
 export function formatEnginesHelp(): string {
-  return SUPPORTED_ENGINES.map((e) => `  ${e}`).join("\n");
+  return DB_ENGINES.map((e) => `  ${e}`).join("\n");
 }

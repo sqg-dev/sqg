@@ -8,10 +8,15 @@ import type { ColumnInfo, SQLQuery, TableInfo } from "../sql-query.js";
 import type { GeneratorConfig, SqlQueryHelper, SqlQueryPart } from "../sqltool.js";
 import { JavaTypeMapper } from "../type-mapping.js";
 import { BaseGenerator } from "./base-generator.js";
+import { DbEngine } from "../constants.js";
 
 export class JavaGenerator extends BaseGenerator {
   constructor(public template: string) {
     super(template, new JavaTypeMapper());
+  }
+
+  override supportsAppenders(engine: DbEngine): boolean {
+    return engine === "duckdb";
   }
 
   getFunctionName(id: string): string {

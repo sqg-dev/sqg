@@ -10,6 +10,7 @@ import {
 } from "../sql-query.js";
 import type { GeneratorConfig } from "../sqltool.js";
 import { TsGenerator } from "./typescript-generator.js";
+import { DbEngine } from "../constants.js";
 
 /**
  * TypeScript generator for DuckDB.
@@ -21,6 +22,10 @@ import { TsGenerator } from "./typescript-generator.js";
 export class TsDuckDBGenerator extends TsGenerator {
   constructor(template: string) {
     super(template);
+  }
+
+  override supportsAppenders(_engine: DbEngine): boolean {
+    return true;
   }
 
   async beforeGenerate(

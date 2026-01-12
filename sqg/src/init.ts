@@ -6,9 +6,9 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import consola from "consola";
 import {
-  SUPPORTED_ENGINES,
+  DB_ENGINES,
   SUPPORTED_GENERATORS,
-  type SupportedEngine,
+  type DbEngine,
   type SupportedGenerator,
   findSimilarGenerators,
 } from "./constants.js";
@@ -24,8 +24,8 @@ export interface InitOptions {
 /**
  * Get the default generator for an engine
  */
-function getDefaultGenerator(engine: SupportedEngine): SupportedGenerator {
-  const defaults: Record<SupportedEngine, SupportedGenerator> = {
+function getDefaultGenerator(engine: DbEngine): SupportedGenerator {
+  const defaults: Record<DbEngine, SupportedGenerator> = {
     sqlite: "typescript/better-sqlite3",
     duckdb: "typescript/duckdb",
     postgres: "java/jdbc",
@@ -36,11 +36,11 @@ function getDefaultGenerator(engine: SupportedEngine): SupportedGenerator {
 /**
  * Generate example SQL content based on engine
  */
-function getExampleSql(engine: SupportedEngine): string {
+function getExampleSql(engine: DbEngine): string {
   // Note: File must start with a valid query block (MIGRATE, QUERY, EXEC, or TESTDATA)
   // Regular comments at the start of the file will cause parsing errors
 
-  const migrations: Record<SupportedEngine, string> = {
+  const migrations: Record<DbEngine, string> = {
     sqlite: `-- MIGRATE 1
 -- Create the users table (SQG Example - https://sqg.dev/guides/sql-syntax/)
 CREATE TABLE users (
@@ -165,7 +165,7 @@ ORDER BY p.created_at DESC;
 `;
 
   // DuckDB requires explicit id values since it doesn't have AUTOINCREMENT
-  const execQueries: Record<SupportedEngine, string> = {
+  const execQueries: Record<DbEngine, string> = {
     sqlite: `
 -- EXEC create_user
 @set name = 'New User'
@@ -242,7 +242,7 @@ DELETE FROM posts WHERE id = \${id};
 /**
  * Generate sqg.yaml configuration
  */
-function getConfigYaml(engine: SupportedEngine, generator: SupportedGenerator, output: string): string {
+function getConfigYaml(engine: DbEngine, generator: SupportedGenerator, output: string): string {
   const generatorInfo = SUPPORTED_GENERATORS[generator];
   const config: Record<string, unknown> = {
     version: 1,
@@ -296,12 +296,12 @@ sql:
  * Initialize a new SQG project
  */
 export async function initProject(options: InitOptions): Promise<void> {
-  const engine = (options.engine || "sqlite") as SupportedEngine;
+  const engine = (options.engine || "sqlite") as DbEngine;
   const output = options.output || "./generated";
 
   // Validate engine
-  if (!SUPPORTED_ENGINES.includes(engine as SupportedEngine)) {
-    throw new InvalidEngineError(engine, [...SUPPORTED_ENGINES]);
+  if (!DB_ENGINES.includes(engine as DbEngine)) {
+    throw new InvalidEngineError(engine, [...DB_ENGINES]);
   }
 
   // Determine generator

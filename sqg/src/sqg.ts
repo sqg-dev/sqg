@@ -5,7 +5,7 @@ import {
   formatEnginesHelp,
   formatGeneratorsHelp,
   SQL_SYNTAX_REFERENCE,
-  SUPPORTED_ENGINES,
+  DB_ENGINES,
   GENERATOR_NAMES,
 } from "./constants.js";
 import { processProject, validateProject } from "./sqltool.js";
@@ -127,7 +127,7 @@ program
 program
   .command("init")
   .description("Initialize a new SQG project with example configuration")
-  .option("-e, --engine <engine>", `Database engine (${SUPPORTED_ENGINES.join(", ")})`, "sqlite")
+  .option("-e, --engine <engine>", `Database engine (${DB_ENGINES.join(", ")})`, "sqlite")
   .option("-g, --generator <generator>", `Code generator (${GENERATOR_NAMES.join(", ")})`)
   .option("-o, --output <dir>", "Output directory for generated files", "./generated")
   .option("-f, --force", "Overwrite existing files")

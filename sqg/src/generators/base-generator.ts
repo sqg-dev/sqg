@@ -1,3 +1,4 @@
+import { DbEngine } from "../constants.js";
 import type { ColumnInfo, ColumnType, SQLQuery, TableInfo } from "../sql-query.js";
 import type { GeneratorConfig, SqlQueryStatement } from "../sqltool.js";
 import type { TypeMapper } from "../type-mapping.js";
@@ -30,8 +31,11 @@ export abstract class BaseGenerator implements Generator {
     _queries: SQLQuery[],
     _tables: TableInfo[],
   ): Promise<void> {}
-  isCompatibleWith(_engine: string): boolean {
+  isCompatibleWith(_engine: DbEngine): boolean {
     return true;
+  }
+  supportsAppenders(_engine: DbEngine): boolean {
+    return false;
   }
   functionReturnType(query: SQLQuery): string {
     if (query.isOne) {

@@ -5,9 +5,11 @@ import { JavaTypeMapper } from "../type-mapping.js";
 import { BaseGenerator } from "./base-generator.js";
 import { JavaGenerator } from "./java-generator.js";
 import type { Generator } from "./types.js";
+import { DbEngine } from "../constants.js";
 
 export class JavaDuckDBArrowGenerator extends BaseGenerator {
   private javaGenerator: Generator;
+
   constructor(public template: string) {
     super(template, new JavaTypeMapper());
     this.javaGenerator = new JavaGenerator("templates/java-jdbc.hbs");
@@ -35,11 +37,16 @@ export class JavaDuckDBArrowGenerator extends BaseGenerator {
       name,
       q,
       tables,
+      "duckdb",
     );
   }
 
-  isCompatibleWith(engine: string): boolean {
+  isCompatibleWith(engine: DbEngine): boolean {
     return engine === "duckdb";
+  }
+
+  override supportsAppenders(_engine: DbEngine): boolean {
+    return true;
   }
 
   getFilename(sqlFileName: string) {

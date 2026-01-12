@@ -17,6 +17,7 @@ import {
 import type { GeneratorConfig, SqlQueryHelper } from "../sqltool.js";
 import { TypeScriptTypeMapper } from "../type-mapping.js";
 import { BaseGenerator } from "./base-generator.js";
+import { DbEngine } from "../constants.js";
 
 export class TsGenerator extends BaseGenerator {
   constructor(template: string) {
@@ -27,7 +28,7 @@ export class TsGenerator extends BaseGenerator {
     return camelCase(id);
   }
 
-  isCompatibleWith(_engine: string): boolean {
+  isCompatibleWith(_engine: DbEngine): boolean {
     return true;
   }
   getFilename(sqlFileName: string) {

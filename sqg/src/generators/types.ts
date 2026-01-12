@@ -1,3 +1,4 @@
+import { DbEngine } from "../constants.js";
 import type { ColumnInfo, ColumnType, SQLQuery, TableInfo } from "../sql-query.js";
 import type { GeneratorConfig, SqlQueryStatement } from "../sqltool.js";
 import type { TypeMapper } from "../type-mapping.js";
@@ -6,7 +7,8 @@ export interface Generator {
   getStatement(q: SQLQuery): SqlQueryStatement;
   getFunctionName(id: string): string;
   rowType(query: SQLQuery): string;
-  isCompatibleWith(engine: string): boolean;
+  isCompatibleWith(engine: DbEngine): boolean;
+  supportsAppenders(engine: DbEngine): boolean;
   template: string;
   getFilename(sqlFileName: string): string;
   getClassName(name: string): string;
