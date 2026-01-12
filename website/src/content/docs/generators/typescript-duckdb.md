@@ -288,6 +288,140 @@ const conn2 = await instance.connect();
 connection.closeSync();
 ```
 
+## Bulk Inserts with Appenders
+
+DuckDB's [Appender API](https://duckdb.org/docs/data/appender) provides high-performance bulk inserts—significantly faster than individual INSERT statements. SQG generates type-safe appender wrappers using the `TABLE` annotation.
+
+### Defining an Appender
+
+Use the `TABLE` annotation with the `:appender` modifier:
+
+```sql
+-- queries.sql
+
+-- MIGRATE 1
+CREATE TABLE events (
+    id INTEGER PRIMARY KEY,
+    event_type VARCHAR NOT NULL,
+    payload VARCHAR,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- TABLE events :appender
+```
+
+### Generated Code
+
+SQG generates three components:
+
+1. **Row interface** - Type-safe structure for each row
+2. **Appender class** - Wrapper with `append()`, `appendMany()`, `flush()`, and `close()` methods
+3. **Factory method** - Creates appender instances from your queries class
+
+```typescript
+// Generated types
+import type { DuckDBTimestampValue } from "@duckdb/node-api";
+
+interface EventsRow {
+  id: number;
+  event_type: string;
+  payload: string | null;
+  timestamp: DuckDBTimestampValue | null;
+}
+
+class EventsAppender {
+  append(row: EventsRow): this;
+  appendMany(rows: EventsRow[]): this;
+  flush(): this;
+  close(): void;
+}
+
+// In your queries class
+class Queries {
+  async createEventsAppender(): Promise<EventsAppender>;
+}
+```
+
+### Basic Usage
+
+```typescript
+// Create appender
+const appender = await queries.createEventsAppender();
+
+// Append single row
+appender.append({
+  id: 1,
+  event_type: 'page_view',
+  payload: '{"url": "/home"}',
+  timestamp: null
+});
+
+// Append multiple rows
+appender.appendMany([
+  { id: 2, event_type: 'click', payload: null, timestamp: null },
+  { id: 3, event_type: 'scroll', payload: '{"depth": 50}', timestamp: null },
+]);
+
+// Flush and close
+appender.close();
+```
+
+For large datasets, call `flush()` periodically to manage memory, then `close()` when done.
+
+### Type Mappings for Appenders
+
+Appender row interfaces use DuckDB's native value types for temporal and binary data:
+
+| DuckDB Column Type | TypeScript Appender Type |
+|-------------------|--------------------------|
+| `INTEGER`, `SMALLINT`, `TINYINT` | `number` |
+| `BIGINT`, `HUGEINT` | `bigint` |
+| `DOUBLE`, `FLOAT` | `number` |
+| `VARCHAR`, `TEXT` | `string` |
+| `BOOLEAN` | `boolean` |
+| `DATE` | `DuckDBDateValue` |
+| `TIME` | `DuckDBTimeValue` |
+| `TIMESTAMP` | `DuckDBTimestampValue` |
+| `BLOB` | `DuckDBBlobValue` |
+| `UUID` | `string` |
+
+**Note:** Nullable columns use `T | null` types.
+
+### Working with Temporal Types
+
+For `DATE`, `TIME`, and `TIMESTAMP` columns, use DuckDB's value constructors:
+
+```typescript
+import {
+  DuckDBDateValue,
+  DuckDBTimeValue,
+  DuckDBTimestampValue
+} from '@duckdb/node-api';
+
+// Create timestamp value
+const timestamp = DuckDBTimestampValue.fromMicros(BigInt(Date.now()) * 1000n);
+
+// Create date value
+const date = DuckDBDateValue.fromDays(Math.floor(Date.now() / 86400000));
+
+appender.append({
+  id: 1,
+  event_type: 'login',
+  payload: null,
+  timestamp: timestamp
+});
+```
+
+### When to Use Appenders
+
+Appenders are ideal for:
+- ETL pipelines and data imports
+- Log ingestion and event streaming
+- Bulk data migrations
+- Loading CSV/Parquet files into tables
+
+For single-row inserts or small batches, regular `EXEC` statements are simpler.
+
 ## Use Cases
 
 DuckDB + TypeScript is ideal for:

@@ -117,6 +117,68 @@ UPDATE users SET active = false WHERE id = ${id};
 - Database-specific result type (e.g., `RunResult` for SQLite)
 - Typically includes `changes` count and `lastInsertRowid`
 
+### TABLE (DuckDB Only)
+
+Generate high-performance bulk insert appenders for DuckDB tables. Appenders provide significantly faster inserts than individual INSERT statements.
+
+```sql
+-- TABLE users :appender
+```
+
+**Syntax:**
+- `-- TABLE <table_name> :appender` - generates an appender for the specified table
+- The `:appender` modifier is required
+- SQG introspects the table schema to generate type-safe row interfaces
+
+**Generated code includes:**
+- A factory method to create the appender (e.g., `createUsersAppender()`)
+- A typed row interface (e.g., `UsersRow`)
+- An appender class with `append()`, `appendMany()`, `flush()`, and `close()` methods
+
+**Example:**
+
+```sql
+-- MIGRATE 1
+CREATE TABLE events (
+    id INTEGER PRIMARY KEY,
+    event_type VARCHAR NOT NULL,
+    payload VARCHAR,
+    created_at TIMESTAMP
+);
+
+-- TABLE events :appender
+```
+
+```typescript
+// Generated interface
+interface EventsRow {
+  id: number;
+  event_type: string;
+  payload: string | null;
+  created_at: DuckDBTimestampValue | null;
+}
+
+// Usage
+const appender = await queries.createEventsAppender();
+
+// Append rows (10-100x faster than INSERT)
+appender.append({ id: 1, event_type: 'click', payload: null, created_at: null });
+appender.appendMany([
+  { id: 2, event_type: 'view', payload: '{"page": "home"}', created_at: null },
+  { id: 3, event_type: 'click', payload: null, created_at: null },
+]);
+
+appender.flush();  // Flush buffered data to table
+appender.close();  // Flush and release resources
+```
+
+**Notes:**
+- Appenders are only supported with the `typescript/duckdb` generator
+- Use appenders for batch inserts (ETL, data pipelines, bulk imports)
+- Call `flush()` periodically for long-running imports
+- Always call `close()` when done to release resources
+- See [TypeScript + DuckDB](/generators/typescript-duckdb/#bulk-inserts-with-appenders) for detailed usage
+
 ## Modifiers
 
 Modifiers change how query results are returned. Add them after the query name:
