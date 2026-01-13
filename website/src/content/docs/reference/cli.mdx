@@ -57,30 +57,24 @@ sqg init [options]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `-e, --engine <engine>` | `sqlite` | Database engine: `sqlite`, `duckdb`, `postgres` |
-| `-g, --generator <gen>` | Auto | Code generator (auto-selected if omitted) |
+| `-t, --generator <generator>` | `typescript/sqlite` | Code generation generator |
 | `-o, --output <dir>` | `./generated` | Output directory for generated files |
 | `-f, --force` | `false` | Overwrite existing files |
-
-**Default generators by engine:**
-
-| Engine | Default Generator |
-|--------|-------------------|
-| `sqlite` | `typescript/better-sqlite3` |
-| `duckdb` | `typescript/duckdb` |
-| `postgres` | `java/jdbc` |
 
 **Examples:**
 
 ```bash
-# SQLite + TypeScript (default)
+# TypeScript + SQLite (default)
 sqg init
 
-# DuckDB project
-sqg init --engine duckdb
+# TypeScript + DuckDB project
+sqg init --generator typescript/duckdb
 
-# Custom generator
-sqg init --engine sqlite --generator java/jdbc
+# Java + SQLite project
+sqg init --generator java/sqlite
+
+# Java + DuckDB with Arrow API
+sqg init --generator java/duckdb/arrow
 
 # Custom output directory
 sqg init --output ./src/db
@@ -89,7 +83,7 @@ sqg init --output ./src/db
 sqg init --force
 
 # Full example
-sqg init --engine duckdb --generator typescript/duckdb --output ./src/generated --force
+sqg init --generator typescript/duckdb --output ./src/generated --force
 ```
 
 **Created files:**
@@ -169,7 +163,7 @@ sqg --validate --format json sqg.yaml
     "version": 1
   },
   "sqlFiles": ["queries.sql"],
-  "generators": ["typescript/better-sqlite3"]
+  "targets": ["typescript/sqlite"]
 }
 ```
 
@@ -204,16 +198,14 @@ SQG provides structured error codes for programmatic handling:
 | `CONFIG_PARSE_ERROR` | Invalid YAML syntax in config file |
 | `CONFIG_VALIDATION_ERROR` | Configuration doesn't match schema |
 | `FILE_NOT_FOUND` | SQL or config file doesn't exist |
-| `INVALID_ENGINE` | Unknown database engine specified |
-| `INVALID_GENERATOR` | Unknown generator specified |
-| `GENERATOR_ENGINE_MISMATCH` | Generator not compatible with engine |
+| `INVALID_GENERATOR` | Unknown or invalid generator |
 | `SQL_PARSE_ERROR` | Invalid SQL annotation syntax |
 | `SQL_EXECUTION_ERROR` | Query failed during type introspection |
 | `DUPLICATE_QUERY` | Two queries have the same name |
 | `MISSING_VARIABLE` | Variable referenced but not defined with `@set` |
 | `VALIDATION_ERROR` | General validation error |
 | `DATABASE_ERROR` | Database connection or execution error |
-| `TYPE_MAPPING_ERROR` | Unable to map SQL type to target language |
+| `TYPE_MAPPING_ERROR` | Unable to map SQL type to generator language |
 
 ### Error Suggestions
 
@@ -222,9 +214,9 @@ All errors include actionable suggestions:
 ```json
 {
   "error": {
-    "code": "INVALID_GENERATOR",
-    "message": "Invalid generator 'typescript/sqlite'",
-    "suggestion": "Use 'typescript/better-sqlite3' instead"
+    "code": "INVALID_TARGET",
+    "message": "Invalid generator 'typescript/mysql'",
+    "suggestion": "Valid targets: typescript/sqlite, typescript/duckdb, java/sqlite, java/duckdb, java/postgres"
   }
 }
 ```
@@ -266,34 +258,29 @@ version: 1
 name: my-app
 
 sql:
-  - engine: sqlite
-    files:
+  - files:
       - queries.sql
     gen:
-      - generator: typescript/better-sqlite3
+      - generator: typescript/sqlite
         output: ./src/generated/
 ```
 
 ---
 
-## Supported Engines
-
-| Engine | Description |
-|--------|-------------|
-| `sqlite` | SQLite (in-memory for introspection) |
-| `duckdb` | DuckDB (in-memory for introspection) |
-| `postgres` | PostgreSQL (requires running server) |
-
----
-
 ## Supported Generators
 
-| Generator | Engine(s) | Output |
-|-----------|-----------|--------|
-| `typescript/better-sqlite3` | `sqlite` | TypeScript with sync API |
-| `typescript/duckdb` | `duckdb` | TypeScript with async API |
-| `java/jdbc` | `sqlite`, `duckdb`, `postgres` | Java with JDBC |
-| `java/duckdb-arrow` | `duckdb` | Java with Arrow API |
+Generators follow the format `<language>/<engine>[/<driver>]`:
+
+| Generator | Engine | Description |
+|-----------|--------|-------------|
+| `typescript/sqlite` | SQLite | TypeScript with better-sqlite3 (default driver) |
+| `typescript/duckdb` | DuckDB | TypeScript with @duckdb/node-api (default driver) |
+| `java/sqlite` | SQLite | Java with JDBC (default driver) |
+| `java/duckdb` | DuckDB | Java with JDBC (default driver) |
+| `java/duckdb/arrow` | DuckDB | Java with DuckDB Arrow API |
+| `java/postgres` | PostgreSQL | Java with JDBC (default driver) |
+
+The driver can be omitted to use the default. For example, `typescript/sqlite` is equivalent to `typescript/sqlite/better-sqlite3`.
 
 See individual generator pages for detailed documentation:
 - [TypeScript + SQLite](/generators/typescript-sqlite/)

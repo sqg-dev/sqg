@@ -29,7 +29,7 @@ export class JavaDuckDBArrowGenerator extends BaseGenerator {
       projectDir,
       {
         name,
-        generator: "java/jdbc",
+        generator: "java/duckdb/jdbc",
         output: gen.output,
         config: gen.config,
       },

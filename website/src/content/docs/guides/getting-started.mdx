@@ -61,14 +61,17 @@ pnpm link --global
 The fastest way to get started is using the `sqg init` command:
 
 ```bash
-# Create a new project with SQLite (default)
+# Create a new project with TypeScript + SQLite (default)
 sqg init
 
-# Or specify a different database engine
-sqg init --engine duckdb
+# Or specify a different generator
+sqg init --generator typescript/duckdb
 
-# Specify both engine and generator
-sqg init --engine sqlite --generator typescript/better-sqlite3
+# Java targets
+sqg init --generator java/sqlite
+sqg init --generator java/duckdb
+sqg init --generator java/duckdb/arrow
+sqg init --generator java/postgres
 ```
 
 This creates:
@@ -100,11 +103,10 @@ sqg sqg.yaml
    name: my-app
 
    sql:
-     - engine: sqlite
-       files:
+     - files:
          - queries.sql
        gen:
-         - generator: typescript/better-sqlite3
+         - generator: typescript/sqlite
            output: ./src/generated/
    ```
 
@@ -156,15 +158,14 @@ version: 1          # Config version (always 1)
 name: my-project    # Project name (used for class names)
 
 sql:
-  - engine: sqlite  # Database engine: sqlite, duckdb, or postgres
-    files:
+  - files:
       - queries.sql # SQL files to process
       - users.sql
     gen:
-      - generator: typescript/better-sqlite3
+      - generator: typescript/sqlite
         output: ./src/db/
 
-      - generator: java/jdbc
+      - generator: java/sqlite
         output: ./java/src/main/java/db/
         config:
           package: com.myapp.db
@@ -172,12 +173,16 @@ sql:
 
 ### Available Generators
 
+Generators follow the format `<language>/<engine>[/<driver>]`:
+
 | Generator | Description | Documentation |
 |-----------|-------------|---------------|
-| `typescript/better-sqlite3` | TypeScript for SQLite (sync API) | [TypeScript + SQLite](/generators/typescript-sqlite/) |
+| `typescript/sqlite` | TypeScript for SQLite (sync API) | [TypeScript + SQLite](/generators/typescript-sqlite/) |
 | `typescript/duckdb` | TypeScript for DuckDB (async API) | [TypeScript + DuckDB](/generators/typescript-duckdb/) |
-| `java/jdbc` | Java with JDBC (any database) | [Java + JDBC](/generators/java-jdbc/) |
-| `java/duckdb-arrow` | Java with Arrow API (high-performance) | [Java + DuckDB Arrow](/generators/java-duckdb-arrow/) |
+| `java/sqlite` | Java with JDBC for SQLite | [Java + JDBC](/generators/java-jdbc/) |
+| `java/duckdb` | Java with JDBC for DuckDB | [Java + JDBC](/generators/java-jdbc/) |
+| `java/duckdb/arrow` | Java with Arrow API (high-performance) | [Java + DuckDB Arrow](/generators/java-duckdb-arrow/) |
+| `java/postgres` | Java with JDBC for PostgreSQL | [Java + JDBC](/generators/java-jdbc/) |
 
 See individual generator documentation for configuration options, type mappings, and usage examples.
 
@@ -185,9 +190,9 @@ See individual generator documentation for configuration options, type mappings,
 
 | Engine | Description | TypeScript | Java |
 |--------|-------------|------------|------|
-| `sqlite` | Embedded, no server required | [typescript/better-sqlite3](/generators/typescript-sqlite/) | [java/jdbc](/generators/java-jdbc/) |
-| `duckdb` | Analytics, complex types | [typescript/duckdb](/generators/typescript-duckdb/) | [java/jdbc](/generators/java-jdbc/), [java/duckdb-arrow](/generators/java-duckdb-arrow/) |
-| `postgres` | Full-featured SQL server | — | [java/jdbc](/generators/java-jdbc/) |
+| `sqlite` | Embedded, no server required | [typescript/sqlite](/generators/typescript-sqlite/) | [java/sqlite](/generators/java-jdbc/) |
+| `duckdb` | Analytics, complex types | [typescript/duckdb](/generators/typescript-duckdb/) | [java/duckdb](/generators/java-jdbc/), [java/duckdb/arrow](/generators/java-duckdb-arrow/) |
+| `postgres` | Full-featured SQL server | — | [java/postgres](/generators/java-jdbc/) |
 
 **Notes:**
 - SQLite and DuckDB use in-memory databases for type introspection (no server needed)

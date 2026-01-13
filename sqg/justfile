@@ -33,4 +33,12 @@ install:
   pnpm build
   pnpm add --global $(pwd)
 
+release:
+  #!/bin/bash
+  pnpm version minor
+  PACKAGE_VERSION="v$(pnpm pkg get version | tr -d '"')"
+  git commit -m "release: $PACKAGE_VERSION" package.json
+  git tag $PACKAGE_VERSION
+  git push && git push --tags
+
   

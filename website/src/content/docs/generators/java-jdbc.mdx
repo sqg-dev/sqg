@@ -13,8 +13,7 @@ Generate Java code using standard JDBC APIs. Works with any JDBC-compatible data
 
 | Property | Value |
 |----------|-------|
-| Generator | `java/jdbc` |
-| Compatible Engines | `sqlite`, `duckdb`, `postgres` |
+| Generator | `java/sqlite`, `java/duckdb`, or `java/postgres` |
 | Runtime | JVM (Java 17+) |
 | API Style | Synchronous |
 | Driver | Any JDBC driver |
@@ -78,11 +77,10 @@ version: 1
 name: my-app
 
 sql:
-  - engine: sqlite  # or: duckdb, postgres
-    files:
+  - files:
       - queries.sql
     gen:
-      - generator: java/jdbc
+      - generator: java/sqlite  # or: java/duckdb, java/postgres
         output: ./src/main/java/com/myapp/db/
         config:
           package: com.myapp.db

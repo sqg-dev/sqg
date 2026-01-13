@@ -29,12 +29,13 @@ interface ExampleFrontmatter {
 // Map engine + language to generator name
 function getGeneratorName(engine: string, language: string): string {
   if (language === "typescript") {
-    return engine === "duckdb" ? "typescript/duckdb" : "typescript/better-sqlite3";
+    return engine === "duckdb" ? "typescript/duckdb" : "typescript/sqlite";
   }
   if (language === "java-arrow") {
-    return "java/duckdb-arrow";
+    return "java/duckdb/arrow";
   }
-  return "java/jdbc";
+  // For java-jdbc, use the engine-specific generator
+  return `java/${engine}`;
 }
 
 function parseFrontmatter(content: string): ExampleFrontmatter | null {
@@ -89,7 +90,6 @@ async function generateExample(exampleFile: string): Promise<void> {
     name: id,
     sql: [
       {
-        engine,
         files: ["queries.sql"],
         gen: [
           {

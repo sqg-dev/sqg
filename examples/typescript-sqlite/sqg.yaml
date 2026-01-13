@@ -2,9 +2,8 @@ version: 1
 name: typescript-sqlite-example
 
 sql:
-  - engine: sqlite
-    files:
+  - files:
       - queries.sql
     gen:
-      - generator: typescript/better-sqlite3
+      - generator: typescript/sqlite
         output: src/db.ts

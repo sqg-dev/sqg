@@ -7,18 +7,18 @@ import YAML from "yaml";
 import { z } from "zod";
 import {
   DB_ENGINES,
-  SUPPORTED_GENERATORS,
   GENERATOR_NAMES,
+  SHORT_GENERATOR_NAMES,
   findSimilarGenerators,
+  isValidGenerator,
+  parseGenerator,
+  getGeneratorEngine,
   type DbEngine,
-  type SupportedGenerator,
 } from "./constants.js";
 import { getDatabaseEngine } from "./db/index.js";
 import {
   ConfigError,
   FileNotFoundError,
-  GeneratorEngineMismatchError,
-  InvalidEngineError,
   InvalidGeneratorError,
   SqgError,
   type ErrorContext,
@@ -294,6 +294,9 @@ function generateSourceFile(
   return result;
 }
 
+/** All valid generator strings for schema validation */
+const validGenerators = [...SHORT_GENERATOR_NAMES, ...GENERATOR_NAMES] as const;
+
 /**
  * Project configuration schema with descriptions for validation messages
  */
@@ -308,9 +311,6 @@ const ProjectSchema = z.object({
   sql: z
     .array(
       z.object({
-        engine: z
-          .enum(DB_ENGINES)
-          .describe(`Database engine: ${DB_ENGINES.join(", ")}`),
         files: z
           .array(z.string().min(1))
           .min(1, "At least one SQL file is required")
@@ -319,8 +319,11 @@ const ProjectSchema = z.object({
           .array(
             z.object({
               generator: z
-                .enum(GENERATOR_NAMES as unknown as readonly [string, ...string[]])
-                .describe(`Code generator: ${GENERATOR_NAMES.join(", ")}`),
+                .string()
+                .refine((val) => isValidGenerator(val), {
+                  message: `Invalid generator. Valid generators: ${validGenerators.join(", ")}`,
+                })
+                .describe(`Code generation generator: ${SHORT_GENERATOR_NAMES.join(", ")}`),
               name: z
                 .string()
                 .optional()
@@ -383,46 +386,33 @@ export function createExtraVariables(sources: Source[], suppressLogging = false)
  * Build a Project object from CLI options
  */
 export interface CliProjectOptions {
-  engine: string;
-  files: string[];
   generator: string;
+  files: string[];
   output?: string;
   name?: string;
 }
 
 export function buildProjectFromCliOptions(options: CliProjectOptions): Project {
-  // Validate engine
-  if (!DB_ENGINES.includes(options.engine as DbEngine)) {
-    throw new InvalidEngineError(options.engine, [...DB_ENGINES]);
-  }
-
   // Validate generator
-  if (!GENERATOR_NAMES.includes(options.generator as SupportedGenerator)) {
+  if (!isValidGenerator(options.generator)) {
     const similar = findSimilarGenerators(options.generator);
+    const allGenerators = [...SHORT_GENERATOR_NAMES, ...GENERATOR_NAMES];
     throw new InvalidGeneratorError(
       options.generator,
-      [...GENERATOR_NAMES],
+      allGenerators,
       similar.length > 0 ? similar[0] : undefined,
     );
   }
 
-  // Validate generator compatibility with engine
-  const generatorInfo = SUPPORTED_GENERATORS[options.generator as SupportedGenerator];
-  if (!(generatorInfo.compatibleEngines as readonly string[]).includes(options.engine)) {
-    throw new GeneratorEngineMismatchError(
-      options.generator,
-      options.engine,
-      generatorInfo.compatibleEngines,
-    );
-  }
+  const generatorInfo = parseGenerator(options.generator);
 
   const genConfig: Project["sql"][0]["gen"][0] = {
-    generator: options.generator as SupportedGenerator,
+    generator: options.generator,
     output: options.output || ".", // Placeholder for stdout - not used when writeToStdout is true
   };
 
   // Add config for Java generators (package name)
-  if (options.generator.startsWith("java/")) {
+  if (generatorInfo.language === "java") {
     genConfig.config = {
       package: "generated",
     };
@@ -433,7 +423,6 @@ export function buildProjectFromCliOptions(options: CliProjectOptions): Project 
     name: options.name || "generated",
     sql: [
       {
-        engine: options.engine as DbEngine,
         files: options.files,
         gen: [genConfig],
       },
@@ -478,23 +467,21 @@ export function parseProjectConfig(filePath: string): Project {
   if (parsed && typeof parsed === "object") {
     const obj = parsed as Record<string, unknown>;
 
-    // Check for invalid engine before Zod validation
+    // Check for invalid generators before Zod validation
     if (obj.sql && Array.isArray(obj.sql)) {
       for (let i = 0; i < obj.sql.length; i++) {
         const sqlConfig = obj.sql[i] as Record<string, unknown>;
-        if (sqlConfig.engine && !DB_ENGINES.includes(sqlConfig.engine as DbEngine)) {
-          throw new InvalidEngineError(String(sqlConfig.engine), [...DB_ENGINES]);
-        }
 
         // Check for invalid generators
         if (sqlConfig.gen && Array.isArray(sqlConfig.gen)) {
           for (let j = 0; j < sqlConfig.gen.length; j++) {
             const genConfig = sqlConfig.gen[j] as Record<string, unknown>;
-            if (genConfig.generator && !GENERATOR_NAMES.includes(genConfig.generator as SupportedGenerator)) {
+            if (genConfig.generator && !isValidGenerator(String(genConfig.generator))) {
               const similar = findSimilarGenerators(String(genConfig.generator));
+              const allGenerators = [...SHORT_GENERATOR_NAMES, ...GENERATOR_NAMES];
               throw new InvalidGeneratorError(
                 String(genConfig.generator),
-                [...GENERATOR_NAMES],
+                allGenerators,
                 similar.length > 0 ? similar[0] : undefined,
               );
             }
@@ -671,20 +658,19 @@ export async function validateProjectFromConfig(
         });
       }
 
-      // Validate generator compatibility
+      // Validate generators
       for (const gen of sql.gen) {
         generators.push(gen.generator);
 
-        const generatorInfo = SUPPORTED_GENERATORS[gen.generator as SupportedGenerator];
-        if (!(generatorInfo.compatibleEngines as readonly string[]).includes(sql.engine)) {
+        if (!isValidGenerator(gen.generator)) {
+          const similar = findSimilarGenerators(gen.generator);
           errors.push({
-            code: "GENERATOR_ENGINE_MISMATCH",
-            message: `Generator '${gen.generator}' is not compatible with engine '${sql.engine}'`,
-            suggestion: `For '${sql.engine}', use one of: ${Object.entries(SUPPORTED_GENERATORS)
-              .filter(([_, info]) => (info.compatibleEngines as readonly string[]).includes(sql.engine))
-              .map(([name]) => name)
-              .join(", ")}`,
-            context: { generator: gen.generator, engine: sql.engine },
+            code: "INVALID_GENERATOR",
+            message: `Invalid generator '${gen.generator}'`,
+            suggestion: similar.length > 0
+              ? `Did you mean '${similar[0]}'?`
+              : `Valid generators: ${SHORT_GENERATOR_NAMES.join(", ")}`,
+            context: { generator: gen.generator },
           });
         }
       }
@@ -757,16 +743,15 @@ export async function processProjectFromConfig(
     const files = [] as string[];
 
     for (const sql of project.sql) {
-      // Pre-validate generator compatibility before any work
+      // Group generators by engine for efficient database reuse
+      const gensByEngine = new Map<DbEngine, typeof sql.gen>();
+
       for (const gen of sql.gen) {
-        const generatorInfo = SUPPORTED_GENERATORS[gen.generator as SupportedGenerator];
-        if (!(generatorInfo.compatibleEngines as readonly string[]).includes(sql.engine)) {
-          throw new GeneratorEngineMismatchError(
-            gen.generator,
-            sql.engine,
-            generatorInfo.compatibleEngines,
-          );
+        const engine = getGeneratorEngine(gen.generator);
+        if (!gensByEngine.has(engine)) {
+          gensByEngine.set(engine, []);
         }
+        gensByEngine.get(engine)!.push(gen);
       }
 
       for (const sqlFile of sql.files) {
@@ -795,42 +780,45 @@ export async function processProjectFromConfig(
           );
         }
 
-        try {
-          const dbEngine = getDatabaseEngine(sql.engine);
-          await dbEngine.initializeDatabase(queries);
-          await dbEngine.executeQueries(queries);
-          // Introspect table schemas for appenders
-          if (tables.length > 0) {
-            await dbEngine.introspectTables(tables);
+        // Process each engine group
+        for (const [engine, gens] of gensByEngine) {
+          try {
+            const dbEngine = getDatabaseEngine(engine);
+            await dbEngine.initializeDatabase(queries);
+            await dbEngine.executeQueries(queries);
+            // Introspect table schemas for appenders
+            if (tables.length > 0) {
+              await dbEngine.introspectTables(tables);
+            }
+            validateQueries(queries);
+            await dbEngine.close();
+          } catch (e) {
+            if (e instanceof SqgError) {
+              throw e;
+            }
+            throw new SqgError(
+              `Database error processing ${sqlFile}: ${(e as Error).message}`,
+              "DATABASE_ERROR",
+              `Check that the SQL is valid for engine '${engine}'`,
+              { file: sqlFile, engine },
+            );
           }
-          validateQueries(queries);
-          await dbEngine.close();
-        } catch (e) {
-          if (e instanceof SqgError) {
-            throw e;
-          }
-          throw new SqgError(
-            `Database error processing ${sqlFile}: ${(e as Error).message}`,
-            "DATABASE_ERROR",
-            `Check that the SQL is valid for engine '${sql.engine}'`,
-            { file: sqlFile, engine: sql.engine },
-          );
-        }
 
-        for (const gen of sql.gen) {
-          const generator = getGenerator(gen.generator);
-          const outputPath = await writeGeneratedFile(
-            projectDir,
-            gen,
-            generator,
-            sqlFile,
-            queries,
-            tables,
-            sql.engine,
-            writeToStdout,
-          );
-          if (outputPath !== null) {
-            files.push(outputPath);
+          for (const gen of gens) {
+            const generator = getGenerator(gen.generator);
+            const outputPath = await writeGeneratedFile(
+              projectDir,
+              gen,
+              generator,
+              sqlFile,
+              queries,
+              tables,
+              engine,
+              writeToStdout,
+            );
+            if (outputPath !== null) {
+              files.push(outputPath);
+            }
           }
         }
       }

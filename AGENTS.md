@@ -24,7 +24,7 @@ sqg/
 │   │   ├── sqg.ts               # CLI entry point
 │   │   ├── sqltool.ts           # Main orchestration, validation
 │   │   ├── sql-query.ts         # SQL parsing logic
-│   │   ├── constants.ts         # Supported engines/generators definitions
+│   │   ├── constants.ts         # Centralized generator definitions and parsing
 │   │   ├── errors.ts            # Structured error classes
 │   │   ├── init.ts              # Project scaffolding (sqg init)
 │   │   ├── type-mapping.ts      # Type system mapping
@@ -65,7 +65,7 @@ sqg/
 | `sqg/src/sqg.ts` | CLI entry point with commands (init, syntax) and options (--validate, --format) |
 | `sqg/src/sqltool.ts` | Main orchestrator: parses YAML config, validates, coordinates generation |
 | `sqg/src/sql-query.ts` | Custom SQL parser using Lezer, extracts query metadata |
-| `sqg/src/constants.ts` | Centralized definitions for supported engines/generators |
+| `sqg/src/constants.ts` | Centralized generator definitions, parsing functions (parseGenerator, resolveGenerator) |
 | `sqg/src/errors.ts` | Structured error classes with codes, suggestions, context |
 | `sqg/src/init.ts` | Project scaffolding logic for `sqg init` command |
 | `sqg/src/type-mapping.ts` | Maps SQL types to target language types |
@@ -121,7 +121,7 @@ pnpm sqg --validate <path>
 pnpm sqg --format json <path>
 
 # Initialize a new project
-pnpm sqg init --engine duckdb
+pnpm sqg init --generator typescript/duckdb
 ```
 
 **Using justfile (from `sqg/sqg/`):**
@@ -182,26 +182,42 @@ users
 
 ## Project Configuration (sqg.yaml)
 
+The configuration uses a **generator** parameter with format `<language>/<engine>[/<driver>]`:
+
 ```yaml
 version: 1
 name: my-project
 sql:
-  - engine: duckdb  # or: sqlite, postgres
-    files:
+  - files:
       - queries.sql
     gen:
       - generator: typescript/duckdb
         output: ./generated/
-      - generator: java/jdbc
+      - generator: java/duckdb
         output: ./java/src/main/java/generated/
         config:
           package: generated
 ```
 
+### Generator Format
+
+Generators follow the pattern `<language>/<engine>[/<driver>]`:
+
+| Generator (short) | Generator (full) | Description |
+|-------------------|------------------|-------------|
+| `typescript/sqlite` | `typescript/sqlite/better-sqlite3` | TypeScript with better-sqlite3 driver |
+| `typescript/duckdb` | `typescript/duckdb/node-api` | TypeScript with @duckdb/node-api driver |
+| `java/sqlite` | `java/sqlite/jdbc` | Java with JDBC for SQLite |
+| `java/duckdb` | `java/duckdb/jdbc` | Java with JDBC for DuckDB |
+| `java/duckdb/arrow` | `java/duckdb/arrow` | Java with DuckDB Arrow API |
+| `java/postgres` | `java/postgres/jdbc` | Java with JDBC for PostgreSQL |
+
+The driver can be omitted to use the default driver for that language/engine combination.
+
 ## Development Workflow
 
 1. **Making changes to code generation:**
-   - Edit the relevant generator in `sqg/src/generator.ts`
+   - Edit the relevant generator in `sqg/src/generators/`
    - Or modify Handlebars templates in `sqg/src/templates/`
    - Run `pnpm test:run` to verify against snapshots
    - Update snapshots if changes are intentional
@@ -212,8 +228,10 @@ sql:
    - Update `sqg/src/sql-query.ts` to handle new constructs
 
 3. **Adding a new generator:**
+   - Add generator definition to `GENERATORS` in `sqg/src/constants.ts`
+   - Add default driver mapping if needed to `DEFAULT_DRIVERS`
    - Create template in `sqg/src/templates/new-generator.hbs`
-   - Add generator class extending `BaseGenerator` in `generator.ts`
+   - Add generator class extending `BaseGenerator` in `generators/`
    - Add type mapper in `type-mapping.ts` if needed
    - Register in `getGenerator()` switch statement
 
@@ -241,19 +259,22 @@ sql:
 2. **Type introspection via execution:** Runs queries against real databases to get types
 3. **Template separation:** Code patterns live in `.hbs` files, logic in generators
 4. **No full SQL parsing:** Uses Lezer for annotations only, not SQL syntax
+5. **Centralized generator handling:** All generator parsing/validation in `constants.ts`
 
 ## Common Tasks
 
 ### Add a new database engine
 1. Implement adapter in `sqg/src/db/new-engine.ts`
-2. Export from `sqg/src/database.ts`
-3. Add to engine switch in `sqltool.ts`
+2. Export from `sqg/src/db/index.ts`
+3. Add engine to `DB_ENGINES` in `constants.ts`
+4. Add generators for the new engine to `GENERATORS` and `DEFAULT_DRIVERS`
 
-### Add a new target language
+### Add a new generator language
 1. Create template: `sqg/src/templates/new-lang.hbs`
 2. Create type mapper in `type-mapping.ts`
-3. Create generator class in `generator.ts`
-4. Register generator name in `getGenerator()`
+3. Create generator class in `generators/`
+4. Add generator definitions to `GENERATORS` in `constants.ts`
+5. Register generator in `getGenerator()` switch statement
 
 ### Debug type introspection
 - Check that migrations run successfully in `database.ts`
@@ -278,6 +299,8 @@ sqg --help                # Show all options
 | `--validate` | Validate config without generating code |
 | `--format json` | Output as JSON (useful for parsing errors programmatically) |
 | `--verbose` | Show detailed debug output |
+| `--generator <generator>` | Code generation generator (for CLI-only mode) |
+| `--file <file>` | SQL file path (can be repeated, for CLI-only mode) |
 
 ### JSON Output Mode
 
@@ -294,7 +317,7 @@ Returns structured JSON with validation results or errors:
   "valid": true,
   "project": { "name": "my-project", "version": 1 },
   "sqlFiles": ["queries.sql"],
-  "generators": ["typescript/better-sqlite3"]
+  "generators": ["typescript/sqlite"]
 }
 ```
 
@@ -307,20 +330,21 @@ All errors include structured codes for programmatic handling:
 | `CONFIG_PARSE_ERROR` | Invalid YAML syntax |
 | `CONFIG_VALIDATION_ERROR` | Schema validation failed |
 | `FILE_NOT_FOUND` | SQL or config file missing |
-| `INVALID_ENGINE` | Unknown database engine |
-| `INVALID_GENERATOR` | Unknown code generator |
-| `GENERATOR_ENGINE_MISMATCH` | Incompatible generator/engine |
+| `INVALID_GENERATOR` | Unknown or invalid generator |
 | `SQL_PARSE_ERROR` | Invalid SQL annotation syntax |
 | `SQL_EXECUTION_ERROR` | Query failed during introspection |
 | `DUPLICATE_QUERY` | Two queries have the same name |
 | `MISSING_VARIABLE` | Variable used but not defined |
 
-### Supported Engines & Generators
+### Supported Generators
 
 Defined in `sqg/src/constants.ts`:
 
-| Engine | Compatible Generators |
-|--------|----------------------|
-| `sqlite` | `typescript/better-sqlite3`, `java/jdbc` |
-| `duckdb` | `typescript/duckdb`, `java/jdbc`, `java/duckdb-arrow` |
-| `postgres` | `java/jdbc` |
+| Generator | Engine | Description |
+|-----------|--------|-------------|
+| `typescript/sqlite` | SQLite | TypeScript with better-sqlite3 driver (default) |
+| `typescript/duckdb` | DuckDB | TypeScript with @duckdb/node-api driver (default) |
+| `java/sqlite` | SQLite | Java with JDBC (default) |
+| `java/duckdb` | DuckDB | Java with JDBC (default) |
+| `java/duckdb/arrow` | DuckDB | Java with DuckDB Arrow API |
+| `java/postgres` | PostgreSQL | Java with JDBC (default) |

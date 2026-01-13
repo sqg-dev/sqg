@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { initProject, type InitOptions } from "../src/init";
-import { InvalidEngineError, InvalidGeneratorError, SqgError } from "../src/errors";
+import { InvalidGeneratorError, SqgError } from "../src/errors";
 import { processProject } from "../src/sqltool";
 
 describe("initProject", () => {
@@ -39,8 +39,7 @@ describe("initProject", () => {
       expect(existsSync("generated")).toBe(true);
 
       const config = readFileSync("sqg.yaml", "utf-8");
-      expect(config).toContain("engine: sqlite");
-      expect(config).toContain("generator: typescript/better-sqlite3");
+      expect(config).toContain("generator: typescript/sqlite");
       expect(config).toContain("output: ./generated/");
     });
 
@@ -55,12 +54,11 @@ describe("initProject", () => {
     });
   });
 
-  describe("engine option", () => {
-    it("creates duckdb project with correct defaults", async () => {
-      await initProject({ engine: "duckdb" });
+  describe("generator option", () => {
+    it("creates duckdb project with typescript generator", async () => {
+      await initProject({ generator: "typescript/duckdb" });
 
       const config = readFileSync("sqg.yaml", "utf-8");
-      expect(config).toContain("engine: duckdb");
       expect(config).toContain("generator: typescript/duckdb");
 
       const sql = readFileSync("queries.sql", "utf-8");
@@ -69,59 +67,46 @@ describe("initProject", () => {
       expect(sql).toContain("tags VARCHAR[]");
     });
 
-    it("creates postgres project with correct defaults", async () => {
-      await initProject({ engine: "postgres" });
+    it("creates postgres project with java generator", async () => {
+      await initProject({ generator: "java/postgres" });
 
       const config = readFileSync("sqg.yaml", "utf-8");
-      expect(config).toContain("engine: postgres");
-      expect(config).toContain("generator: java/jdbc");
+      expect(config).toContain("generator: java/postgres");
       expect(config).toContain("package: generated");
 
       const sql = readFileSync("queries.sql", "utf-8");
       expect(sql).toContain("SERIAL PRIMARY KEY");
     });
 
-    it("throws InvalidEngineError for unknown engine", async () => {
-      await expect(initProject({ engine: "mysql" })).rejects.toThrow(InvalidEngineError);
+    it("throws InvalidGeneratorError for unknown generator", async () => {
+      await expect(initProject({ generator: "typescript/mysql" })).rejects.toThrow(InvalidGeneratorError);
     });
-  });
 
-  describe("generator option", () => {
-    it("uses specified generator", async () => {
-      await initProject({ engine: "sqlite", generator: "java/jdbc" });
+    it("uses java/jdbc generator for sqlite", async () => {
+      await initProject({ generator: "java/sqlite" });
 
       const config = readFileSync("sqg.yaml", "utf-8");
-      expect(config).toContain("generator: java/jdbc");
+      expect(config).toContain("generator: java/sqlite");
       expect(config).toContain("package: generated");
     });
 
-    it("throws InvalidGeneratorError for unknown generator", async () => {
-      await expect(initProject({ generator: "typescript/sqlite" })).rejects.toThrow(
-        InvalidGeneratorError,
-      );
+    it("uses java/duckdb generator with arrow driver", async () => {
+      await initProject({ generator: "java/duckdb/arrow" });
+
+      const config = readFileSync("sqg.yaml", "utf-8");
+      expect(config).toContain("generator: java/duckdb/arrow");
+      expect(config).toContain("package: generated");
     });
 
-    it("throws error for incompatible generator/engine combination", async () => {
-      await expect(
-        initProject({ engine: "postgres", generator: "typescript/better-sqlite3" }),
-      ).rejects.toThrow(SqgError);
-
-      try {
-        await initProject({ engine: "postgres", generator: "typescript/better-sqlite3" });
-      } catch (e) {
-        expect((e as SqgError).code).toBe("GENERATOR_ENGINE_MISMATCH");
-      }
-    });
-
-    it("allows java/jdbc with any engine", async () => {
-      await initProject({ engine: "sqlite", generator: "java/jdbc" });
+    it("allows short and full generator formats", async () => {
+      await initProject({ generator: "typescript/sqlite" });
       expect(existsSync("sqg.yaml")).toBe(true);
 
       // Clean up for next test
       rmSync("sqg.yaml");
       rmSync("queries.sql");
 
-      await initProject({ engine: "duckdb", generator: "java/jdbc", force: true });
+      await initProject({ generator: "typescript/sqlite/better-sqlite3", force: true });
       expect(existsSync("sqg.yaml")).toBe(true);
     });
   });
@@ -165,7 +150,7 @@ describe("initProject", () => {
       await initProject({ force: true });
 
       const config = readFileSync("sqg.yaml", "utf-8");
-      expect(config).toContain("engine: sqlite");
+      expect(config).toContain("generator: typescript/sqlite");
       expect(config).not.toContain("old content");
     });
   });
@@ -184,7 +169,7 @@ describe("initProject", () => {
     });
 
     it("includes package config for Java generators", async () => {
-      await initProject({ generator: "java/jdbc" });
+      await initProject({ generator: "java/sqlite" });
 
       const config = readFileSync("sqg.yaml", "utf-8");
       expect(config).toContain("config:");
@@ -192,7 +177,7 @@ describe("initProject", () => {
     });
 
     it("does not include package config for TypeScript generators", async () => {
-      await initProject({ generator: "typescript/better-sqlite3" });
+      await initProject({ generator: "typescript/sqlite" });
 
       const config = readFileSync("sqg.yaml", "utf-8");
       expect(config).not.toContain("config:");
@@ -221,9 +206,9 @@ describe("initProject", () => {
       expect(sql).toContain("sqg.dev");
     });
 
-    it("uses appropriate syntax for each engine", async () => {
+    it("uses appropriate syntax for each engine based on generator", async () => {
       // Test SQLite syntax
-      await initProject({ engine: "sqlite" });
+      await initProject({ generator: "typescript/sqlite" });
       let sql = readFileSync("queries.sql", "utf-8");
       expect(sql).toContain("AUTOINCREMENT");
       expect(sql).toContain("TEXT");
@@ -233,7 +218,7 @@ describe("initProject", () => {
       rmSync("queries.sql");
 
       // Test DuckDB syntax
-      await initProject({ engine: "duckdb", force: true });
+      await initProject({ generator: "typescript/duckdb", force: true });
       sql = readFileSync("queries.sql", "utf-8");
       expect(sql).toContain("VARCHAR");
       expect(sql).toContain("STRUCT");
@@ -244,7 +229,7 @@ describe("initProject", () => {
       rmSync("queries.sql");
 
       // Test PostgreSQL syntax
-      await initProject({ engine: "postgres", force: true });
+      await initProject({ generator: "java/postgres", force: true });
       sql = readFileSync("queries.sql", "utf-8");
       expect(sql).toContain("SERIAL PRIMARY KEY");
       expect(sql).toContain("BOOLEAN");
@@ -253,7 +238,7 @@ describe("initProject", () => {
 
   describe("end-to-end: init + generate", () => {
     it("generates valid TypeScript code for sqlite project", async () => {
-      await initProject({ engine: "sqlite", generator: "typescript/better-sqlite3" });
+      await initProject({ generator: "typescript/sqlite" });
 
       // Run the code generator on the initialized project
       const generatedFiles = await processProject("sqg.yaml");
@@ -272,7 +257,7 @@ describe("initProject", () => {
     });
 
     it("generates valid TypeScript code for duckdb project", async () => {
-      await initProject({ engine: "duckdb", generator: "typescript/duckdb" });
+      await initProject({ generator: "typescript/duckdb" });
 
       const generatedFiles = await processProject("sqg.yaml");
 
@@ -289,7 +274,7 @@ describe("initProject", () => {
     });
 
     it("generates valid Java code for sqlite project", async () => {
-      await initProject({ engine: "sqlite", generator: "java/jdbc" });
+      await initProject({ generator: "java/sqlite" });
 
       const generatedFiles = await processProject("sqg.yaml");
 
@@ -308,7 +293,7 @@ describe("initProject", () => {
     });
 
     it("generates valid Java code for duckdb project with jdbc", async () => {
-      await initProject({ engine: "duckdb", generator: "java/jdbc" });
+      await initProject({ generator: "java/duckdb" });
 
       const generatedFiles = await processProject("sqg.yaml");
 
@@ -321,7 +306,7 @@ describe("initProject", () => {
     });
 
     it("generates valid Java code for duckdb project with arrow", async () => {
-      await initProject({ engine: "duckdb", generator: "java/duckdb-arrow" });
+      await initProject({ generator: "java/duckdb/arrow" });
 
       const generatedFiles = await processProject("sqg.yaml");
 

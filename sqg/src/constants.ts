@@ -1,40 +1,207 @@
 /**
- * SQG Constants - Centralized definitions for supported engines and generators
- * This file enables self-documenting CLI help and validation.
+ * SQG Constants - Centralized definitions for supported generators
+ *
+ * Generator format: <language>/<engine>/<driver>
+ * Short format:  <language>/<engine> (uses default driver)
  */
 
 /** Supported database engines */
 export const DB_ENGINES = ["sqlite", "duckdb", "postgres"] as const;
 export type DbEngine = (typeof DB_ENGINES)[number];
 
-/** Supported code generators with their descriptions */
-export const SUPPORTED_GENERATORS = {
-  "typescript/better-sqlite3": {
+/** Supported languages */
+export const LANGUAGES = ["typescript", "java"] as const;
+export type Language = (typeof LANGUAGES)[number];
+
+/** Generator information */
+export interface GeneratorInfo {
+  language: Language;
+  engine: DbEngine;
+  driver: string;
+  description: string;
+  extension: ".ts" | ".java";
+  template: string;
+}
+
+/** All supported generators with their full specification */
+export const GENERATORS: Record<string, GeneratorInfo> = {
+  "typescript/sqlite/better-sqlite3": {
+    language: "typescript",
+    engine: "sqlite",
+    driver: "better-sqlite3",
     description: "TypeScript with better-sqlite3 driver",
-    compatibleEngines: ["sqlite"] as const,
     extension: ".ts",
+    template: "better-sqlite3.hbs",
   },
-  "typescript/duckdb": {
+  "typescript/duckdb/node-api": {
+    language: "typescript",
+    engine: "duckdb",
+    driver: "node-api",
     description: "TypeScript with @duckdb/node-api driver",
-    compatibleEngines: ["duckdb"] as const,
     extension: ".ts",
+    template: "typescript-duckdb.hbs",
   },
-  "java/jdbc": {
-    description: "Java with JDBC (SQLite, DuckDB, PostgreSQL)",
-    compatibleEngines: ["sqlite", "duckdb", "postgres"] as const,
+  "java/sqlite/jdbc": {
+    language: "java",
+    engine: "sqlite",
+    driver: "jdbc",
+    description: "Java with JDBC for SQLite",
     extension: ".java",
+    template: "java-jdbc.hbs",
   },
-  "java/duckdb-arrow": {
+  "java/duckdb/jdbc": {
+    language: "java",
+    engine: "duckdb",
+    driver: "jdbc",
+    description: "Java with JDBC for DuckDB",
+    extension: ".java",
+    template: "java-jdbc.hbs",
+  },
+  "java/duckdb/arrow": {
+    language: "java",
+    engine: "duckdb",
+    driver: "arrow",
     description: "Java with DuckDB Arrow API",
-    compatibleEngines: ["duckdb"] as const,
     extension: ".java",
+    template: "java-duckdb-arrow.hbs",
+  },
+  "java/postgres/jdbc": {
+    language: "java",
+    engine: "postgres",
+    driver: "jdbc",
+    description: "Java with JDBC for PostgreSQL",
+    extension: ".java",
+    template: "java-jdbc.hbs",
   },
 } as const;
 
-export type SupportedGenerator = keyof typeof SUPPORTED_GENERATORS;
+/** Default drivers for language/engine combinations */
+export const DEFAULT_DRIVERS: Record<string, string> = {
+  "typescript/sqlite": "better-sqlite3",
+  "typescript/duckdb": "node-api",
+  "java/sqlite": "jdbc",
+  "java/duckdb": "jdbc",
+  "java/postgres": "jdbc",
+};
 
-/** List of all generator names for validation */
-export const GENERATOR_NAMES = Object.keys(SUPPORTED_GENERATORS) as SupportedGenerator[];
+/** List of all full generator names */
+export const GENERATOR_NAMES = Object.keys(GENERATORS);
+
+/** List of short generator names (language/engine) */
+export const SHORT_GENERATOR_NAMES = Object.keys(DEFAULT_DRIVERS);
+
+/**
+ * Resolve a generator string to its full form.
+ * Accepts both short (language/engine) and full (language/engine/driver) formats.
+ */
+export function resolveGenerator(generator: string): string {
+  // Already a full generator
+  if (generator in GENERATORS) {
+    return generator;
+  }
+
+  // Check if it's a short form
+  if (generator in DEFAULT_DRIVERS) {
+    const driver = DEFAULT_DRIVERS[generator];
+    return `${generator}/${driver}`;
+  }
+
+  // Return as-is (validation will catch invalid generators)
+  return generator;
+}
+
+/**
+ * Parse a generator string and return its info.
+ * Throws if the generator is invalid.
+ */
+export function parseGenerator(generator: string): GeneratorInfo {
+  const fullGenerator = resolveGenerator(generator);
+  const info = GENERATORS[fullGenerator];
+
+  if (!info) {
+    throw new Error(`Invalid generator: ${generator}`);
+  }
+
+  return info;
+}
+
+/**
+ * Check if a generator string is valid (either short or full form).
+ */
+export function isValidGenerator(generator: string): boolean {
+  const fullGenerator = resolveGenerator(generator);
+  return fullGenerator in GENERATORS;
+}
+
+/**
+ * Get the database engine for a generator.
+ */
+export function getGeneratorEngine(generator: string): DbEngine {
+  return parseGenerator(generator).engine;
+}
+
+/**
+ * Get the language for a generator.
+ */
+export function getGeneratorLanguage(generator: string): Language {
+  return parseGenerator(generator).language;
+}
+
+/**
+ * Find similar generator names for typo suggestions.
+ */
+export function findSimilarGenerators(input: string): string[] {
+  const normalized = input.toLowerCase();
+  const allNames = [...GENERATOR_NAMES, ...SHORT_GENERATOR_NAMES];
+
+  return allNames.filter((name) => {
+    const nameLower = name.toLowerCase();
+    // Check for partial matches
+    if (nameLower.includes(normalized) || normalized.includes(nameLower)) {
+      return true;
+    }
+    // Check for common typos (wrong separator)
+    const variants = [
+      normalized.replace(/\//g, "-"),
+      normalized.replace(/-/g, "/"),
+      normalized.replace(/_/g, "/"),
+      normalized.replace(/_/g, "-"),
+    ];
+    return variants.some((v) => nameLower.includes(v) || v.includes(nameLower));
+  });
+}
+
+/**
+ * Format generators for CLI help output.
+ */
+export function formatGeneratorsHelp(): string {
+  const lines: string[] = [];
+
+  // Group by short form
+  for (const shortName of SHORT_GENERATOR_NAMES) {
+    const defaultDriver = DEFAULT_DRIVERS[shortName];
+    const fullName = `${shortName}/${defaultDriver}`;
+    const info = GENERATORS[fullName];
+
+    lines.push(`  ${shortName.padEnd(24)} ${info.description} (default)`);
+
+    // Show non-default drivers for this language/engine
+    for (const [generatorName, generatorInfo] of Object.entries(GENERATORS)) {
+      if (generatorName.startsWith(`${shortName}/`) && generatorName !== fullName) {
+        lines.push(`  ${generatorName.padEnd(24)} ${generatorInfo.description}`);
+      }
+    }
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Format a simple list of valid generators.
+ */
+export function formatGeneratorsList(): string {
+  return [...SHORT_GENERATOR_NAMES, ...GENERATOR_NAMES.filter((t) => !SHORT_GENERATOR_NAMES.some((s) => t === `${s}/${DEFAULT_DRIVERS[s]}`))].join(", ");
+}
 
 /** SQL annotation syntax reference */
 export const SQL_SYNTAX_REFERENCE = `
@@ -65,40 +232,3 @@ Example:
   -- TABLE users :appender
 `.trim();
 
-/**
- * Find similar generator names for typo suggestions
- */
-export function findSimilarGenerators(input: string): string[] {
-  const normalized = input.toLowerCase();
-  return GENERATOR_NAMES.filter((name) => {
-    const nameLower = name.toLowerCase();
-    // Check for partial matches
-    if (nameLower.includes(normalized) || normalized.includes(nameLower)) {
-      return true;
-    }
-    // Check for common typos (missing hyphen, wrong separator)
-    const variants = [
-      normalized.replace("/", "-"),
-      normalized.replace("-", "/"),
-      normalized.replace("_", "/"),
-      normalized.replace("_", "-"),
-    ];
-    return variants.some((v) => nameLower.includes(v) || v.includes(nameLower));
-  });
-}
-
-/**
- * Format generators for CLI help output
- */
-export function formatGeneratorsHelp(): string {
-  return Object.entries(SUPPORTED_GENERATORS)
-    .map(([name, info]) => `  ${name.padEnd(28)} ${info.description} (${info.compatibleEngines.join(", ")})`)
-    .join("\n");
-}
-
-/**
- * Format engines for CLI help output
- */
-export function formatEnginesHelp(): string {
-  return DB_ENGINES.map((e) => `  ${e}`).join("\n");
-}

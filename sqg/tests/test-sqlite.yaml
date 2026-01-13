@@ -3,15 +3,14 @@ version: 1
 name: test-sqlite
 
 sql:
-  - engine: sqlite
-    files:
-      - test-sqlite.sql   
+  - files:
+      - test-sqlite.sql
     gen:
-        - generator: typescript/better-sqlite3
+        - generator: typescript/sqlite
           output: /tmp/
-        - generator: java/jdbc
+        - generator: java/sqlite
           output: /tmp/
           config:
             package: com.test.db
-          
-        
+
+

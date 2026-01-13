@@ -13,21 +13,20 @@ Generate Java code for DuckDB using the high-performance Apache Arrow API. This 
 
 | Property | Value |
 |----------|-------|
-| Generator | `java/duckdb-arrow` |
-| Engine | `duckdb` |
+| Generator | `java/duckdb/arrow` |
 | Runtime | JVM (Java 17+) |
 | API Style | Synchronous with Arrow vectors |
 | Driver | DuckDB Java + Arrow |
 
 ## When to Use
 
-Choose `java/duckdb-arrow` over `java/jdbc` when:
+Choose `java/duckdb/arrow` over `java/duckdb` when:
 
 - Processing **large result sets** (millions of rows)
 - Need **maximum performance** for data processing
 - Integrating with **Arrow-based tools** (Pandas, Spark)
 
-Use `java/jdbc` instead when:
+Use `java/duckdb` instead when:
 - Working with small result sets
 
 ## Installation
@@ -80,11 +79,10 @@ version: 1
 name: analytics
 
 sql:
-  - engine: duckdb
-    files:
+  - files:
       - queries.sql
     gen:
-      - generator: java/duckdb-arrow
+      - generator: java/duckdb/arrow
         output: ./src/main/java/com/myapp/analytics/
         config:
           package: com.myapp.analytics

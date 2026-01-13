@@ -13,15 +13,14 @@ Generate synchronous TypeScript code for SQLite databases using the [better-sqli
 
 | Property | Value |
 |----------|-------|
-| Generator | `typescript/better-sqlite3` |
-| Engine | `sqlite` |
+| Generator | `typescript/sqlite` (or `typescript/sqlite/better-sqlite3`) |
 | Runtime | Node.js |
 | API Style | Synchronous |
 | Driver | better-sqlite3 |
 
 ## When to Use
 
-Choose `typescript/better-sqlite3` when:
+Choose `typescript/sqlite` when:
 
 - Building **Node.js applications** with SQLite
 - Need **synchronous API** for simpler code flow
@@ -48,11 +47,10 @@ version: 1
 name: my-app
 
 sql:
-  - engine: sqlite
-    files:
+  - files:
       - queries.sql
     gen:
-      - generator: typescript/better-sqlite3
+      - generator: typescript/sqlite
         output: ./src/generated/
 ```
 
@@ -63,7 +61,7 @@ sql:
 1. **Initialize a project**
 
    ```bash
-   sqg init --engine sqlite --generator typescript/better-sqlite3
+   sqg init --generator typescript/sqlite
    ```
 
 2. **Write your SQL**

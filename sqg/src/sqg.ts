@@ -2,11 +2,9 @@ import { exit } from "node:process";
 import { Command } from "commander";
 import consola, { LogLevels } from "consola";
 import {
-  formatEnginesHelp,
   formatGeneratorsHelp,
   SQL_SYNTAX_REFERENCE,
-  DB_ENGINES,
-  GENERATOR_NAMES,
+  SHORT_GENERATOR_NAMES,
 } from "./constants.js";
 import {
   processProject,
@@ -41,9 +39,8 @@ export interface CliOptions {
   verbose?: boolean;
   format?: OutputFormat;
   validate?: boolean;
-  engine?: string;
-  file?: string[];
   generator?: string;
+  file?: string[];
   output?: string;
   name?: string;
 }
@@ -55,9 +52,6 @@ const program = new Command()
 
 Generate type-safe database access code from annotated SQL files.
 
-Supported Engines:
-${formatEnginesHelp()}
-
 Supported Generators:
 ${formatGeneratorsHelp()}`,
   )
@@ -65,12 +59,11 @@ ${formatGeneratorsHelp()}`,
   .option("--verbose", "Enable debug logging (shows SQL execution details)")
   .option("--format <format>", "Output format: text (default) or json", "text")
   .option("--validate", "Validate configuration without generating code")
-  .option("--engine <engine>", `Database engine (${DB_ENGINES.join(", ")})`)
+  .option("--generator <generator>", `Code generation generator (${SHORT_GENERATOR_NAMES.join(", ")})`)
   .option("--file <file>", "SQL file path (can be repeated)", (val, prev: string[] = []) => {
     prev.push(val);
     return prev;
   })
-  .option("--generator <generator>", `Code generator (${GENERATOR_NAMES.join(", ")})`)
   .option("--output <path>", "Output file or directory path (optional, if omitted writes to stdout)")
   .option("--name <name>", "Project name (optional, defaults to 'generated')")
   .showHelpAfterError()
@@ -96,11 +89,11 @@ program
 
       if (useCliOptions) {
         // Validate required CLI options
-        if (!options.engine) {
+        if (!options.generator) {
           throw new SqgError(
-            "Missing required option: --engine",
+            "Missing required option: --generator",
             "CONFIG_VALIDATION_ERROR",
-            `Specify a database engine: ${DB_ENGINES.join(", ")}`,
+            `Specify a code generation generator: ${SHORT_GENERATOR_NAMES.join(", ")}`,
           );
         }
         if (!options.file || options.file.length === 0) {
@@ -110,19 +103,11 @@ program
             "Specify at least one SQL file with --file <path>",
           );
         }
-        if (!options.generator) {
-          throw new SqgError(
-            "Missing required option: --generator",
-            "CONFIG_VALIDATION_ERROR",
-            `Specify a code generator: ${GENERATOR_NAMES.join(", ")}`,
-          );
-        }
 
         // Build project from CLI options
         const project = buildProjectFromCliOptions({
-          engine: options.engine,
-          files: options.file,
           generator: options.generator,
+          files: options.file,
           output: options.output,
           name: options.name,
         });
@@ -221,8 +206,7 @@ program
 program
   .command("init")
   .description("Initialize a new SQG project with example configuration")
-  .option("-e, --engine <engine>", `Database engine (${DB_ENGINES.join(", ")})`, "sqlite")
-  .option("-g, --generator <generator>", `Code generator (${GENERATOR_NAMES.join(", ")})`)
+  .option("-t, --generator <generator>", `Code generation generator (${SHORT_GENERATOR_NAMES.join(", ")})`, "typescript/sqlite")
   .option("-o, --output <dir>", "Output directory for generated files", "./generated")
   .option("-f, --force", "Overwrite existing files")
   .action(async (options) => {

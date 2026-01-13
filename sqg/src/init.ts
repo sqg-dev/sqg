@@ -6,31 +6,27 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import consola from "consola";
 import {
-  DB_ENGINES,
-  SUPPORTED_GENERATORS,
-  type DbEngine,
-  type SupportedGenerator,
+  SHORT_GENERATOR_NAMES,
+  GENERATOR_NAMES,
   findSimilarGenerators,
+  isValidGenerator,
+  parseGenerator,
+  getGeneratorEngine,
+  type DbEngine,
 } from "./constants.js";
-import { InvalidEngineError, InvalidGeneratorError, SqgError } from "./errors.js";
+import { InvalidGeneratorError, SqgError } from "./errors.js";
 
 export interface InitOptions {
-  engine?: string;
   generator?: string;
   output?: string;
   force?: boolean;
 }
 
 /**
- * Get the default generator for an engine
+ * Get the default generator for a language preference
  */
-function getDefaultGenerator(engine: DbEngine): SupportedGenerator {
-  const defaults: Record<DbEngine, SupportedGenerator> = {
-    sqlite: "typescript/better-sqlite3",
-    duckdb: "typescript/duckdb",
-    postgres: "java/jdbc",
-  };
-  return defaults[engine];
+function getDefaultGenerator(): string {
+  return "typescript/sqlite";
 }
 
 /**
@@ -242,31 +238,9 @@ DELETE FROM posts WHERE id = \${id};
 /**
  * Generate sqg.yaml configuration
  */
-function getConfigYaml(engine: DbEngine, generator: SupportedGenerator, output: string): string {
-  const generatorInfo = SUPPORTED_GENERATORS[generator];
-  const config: Record<string, unknown> = {
-    version: 1,
-    name: "my-project",
-    sql: [
-      {
-        engine,
-        files: ["queries.sql"],
-        gen: [
-          {
-            generator,
-            output: output.endsWith("/") ? output : `${output}/`,
-          },
-        ],
-      },
-    ],
-  };
-
-  // Add package config for Java generators
-  if (generator.startsWith("java/")) {
-    (config.sql as any[])[0].gen[0].config = {
-      package: "generated",
-    };
-  }
+function getConfigYaml(generator: string, output: string): string {
+  const generatorInfo = parseGenerator(generator);
+  const isJava = generatorInfo.language === "java";
 
   // Convert to YAML manually for clean formatting
   return `# SQG Configuration
@@ -277,13 +251,12 @@ version: 1
 name: my-project
 
 sql:
-  - engine: ${engine}
-    files:
+  - files:
       - queries.sql
     gen:
       - generator: ${generator}
         output: ${output.endsWith("/") ? output : `${output}/`}${
-          generator.startsWith("java/")
+          isJava
             ? `
         config:
           package: generated`
@@ -296,42 +269,22 @@ sql:
  * Initialize a new SQG project
  */
 export async function initProject(options: InitOptions): Promise<void> {
-  const engine = (options.engine || "sqlite") as DbEngine;
+  const generator = options.generator || getDefaultGenerator();
   const output = options.output || "./generated";
 
-  // Validate engine
-  if (!DB_ENGINES.includes(engine as DbEngine)) {
-    throw new InvalidEngineError(engine, [...DB_ENGINES]);
+  // Validate generator
+  if (!isValidGenerator(generator)) {
+    const similar = findSimilarGenerators(generator);
+    const allGenerators = [...SHORT_GENERATOR_NAMES, ...GENERATOR_NAMES];
+    throw new InvalidGeneratorError(
+      generator,
+      allGenerators,
+      similar.length > 0 ? similar[0] : undefined,
+    );
   }
 
-  // Determine generator
-  let generator: SupportedGenerator;
-  if (options.generator) {
-    if (!(options.generator in SUPPORTED_GENERATORS)) {
-      const similar = findSimilarGenerators(options.generator);
-      throw new InvalidGeneratorError(
-        options.generator,
-        Object.keys(SUPPORTED_GENERATORS),
-        similar.length > 0 ? similar[0] : undefined,
-      );
-    }
-    generator = options.generator as SupportedGenerator;
-
-    // Validate generator/engine compatibility
-    const generatorInfo = SUPPORTED_GENERATORS[generator];
-    if (!(generatorInfo.compatibleEngines as readonly string[]).includes(engine)) {
-      throw new SqgError(
-        `Generator '${generator}' is not compatible with engine '${engine}'`,
-        "GENERATOR_ENGINE_MISMATCH",
-        `For '${engine}', use one of: ${Object.entries(SUPPORTED_GENERATORS)
-          .filter(([_, info]) => (info.compatibleEngines as readonly string[]).includes(engine))
-          .map(([name]) => name)
-          .join(", ")}`,
-      );
-    }
-  } else {
-    generator = getDefaultGenerator(engine);
-  }
+  const generatorInfo = parseGenerator(generator);
+  const engine = generatorInfo.engine;
 
   // Check if files already exist
   const configPath = "sqg.yaml";
@@ -361,7 +314,7 @@ export async function initProject(options: InitOptions): Promise<void> {
   }
 
   // Write configuration file
-  const configContent = getConfigYaml(engine, generator, output);
+  const configContent = getConfigYaml(generator, output);
   writeFileSync(configPath, configContent);
   consola.success(`Created ${configPath}`);
 
@@ -374,9 +327,9 @@ export async function initProject(options: InitOptions): Promise<void> {
   consola.box(`
 SQG project initialized!
 
-Engine:    ${engine}
 Generator: ${generator}
-Output:    ${output}
+Engine: ${engine}
+Output: ${output}
 
 Next steps:
   1. Edit queries.sql to add your SQL queries

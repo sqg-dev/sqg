@@ -3,13 +3,12 @@ version: 1
 name: test-pg
 
 sql:
-  - engine: postgres
-    files:
-      - test-pg.sql   
+  - files:
+      - test-pg.sql
     gen:
-        - generator: java/jdbc
+        - generator: java/postgres
           output: /tmp/
           config:
             package: com.test
-          
-        
+
+

@@ -15,8 +15,7 @@ Generate asynchronous TypeScript code for DuckDB databases using the
 
 | Property | Value |
 |----------|-------|
-| Generator | `typescript/duckdb` |
-| Engine | `duckdb` |
+| Generator | `typescript/duckdb` (or `typescript/duckdb/node-api`) |
 | Runtime | Node.js |
 | API Style | Asynchronous (async/await) |
 | Driver | @duckdb/node-api |
@@ -41,8 +40,7 @@ version: 1
 name: my-app
 
 sql:
-  - engine: duckdb
-    files:
+  - files:
       - queries.sql
     gen:
       - generator: typescript/duckdb
@@ -56,7 +54,7 @@ sql:
 1. **Initialize a project**
 
    ```bash
-   sqg init --engine duckdb
+   sqg init --generator typescript/duckdb
    ```
 
 2. **Write your SQL**

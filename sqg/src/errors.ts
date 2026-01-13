@@ -10,9 +10,7 @@ export type SqgErrorCode =
   | "CONFIG_PARSE_ERROR"
   | "CONFIG_VALIDATION_ERROR"
   | "FILE_NOT_FOUND"
-  | "INVALID_ENGINE"
   | "INVALID_GENERATOR"
-  | "GENERATOR_ENGINE_MISMATCH"
   | "DATABASE_ERROR"
   | "DATABASE_NOT_INITIALIZED"
   | "SQL_PARSE_ERROR"
@@ -30,7 +28,6 @@ export interface ErrorContext {
   line?: number;
   column?: number;
   query?: string;
-  engine?: string;
   generator?: string;
   sql?: string;
   [key: string]: unknown;
@@ -123,41 +120,11 @@ export class InvalidGeneratorError extends SqgError {
 }
 
 /**
- * Error for invalid engine names
- */
-export class InvalidEngineError extends SqgError {
-  constructor(engineName: string, validEngines: string[]) {
-    super(
-      `Invalid engine '${engineName}'. Valid engines: ${validEngines.join(", ")}`,
-      "INVALID_ENGINE",
-      `Choose from: ${validEngines.join(", ")}`,
-      { engine: engineName },
-    );
-    this.name = "InvalidEngineError";
-  }
-}
-
-/**
- * Error for generator/engine compatibility
- */
-export class GeneratorEngineMismatchError extends SqgError {
-  constructor(generator: string, engine: string, compatibleEngines: readonly string[]) {
-    super(
-      `Generator '${generator}' is not compatible with engine '${engine}'`,
-      "GENERATOR_ENGINE_MISMATCH",
-      `Generator '${generator}' works with: ${compatibleEngines.join(", ")}`,
-      { generator, engine },
-    );
-    this.name = "GeneratorEngineMismatchError";
-  }
-}
-
-/**
  * Error for database initialization/connection issues
  */
 export class DatabaseError extends SqgError {
   constructor(message: string, engine: string, suggestion?: string, context?: ErrorContext) {
-    super(message, "DATABASE_ERROR", suggestion, { engine, ...context });
+    super(message, "DATABASE_ERROR", suggestion, { ...context, engine });
     this.name = "DatabaseError";
   }
 }
@@ -247,3 +214,4 @@ export function formatErrorForOutput(err: unknown): {
     },
   };
 }
+

@@ -3,15 +3,14 @@ version: 1
 name: test-sources
 
 sql:
-  - engine: duckdb
-    files:
-      - test-sources.sql   
+  - files:
+      - test-sources.sql
     gen:
-        - generator: java/jdbc
+        - generator: java/duckdb
           output: /tmp/
           config:
             package: com.test
-          
+
 sources:
   - path: tests/users.sqlite
-        
+

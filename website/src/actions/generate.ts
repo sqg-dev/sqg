@@ -25,42 +25,38 @@ async function getHighlighterInstance() {
   return highlighterPromise;
 }
 
-// Map language to generator format and determine output filename
-function getGeneratorInfo(language: string, database: string) {
-  let generator: string;
+// Map language and database to target format and determine output filename
+function getTargetInfo(language: string, database: string) {
+  let target: string;
   let sqlFileName: string;
   let outputFileName: string;
 
   if (language === "java-jdbc") {
-    generator = "java/jdbc";
+    target = `java/${database}`;
     sqlFileName = "query";
     outputFileName = "Query.java";
   } else if (language === "java-arrow") {
     if (database !== "duckdb") {
-      throw new Error("Java Arrow generator only works with DuckDB");
+      throw new Error("Java Arrow target only works with DuckDB");
     }
-    generator = "java/duckdb-arrow";
+    target = "java/duckdb/arrow";
     sqlFileName = "query";
     outputFileName = "Query.java";
   } else {
     // typescript
-    if (database === "sqlite") {
-      generator = "typescript/better-sqlite3";
-    } else {
-      generator = "typescript/duckdb";
-    }
+    target = `typescript/${database}`;
     sqlFileName = "query";
     outputFileName = "query.ts";
   }
 
-  return { generator, sqlFileName, outputFileName };
+  return { target, sqlFileName, outputFileName };
 }
 
 async function generateWithDocker(
   sql: string,
   database: string,
   language: string,
-  generator: string,
+  target: string,
   sqlFileName: string,
   outputFileName: string,
 ) {
@@ -80,14 +76,14 @@ async function generateWithDocker(
     const sqlFile = join(inputDir, `${sqlFileName}.sql`);
     writeFileSync(sqlFile, sql, "utf-8");
 
-    // Create project.yaml
+    // Create project.yaml with new generator format
     const genConfig: any = {
-      generator,
+      generator: target,
       output: "/output/",
     };
 
-    // Add package config for Java generators
-    if (generator.startsWith("java/")) {
+    // Add package config for Java targets
+    if (target.startsWith("java/")) {
       genConfig.config = {
         package: "sqg.generated",
       };
@@ -98,7 +94,6 @@ async function generateWithDocker(
       name: "generated",
       sql: [
         {
-          engine: database,
           files: [`${sqlFileName}.sql`],
           gen: [genConfig],
         },
@@ -175,7 +170,7 @@ async function generateWithDocker(
       return {
         code: generatedCode,
         highlightedCode,
-        generator,
+        target,
         database,
       };
     } finally {
@@ -211,13 +206,13 @@ export const server = {
       language: z.enum(["java-jdbc", "java-arrow", "typescript"]),
     }),
     handler: async ({ sql, database, language }) => {
-      const { generator, sqlFileName, outputFileName } = getGeneratorInfo(language, database);
+      const { target, sqlFileName, outputFileName } = getTargetInfo(language, database);
 
       return await cachified({
         key: `generate-${sql}-${database}-${language}`,
         ttl: 60 * 60 * 24 * 1000, // 24 hours
         getFreshValue: async () =>
-          await generateWithDocker(sql, database, language, generator, sqlFileName, outputFileName),
+          await generateWithDocker(sql, database, language, target, sqlFileName, outputFileName),
       });
     },
   }),

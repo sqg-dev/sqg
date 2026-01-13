@@ -2,16 +2,15 @@ version: 1
 
 name: test-duckdb
 
-sql:     
-  - engine: duckdb
-    files:
-      - test-duckdb.sql   
+sql:
+  - files:
+      - test-duckdb.sql
     gen:
-        - generator: java/jdbc
+        - generator: java/duckdb
           output: ../java/src/main/java/sqg/generated/
           config:
             package: sqg.generated
         - generator: typescript/duckdb
           output: ./__generated__/
-        
-        
+
+
