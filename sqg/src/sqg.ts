@@ -8,7 +8,14 @@ import {
   DB_ENGINES,
   GENERATOR_NAMES,
 } from "./constants.js";
-import { processProject, validateProject } from "./sqltool.js";
+import {
+  processProject,
+  processProjectFromConfig,
+  validateProject,
+  validateProjectFromConfig,
+  buildProjectFromCliOptions,
+  type Project,
+} from "./sqltool.js";
 import { initProject } from "./init.js";
 import { SqgError, formatErrorForOutput } from "./errors.js";
 
@@ -34,6 +41,11 @@ export interface CliOptions {
   verbose?: boolean;
   format?: OutputFormat;
   validate?: boolean;
+  engine?: string;
+  file?: string[];
+  generator?: string;
+  output?: string;
+  name?: string;
 }
 
 const program = new Command()
@@ -53,12 +65,20 @@ ${formatGeneratorsHelp()}`,
   .option("--verbose", "Enable debug logging (shows SQL execution details)")
   .option("--format <format>", "Output format: text (default) or json", "text")
   .option("--validate", "Validate configuration without generating code")
+  .option("--engine <engine>", `Database engine (${DB_ENGINES.join(", ")})`)
+  .option("--file <file>", "SQL file path (can be repeated)", (val, prev: string[] = []) => {
+    prev.push(val);
+    return prev;
+  })
+  .option("--generator <generator>", `Code generator (${GENERATOR_NAMES.join(", ")})`)
+  .option("--output <path>", "Output file or directory path (optional, if omitted writes to stdout)")
+  .option("--name <name>", "Project name (optional, defaults to 'generated')")
   .showHelpAfterError()
   .showSuggestionAfterError();
 
 // Main generate command (default)
 program
-  .argument("<project>", "Path to the project YAML config (sqg.yaml)")
+  .argument("[project]", "Path to the project YAML config (sqg.yaml) or omit to use CLI options")
   .hook("preAction", (thisCommand) => {
     const opts = thisCommand.opts<CliOptions>();
     if (opts.verbose) {
@@ -69,39 +89,113 @@ program
       consola.level = LogLevels.silent;
     }
   })
-  .action(async (projectPath: string, options: CliOptions) => {
+  .action(async (projectPath: string | undefined, options: CliOptions) => {
     try {
-      if (options.validate) {
-        const result = await validateProject(projectPath);
-        if (options.format === "json") {
-          console.log(JSON.stringify(result, null, 2));
-        } else {
-          if (result.valid) {
-            consola.success("Configuration is valid");
-            consola.info(`Project: ${result.project?.name}`);
-            consola.info(`SQL files: ${result.sqlFiles?.join(", ")}`);
-            consola.info(`Generators: ${result.generators?.join(", ")}`);
+      // Determine if using YAML config or CLI options
+      const useCliOptions = !projectPath;
+
+      if (useCliOptions) {
+        // Validate required CLI options
+        if (!options.engine) {
+          throw new SqgError(
+            "Missing required option: --engine",
+            "CONFIG_VALIDATION_ERROR",
+            `Specify a database engine: ${DB_ENGINES.join(", ")}`,
+          );
+        }
+        if (!options.file || options.file.length === 0) {
+          throw new SqgError(
+            "Missing required option: --file",
+            "CONFIG_VALIDATION_ERROR",
+            "Specify at least one SQL file with --file <path>",
+          );
+        }
+        if (!options.generator) {
+          throw new SqgError(
+            "Missing required option: --generator",
+            "CONFIG_VALIDATION_ERROR",
+            `Specify a code generator: ${GENERATOR_NAMES.join(", ")}`,
+          );
+        }
+
+        // Build project from CLI options
+        const project = buildProjectFromCliOptions({
+          engine: options.engine,
+          files: options.file,
+          generator: options.generator,
+          output: options.output,
+          name: options.name,
+        });
+        const projectDir = process.cwd();
+        const writeToStdout = !options.output;
+
+        if (options.validate) {
+          const result = await validateProjectFromConfig(project, projectDir);
+          if (options.format === "json") {
+            console.log(JSON.stringify(result, null, 2));
           } else {
-            consola.error("Validation failed");
-            for (const error of result.errors || []) {
-              consola.error(`  ${error.message}`);
-              if (error.suggestion) {
-                consola.info(`    Suggestion: ${error.suggestion}`);
+            if (result.valid) {
+              consola.success("Configuration is valid");
+              consola.info(`Project: ${result.project?.name}`);
+              consola.info(`SQL files: ${result.sqlFiles?.join(", ")}`);
+              consola.info(`Generators: ${result.generators?.join(", ")}`);
+            } else {
+              consola.error("Validation failed");
+              for (const error of result.errors || []) {
+                consola.error(`  ${error.message}`);
+                if (error.suggestion) {
+                  consola.info(`    Suggestion: ${error.suggestion}`);
+                }
               }
             }
           }
+          exit(result.valid ? 0 : 1);
         }
-        exit(result.valid ? 0 : 1);
-      }
 
-      const files = await processProject(projectPath);
-      if (options.format === "json") {
-        console.log(
-          JSON.stringify({
-            status: "success",
-            generatedFiles: files,
-          }),
-        );
+        const files = await processProjectFromConfig(project, projectDir, writeToStdout);
+        // When writing to stdout, don't output JSON status - the generated code is the output
+        if (options.format === "json" && !writeToStdout) {
+          console.log(
+            JSON.stringify({
+              status: "success",
+              generatedFiles: files,
+            }),
+          );
+        }
+      } else {
+        // Use YAML config file
+        if (options.validate) {
+          const result = await validateProject(projectPath);
+          if (options.format === "json") {
+            console.log(JSON.stringify(result, null, 2));
+          } else {
+            if (result.valid) {
+              consola.success("Configuration is valid");
+              consola.info(`Project: ${result.project?.name}`);
+              consola.info(`SQL files: ${result.sqlFiles?.join(", ")}`);
+              consola.info(`Generators: ${result.generators?.join(", ")}`);
+            } else {
+              consola.error("Validation failed");
+              for (const error of result.errors || []) {
+                consola.error(`  ${error.message}`);
+                if (error.suggestion) {
+                  consola.info(`    Suggestion: ${error.suggestion}`);
+                }
+              }
+            }
+          }
+          exit(result.valid ? 0 : 1);
+        }
+
+        const files = await processProject(projectPath);
+        if (options.format === "json") {
+          console.log(
+            JSON.stringify({
+              status: "success",
+              generatedFiles: files,
+            }),
+          );
+        }
       }
     } catch (err) {
       if (options.format === "json") {

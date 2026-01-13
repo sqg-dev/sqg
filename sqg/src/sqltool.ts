@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, extname, join, resolve } from "node:path";
-import consola from "consola";
+import consola, { LogLevels } from "consola";
 import Handlebars from "handlebars";
 import YAML from "yaml";
 import { z } from "zod";
@@ -356,7 +356,7 @@ const ProjectSchema = z.object({
     .describe("External source files to include as variables"),
 });
 
-type Project = z.infer<typeof ProjectSchema>;
+export type Project = z.infer<typeof ProjectSchema>;
 type Source = NonNullable<z.infer<typeof ProjectSchema.shape.sources>>[number];
 
 export class ExtraVariable {
@@ -366,15 +366,81 @@ export class ExtraVariable {
   ) {}
 }
 
-export function createExtraVariables(sources: Source[]): ExtraVariable[] {
+export function createExtraVariables(sources: Source[], suppressLogging = false): ExtraVariable[] {
   return sources.map((source) => {
     const path = source.path;
     const resolvedPath = path.replace("$HOME", homedir());
     const name = source.name ?? basename(path, extname(resolvedPath));
     const varName = `sources_${name.replace(/\s+/g, "_")}`;
-    consola.info("Extra variable:", varName, resolvedPath);
+    if (!suppressLogging) {
+      consola.info("Extra variable:", varName, resolvedPath);
+    }
     return new ExtraVariable(varName, `'${resolvedPath}'`);
   });
+}
+
+/**
+ * Build a Project object from CLI options
+ */
+export interface CliProjectOptions {
+  engine: string;
+  files: string[];
+  generator: string;
+  output?: string;
+  name?: string;
+}
+
+export function buildProjectFromCliOptions(options: CliProjectOptions): Project {
+  // Validate engine
+  if (!DB_ENGINES.includes(options.engine as DbEngine)) {
+    throw new InvalidEngineError(options.engine, [...DB_ENGINES]);
+  }
+
+  // Validate generator
+  if (!GENERATOR_NAMES.includes(options.generator as SupportedGenerator)) {
+    const similar = findSimilarGenerators(options.generator);
+    throw new InvalidGeneratorError(
+      options.generator,
+      [...GENERATOR_NAMES],
+      similar.length > 0 ? similar[0] : undefined,
+    );
+  }
+
+  // Validate generator compatibility with engine
+  const generatorInfo = SUPPORTED_GENERATORS[options.generator as SupportedGenerator];
+  if (!(generatorInfo.compatibleEngines as readonly string[]).includes(options.engine)) {
+    throw new GeneratorEngineMismatchError(
+      options.generator,
+      options.engine,
+      generatorInfo.compatibleEngines,
+    );
+  }
+
+  const genConfig: Project["sql"][0]["gen"][0] = {
+    generator: options.generator as SupportedGenerator,
+    output: options.output || ".", // Placeholder for stdout - not used when writeToStdout is true
+  };
+
+  // Add config for Java generators (package name)
+  if (options.generator.startsWith("java/")) {
+    genConfig.config = {
+      package: "generated",
+    };
+  }
+
+  const project: Project = {
+    version: 1,
+    name: options.name || "generated",
+    sql: [
+      {
+        engine: options.engine as DbEngine,
+        files: options.files,
+        gen: [genConfig],
+      },
+    ],
+  };
+
+  return project;
 }
 
 /**
@@ -532,12 +598,24 @@ export async function writeGeneratedFile(
   queries: SQLQuery[],
   tables: TableInfo[],
   engine: DbEngine,
-) {
+  writeToStdout = false,
+): Promise<string | null> {
   await generator.beforeGenerate(projectDir, gen, queries, tables);
   const templateDir = dirname(new URL(import.meta.url).pathname);
   const templatePath = join(templateDir, gen.template ?? generator.template);
   const name = gen.name ?? basename(file, extname(file));
   const sourceFile = generateSourceFile(name, queries, tables, templatePath, generator, engine, gen.config);
+
+  if (writeToStdout) {
+    // Write directly to stdout for better control
+    process.stdout.write(sourceFile);
+    if (!sourceFile.endsWith("\n")) {
+      process.stdout.write("\n");
+    }
+    // Skip afterGenerate for stdout - it's only for file formatting
+    return null;
+  }
+
   const outputPath = getOutputPath(projectDir, name, gen, generator);
   writeFileSync(outputPath, sourceFile);
   consola.success(`Generated ${outputPath}`);
@@ -565,36 +643,14 @@ export interface ValidationResult {
 }
 
 /**
- * Validate project configuration without executing queries
+ * Validate project configuration from a Project object without executing queries
  * Use this for pre-flight checks before generation
  */
-export async function validateProject(projectPath: string): Promise<ValidationResult> {
+export async function validateProjectFromConfig(
+  project: Project,
+  projectDir: string,
+): Promise<ValidationResult> {
   const errors: ValidationResult["errors"] = [];
-  const projectDir = resolve(dirname(projectPath));
-
-  // Parse and validate config
-  let project: Project;
-  try {
-    project = parseProjectConfig(projectPath);
-  } catch (e) {
-    if (e instanceof SqgError) {
-      return {
-        valid: false,
-        errors: [
-          {
-            code: e.code,
-            message: e.message,
-            suggestion: e.suggestion,
-            context: e.context,
-          },
-        ],
-      };
-    }
-    return {
-      valid: false,
-      errors: [{ code: "UNKNOWN_ERROR", message: String(e) }],
-    };
-  }
 
   const sqlFiles: string[] = [];
   const generators: string[] = [];
@@ -648,86 +704,151 @@ export async function validateProject(projectPath: string): Promise<ValidationRe
 }
 
 /**
- * Process a project configuration and generate code
+ * Validate project configuration from a YAML file without executing queries
+ * Use this for pre-flight checks before generation
+ */
+export async function validateProject(projectPath: string): Promise<ValidationResult> {
+  const projectDir = resolve(dirname(projectPath));
+
+  // Parse and validate config
+  let project: Project;
+  try {
+    project = parseProjectConfig(projectPath);
+  } catch (e) {
+    if (e instanceof SqgError) {
+      return {
+        valid: false,
+        errors: [
+          {
+            code: e.code,
+            message: e.message,
+            suggestion: e.suggestion,
+            context: e.context,
+          },
+        ],
+      };
+    }
+    return {
+      valid: false,
+      errors: [{ code: "UNKNOWN_ERROR", message: String(e) }],
+    };
+  }
+
+  return await validateProjectFromConfig(project, projectDir);
+}
+
+/**
+ * Process a project configuration and generate code from a Project object
+ */
+export async function processProjectFromConfig(
+  project: Project,
+  projectDir: string,
+  writeToStdout = false,
+): Promise<string[]> {
+  // Suppress all logging when writing to stdout
+  const originalLevel = consola.level;
+  if (writeToStdout) {
+    consola.level = LogLevels.silent;
+  }
+
+  try {
+    const extraVariables = createExtraVariables(project.sources ?? [], writeToStdout);
+
+    const files = [] as string[];
+
+    for (const sql of project.sql) {
+      // Pre-validate generator compatibility before any work
+      for (const gen of sql.gen) {
+        const generatorInfo = SUPPORTED_GENERATORS[gen.generator as SupportedGenerator];
+        if (!(generatorInfo.compatibleEngines as readonly string[]).includes(sql.engine)) {
+          throw new GeneratorEngineMismatchError(
+            gen.generator,
+            sql.engine,
+            generatorInfo.compatibleEngines,
+          );
+        }
+      }
+
+      for (const sqlFile of sql.files) {
+        const fullPath = join(projectDir, sqlFile);
+
+        // Check SQL file exists
+        if (!existsSync(fullPath)) {
+          throw new FileNotFoundError(fullPath, projectDir);
+        }
+
+        let queries: SQLQuery[];
+        let tables: TableInfo[];
+        try {
+          const parseResult = parseSQLQueries(fullPath, extraVariables);
+          queries = parseResult.queries;
+          tables = parseResult.tables;
+        } catch (e) {
+          if (e instanceof SqgError) {
+            throw e;
+          }
+          throw SqgError.inFile(
+            `Failed to parse SQL file: ${(e as Error).message}`,
+            "SQL_PARSE_ERROR",
+            sqlFile,
+            { suggestion: "Check SQL syntax and annotation format" },
+          );
+        }
+
+        try {
+          const dbEngine = getDatabaseEngine(sql.engine);
+          await dbEngine.initializeDatabase(queries);
+          await dbEngine.executeQueries(queries);
+          // Introspect table schemas for appenders
+          if (tables.length > 0) {
+            await dbEngine.introspectTables(tables);
+          }
+          validateQueries(queries);
+          await dbEngine.close();
+        } catch (e) {
+          if (e instanceof SqgError) {
+            throw e;
+          }
+          throw new SqgError(
+            `Database error processing ${sqlFile}: ${(e as Error).message}`,
+            "DATABASE_ERROR",
+            `Check that the SQL is valid for engine '${sql.engine}'`,
+            { file: sqlFile, engine: sql.engine },
+          );
+        }
+
+        for (const gen of sql.gen) {
+          const generator = getGenerator(gen.generator);
+          const outputPath = await writeGeneratedFile(
+            projectDir,
+            gen,
+            generator,
+            sqlFile,
+            queries,
+            tables,
+            sql.engine,
+            writeToStdout,
+          );
+          if (outputPath !== null) {
+            files.push(outputPath);
+          }
+        }
+      }
+    }
+    return files;
+  } finally {
+    // Restore original logging level
+    if (writeToStdout) {
+      consola.level = originalLevel;
+    }
+  }
+}
+
+/**
+ * Process a project configuration and generate code from a YAML file
  */
 export async function processProject(projectPath: string) {
   const projectDir = resolve(dirname(projectPath));
   const project = parseProjectConfig(projectPath);
-
-  const extraVariables = createExtraVariables(project.sources ?? []);
-  if (extraVariables.length > 0) {
-    consola.info("Extra variables:", extraVariables);
-  }
-
-  const files = [] as string[];
-
-  for (const sql of project.sql) {
-    // Pre-validate generator compatibility before any work
-    for (const gen of sql.gen) {
-      const generatorInfo = SUPPORTED_GENERATORS[gen.generator as SupportedGenerator];
-      if (!(generatorInfo.compatibleEngines as readonly string[]).includes(sql.engine)) {
-        throw new GeneratorEngineMismatchError(
-          gen.generator,
-          sql.engine,
-          generatorInfo.compatibleEngines,
-        );
-      }
-    }
-
-    for (const sqlFile of sql.files) {
-      const fullPath = join(projectDir, sqlFile);
-
-      // Check SQL file exists
-      if (!existsSync(fullPath)) {
-        throw new FileNotFoundError(fullPath, projectDir);
-      }
-
-      let queries: SQLQuery[];
-      let tables: TableInfo[];
-      try {
-        const parseResult = parseSQLQueries(fullPath, extraVariables);
-        queries = parseResult.queries;
-        tables = parseResult.tables;
-      } catch (e) {
-        if (e instanceof SqgError) {
-          throw e;
-        }
-        throw SqgError.inFile(
-          `Failed to parse SQL file: ${(e as Error).message}`,
-          "SQL_PARSE_ERROR",
-          sqlFile,
-          { suggestion: "Check SQL syntax and annotation format" },
-        );
-      }
-
-      try {
-        const dbEngine = getDatabaseEngine(sql.engine);
-        await dbEngine.initializeDatabase(queries);
-        await dbEngine.executeQueries(queries);
-        // Introspect table schemas for appenders
-        if (tables.length > 0) {
-          await dbEngine.introspectTables(tables);
-        }
-        validateQueries(queries);
-        await dbEngine.close();
-      } catch (e) {
-        if (e instanceof SqgError) {
-          throw e;
-        }
-        throw new SqgError(
-          `Database error processing ${sqlFile}: ${(e as Error).message}`,
-          "DATABASE_ERROR",
-          `Check that the SQL is valid for engine '${sql.engine}'`,
-          { file: sqlFile, engine: sql.engine },
-        );
-      }
-
-      for (const gen of sql.gen) {
-        const generator = getGenerator(gen.generator);
-        const outputPath = await writeGeneratedFile(projectDir, gen, generator, sqlFile, queries, tables, sql.engine);
-        files.push(outputPath);
-      }
-    }
-  }
-  return files;
+  return await processProjectFromConfig(project, projectDir, false);
 }
