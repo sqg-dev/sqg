@@ -216,62 +216,63 @@ function downloadGeneratedCode() {
 }
 </script>
 
-<div class="flex h-screen w-screen">
-  <div class="flex flex-1 flex-col border-r border-gray-200">
-    <div class="px-4 py-4 bg-gray-50 border-b border-gray-200 h-20 flex items-center">
-      <div class="flex items-center justify-between w-full">
-        <div class="flex items-center gap-4">
-          <a
-            href="/"
-            class="text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center gap-1.5 transition-colors px-2 py-1 rounded hover:bg-gray-100"
-            title="SQG documentation"
+<div class="flex flex-col min-h-screen w-screen">
+<div class="flex flex-col md:flex-row flex-1">
+  <div class="flex flex-1 flex-col border-b md:border-b-0 md:border-r border-gray-200 min-h-[50vh] md:min-h-0">
+    <div class="px-3 py-3 md:px-4 md:py-4 bg-gray-50 border-b border-gray-200 flex flex-col gap-3 md:h-28">
+      <div class="flex items-center justify-between">
+        <a
+          href="/"
+          class="text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center gap-1.5 transition-colors px-2 py-1 rounded hover:bg-gray-100"
+          title="SQG documentation"
+        >
+          <h2 class="m-0 text-base md:text-xl font-semibold text-gray-900">
+            <span class="hidden sm:inline">SQG - Compile SQL to Type-Safe Code</span>
+            <span class="sm:hidden">SQG Playground</span>
+          </h2>
+        </a>
+        <button
+          on:click={generateCode}
+          disabled={isGenerating}
+          class="px-3 py-1.5 md:px-4 md:py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isGenerating ? 'Generating...' : 'Generate'}
+        </button>
+      </div>
+      <div class="flex flex-wrap items-center gap-3 md:gap-4">
+        <div class="flex items-center gap-2">
+          <label for="database-select" class="text-sm font-medium text-gray-700">Database:</label>
+          <select
+            id="database-select"
+            bind:value={selectedDatabase}
+            on:change={handleDatabaseChange}
+            class="px-2 py-1 md:px-3 md:py-1.5 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
-          <h2 class="m-0 text-xl font-semibold text-gray-900">SQG - Compile SQL to Type-Safe Code</h2>
-          </a>
-          
+            <option value="sqlite">SQLite</option>
+            <option value="duckdb">DuckDB</option>
+          </select>
         </div>
-        <div class="flex items-center gap-4">
-          <div class="flex items-center gap-2">
-            <label for="database-select" class="text-sm font-medium text-gray-700">Database:</label>
-            <select
-              id="database-select"
-              bind:value={selectedDatabase}
-              on:change={handleDatabaseChange}
-              class="px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="sqlite">SQLite</option>
-              <option value="duckdb">DuckDB</option>
-            </select>
-          </div>
-          <div class="flex items-center gap-2">
-            <label for="language-select" class="text-sm font-medium text-gray-700">Language:</label>
-            <select
-              id="language-select"
-              bind:value={selectedLanguage}
-              class="px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="java-jdbc">Java JDBC</option>
-              <option value="java-arrow">Java Arrow</option>
-              <option value="typescript">TypeScript</option>
-            </select>
-          </div>
-          <button
-            on:click={generateCode}
-            disabled={isGenerating}
-            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        <div class="flex items-center gap-2">
+          <label for="language-select" class="text-sm font-medium text-gray-700">Language:</label>
+          <select
+            id="language-select"
+            bind:value={selectedLanguage}
+            class="px-2 py-1 md:px-3 md:py-1.5 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
-            {isGenerating ? 'Generating...' : 'Generate'}
-          </button>
+            <option value="java-jdbc">Java JDBC</option>
+            <option value="java-arrow">Java Arrow</option>
+            <option value="typescript">TypeScript</option>
+          </select>
         </div>
       </div>
     </div>
-    <div class="flex-1 overflow-auto bg-white">
+    <div class="flex-1 overflow-auto bg-white min-h-[200px]">
       <Editor value={sqlCode} onUpdate={handleCodeUpdate} />
     </div>
-    <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-end">
+    <div class="px-3 py-2 md:px-4 md:py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-end">
       <button
         on:click={downloadSQL}
-        class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center gap-1.5"
+        class="px-2 py-1 md:px-3 md:py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center gap-1.5"
         title="Download SQL file"
       >
         <svg
@@ -289,44 +290,45 @@ function downloadGeneratedCode() {
           <polyline points="7 10 12 15 17 10" />
           <line x1="12" y1="15" x2="12" y2="3" />
         </svg>
-        <span>Download SQL</span>
+        <span class="hidden sm:inline">Download SQL</span>
+        <span class="sm:hidden">SQL</span>
       </button>
     </div>
   </div>
 
-  <div class="flex flex-1 flex-col border-l border-gray-200">
-    <div class="px-4 py-4 bg-gray-50 border-b border-gray-200 h-20 flex items-center">
-      <h2 class="m-0 text-xl font-semibold text-gray-900">Generated Code</h2>
+  <div class="flex flex-1 flex-col border-t md:border-t-0 md:border-l border-gray-200 min-h-[50vh] md:min-h-0">
+    <div class="px-3 py-3 md:px-4 md:py-4 bg-gray-50 border-b border-gray-200 flex items-center md:h-28">
+      <h2 class="m-0 text-base md:text-xl font-semibold text-gray-900">Generated Code</h2>
     </div>
-    <div class="flex-1 overflow-auto bg-white">
+    <div class="flex-1 overflow-auto bg-white min-h-[200px]">
       {#if isGenerating}
         <div class="py-8 text-center text-gray-500">Generating...</div>
       {:else if error}
         <div
-          class="p-8 text-red-600 bg-red-50 m-4 rounded-lg whitespace-pre-wrap font-mono text-sm"
+          class="p-4 md:p-8 text-red-600 bg-red-50 m-2 md:m-4 rounded-lg whitespace-pre-wrap font-mono text-xs md:text-sm overflow-x-auto"
         >
           {error}
         </div>
       {:else if generatedCode}
         {#if highlightedCode}
-          <div class="m-0 p-4 h-full overflow-x-auto">
+          <div class="m-0 p-0 h-full overflow-x-auto text-xs md:text-sm">
             {@html highlightedCode}
           </div>
         {:else}
           <pre
-            class="m-0 p-4 bg-slate-800 text-slate-200 font-mono text-sm leading-relaxed overflow-x-auto h-full"><code
+            class="m-0 p-0 bg-slate-800 text-slate-200 font-mono text-xs md:text-sm leading-relaxed overflow-x-auto h-full"><code
               >{generatedCode}</code
             ></pre>
         {/if}
       {:else}
-        <div class="py-8 text-center text-gray-500">Generated code will appear here</div>
+        <div class="py-8 text-center text-gray-500 text-sm">Generated code will appear here</div>
       {/if}
     </div>
     {#if generatedCode}
-      <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-end">
+      <div class="px-3 py-2 md:px-4 md:py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-end">
         <button
           on:click={downloadGeneratedCode}
-          class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center gap-1.5"
+          class="px-2 py-1 md:px-3 md:py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center gap-1.5"
           title="Download generated code file"
         >
           <svg
@@ -344,9 +346,20 @@ function downloadGeneratedCode() {
             <polyline points="7 10 12 15 17 10" />
             <line x1="12" y1="15" x2="12" y2="3" />
           </svg>
-          <span>Download Code</span>
+          <span class="hidden sm:inline">Download Code</span>
+          <span class="sm:hidden">Code</span>
         </button>
       </div>
     {/if}
   </div>
+</div>
+
+<footer class="px-4 py-3 bg-gray-100 border-t border-gray-200 text-center text-sm text-gray-600">
+  <a
+    href="/"
+    class="text-blue-600 hover:text-blue-800 hover:underline"
+  >
+    Back to SQG Documentation
+  </a>
+</footer>
 </div>
