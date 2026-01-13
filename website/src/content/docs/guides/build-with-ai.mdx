@@ -1,0 +1,187 @@
+---
+title: Build with AI
+description: Use SQG with Claude and Cursor to generate type-safe database code
+---
+
+import { Steps, Card, CardGrid } from '@astrojs/starlight/components';
+
+SQG includes a built-in [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that lets AI assistants like Claude Code, Claude Desktop, and Cursor generate type-safe database code directly from SQL queries. This guide shows you how to set it up and use it.
+
+## What is MCP?
+
+The Model Context Protocol is a standard that allows AI assistants to interact with external tools and services. SQG's MCP server provides two tools:
+
+- **`generate_code`**: Generate type-safe database access code from SQL queries with SQG annotations
+- **`validate_sql`**: Validate SQL queries with SQG annotations without generating code
+
+With MCP enabled, you can ask your AI assistant to:
+- Generate TypeScript or Java code from SQL queries
+- Validate SQL syntax and annotations
+- Help debug SQL query issues
+- Create complete database access layers
+
+
+## Prerequisites
+
+Before setting up MCP, ensure you have:
+
+- **SQG installed** - See the [Installation section](/guides/getting-started/#installation) in the Getting Started guide for detailed instructions.
+- **An MCP-compatible AI assistant** - Claude Code, Claude Desktop, Cursor IDE, or similar
+
+## Setup
+
+Choose your AI assistant below and follow the configuration steps.
+
+### Configure Claude Code
+
+[Claude Code](https://docs.anthropic.com/en/docs/claude-code) is Anthropic's CLI tool for AI-assisted development.
+
+<Steps>
+
+1. **Add SQG MCP Server**
+
+   Run this command to add SQG as an MCP server:
+
+   ```bash
+   claude mcp add sqg -- sqg mcp
+   ```
+
+   Or for a project-local installation:
+
+   ```bash
+   claude mcp add sqg -- node ./node_modules/@sqg/sqg/dist/sqg.mjs mcp
+   ```
+
+2. **Verify Connection**
+
+   Start Claude Code and verify the server is available:
+
+   ```bash
+   claude
+   ```
+
+   Then type `/mcp` to see connected servers. You should see `sqg` listed.
+
+3. **Test It**
+
+   Ask Claude Code to generate some code:
+
+   > "Use the SQG generate_code tool to create TypeScript code for a users table with id, name, and email columns. Use typescript/sqlite."
+
+</Steps>
+
+### Configure Claude Desktop
+
+<Steps>
+
+1. **Open Claude Desktop Settings**
+
+   - **macOS**: Click the Claude menu → Settings → Developer → Edit Config
+   - **Windows**: Click Settings → Developer → Edit Config
+   - **Linux**: Click Settings → Developer → Edit Config
+
+2. **Add SQG MCP Server**
+
+   Edit the configuration file and add SQG to the `mcpServers` section:
+
+   ```json
+   {
+     "mcpServers": {
+       "sqg": {
+         "command": "sqg",
+         "args": ["mcp"]
+       }
+     }
+   }
+   ```
+
+   If `sqg` is not in your PATH, use the full path:
+
+   ```json
+   {
+     "mcpServers": {
+       "sqg": {
+         "command": "node",
+         "args": ["/path/to/sqg/dist/sqg.mjs", "mcp"]
+       }
+     }
+   }
+   ```
+
+   To find the path to SQG:
+
+   ```bash
+   # If installed globally with pnpm
+   which sqg
+   # Or check pnpm global bin
+   pnpm config get global-bin-dir
+   ```
+
+3. **Restart Claude Desktop**
+
+   Close and reopen Claude Desktop to load the new MCP server configuration.
+
+4. **Verify Connection**
+
+   In Claude Desktop, you should see SQG listed as an available tool. You can test it by asking:
+
+   > "What tools are available from the SQG MCP server?"
+
+</Steps>
+
+### Configure Cursor IDE
+
+<Steps>
+
+1. **Open Cursor Settings**
+
+   - Go to **Settings** → **Features** → **Model Context Protocol**
+   - Or open the MCP configuration file directly
+
+2. **Add SQG Server**
+
+   Add SQG to your MCP configuration:
+
+   ```json
+   {
+     "mcpServers": {
+       "sqg": {
+         "command": "sqg",
+         "args": ["mcp"]
+       }
+     }
+   }
+   ```
+
+   For project-local installations, use the full path:
+
+   ```json
+   {
+     "mcpServers": {
+       "sqg": {
+         "command": "node",
+         "args": ["./node_modules/@sqg/sqg/dist/sqg.mjs", "mcp"]
+       }
+     }
+   }
+   ```
+
+3. **Restart Cursor**
+
+   Restart Cursor IDE to load the MCP server.
+
+4. **Verify Integration**
+
+   In Cursor, the SQG tools should be available when you use AI features.
+
+</Steps>
+
+
+
+## Additional Resources
+
+- [Model Context Protocol Documentation](https://modelcontextprotocol.io)
+- [Claude Code Documentation](https://docs.anthropic.com/en/docs/claude-code)
+- [Claude Desktop MCP Guide](https://docs.anthropic.com/en/docs/claude-desktop-mcp)
+- [Cursor IDE Documentation](https://cursor.sh/docs)
+

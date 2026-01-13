@@ -6,7 +6,7 @@ Type-safe code generation from SQL. Write SQL, get fully-typed database access c
 
 SQG reads annotated `.sql` files, executes queries against real databases to introspect column types, and generates type-safe  code to execute the SQL queries.
 
-The syntax of the `.sql` file is compatible with [DBeaver](https://dbeaver.io/), this allows to develop the SQL 
+The syntax of the `.sql` file is compatible with [DBeaver](https://dbeaver.io/), this allows to develop the SQL
 queries with it and then generate the code from the same file.
 
 ## Features
@@ -144,8 +144,13 @@ sqg init --engine duckdb  # Initialize with specific database engine
 sqg --validate <config>   # Validate config without generating code
 sqg --format json <config> # Output as JSON (for tooling integration)
 sqg syntax                # Show SQL annotation syntax reference
+sqg mcp                   # Start MCP server for AI assistants
 sqg --help                # Show all options
 ```
+
+## MCP Server (Model Context Protocol)
+
+SQG includes an MCP server for AI assistants like Claude Code, Claude Desktop, and Cursor. See the [Build with AI guide](https://sqg.dev/guides/build-with-ai/) for setup instructions.
 
 ## Documentation
 

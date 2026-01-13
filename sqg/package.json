@@ -70,7 +70,8 @@
     "prettier": "catalog:",
     "prettier-plugin-java": "catalog:",
     "yaml": "catalog:",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@modelcontextprotocol/sdk": "catalog:"
   },
   "devDependencies": {
     "@types/better-sqlite3": "catalog:",

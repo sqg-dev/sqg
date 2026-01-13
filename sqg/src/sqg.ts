@@ -16,6 +16,7 @@ import {
 } from "./sqltool.js";
 import { initProject } from "./init.js";
 import { SqgError, formatErrorForOutput } from "./errors.js";
+import { startMcpServer } from "./mcp-server.js";
 
 declare const __SQG_VERSION__: string;
 declare const __SQG_DESCRIPTION__: string;
@@ -239,6 +240,19 @@ program
   .description("Show SQL annotation syntax reference")
   .action(() => {
     console.log(SQL_SYNTAX_REFERENCE);
+  });
+
+// MCP server command
+program
+  .command("mcp")
+  .description("Start MCP (Model Context Protocol) server for AI assistants")
+  .action(async () => {
+    try {
+      await startMcpServer();
+    } catch (error) {
+      consola.error("Fatal error in MCP server:", error);
+      exit(1);
+    }
   });
 
 if (process.argv.length <= 2) {

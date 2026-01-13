@@ -1,6 +1,6 @@
 ---
 import { getEntry } from "astro:content";
-import { Code } from '@astrojs/starlight/components';
+import { Code } from "@astrojs/starlight/components";
 
 interface Props {
   id: string;
@@ -11,7 +11,14 @@ interface Props {
   title?: string;
 }
 
-const { id, generator: generatorOverride, startMatch, endMatch, lines, title: titleOverride } = Astro.props;
+const {
+  id,
+  generator: generatorOverride,
+  startMatch,
+  endMatch,
+  lines,
+  title: titleOverride,
+} = Astro.props;
 
 // Fetch metadata from the original example
 let example = await getEntry("examples", id);
@@ -30,24 +37,27 @@ function getGeneratorFromExample(engine: string, language: string): string {
   return "java-jdbc";
 }
 
-const generator = generatorOverride || getGeneratorFromExample(example.data.engine, example.data.language);
+const generator =
+  generatorOverride || getGeneratorFromExample(example.data.engine, example.data.language);
 
 // Determine file extension and language for syntax highlighting
 const isJava = generator.startsWith("java-");
 const lang = isJava ? "java" : "typescript";
 
 // Load generated code from raw file
-const generatedFiles = import.meta.glob('/src/content/generated/*.txt', {
-  query: '?raw',
-  import: 'default',
-  eager: true
+const generatedFiles = import.meta.glob("/src/content/generated/*.txt", {
+  query: "?raw",
+  import: "default",
+  eager: true,
 });
 
 const filePath = `/src/content/generated/${id}.txt`;
 let code = generatedFiles[filePath] as string | undefined;
 
 if (!code) {
-  throw new Error(`Generated file not found: ${filePath}. Run 'pnpm generate-examples' to create it.`);
+  throw new Error(
+    `Generated file not found: ${filePath}. Run 'pnpm generate-examples' to create it.`,
+  );
 }
 
 // Extract section if specified
@@ -55,11 +65,13 @@ let hasMoreBefore = false;
 let hasMoreAfter = false;
 
 if (startMatch) {
-  const codeLines = code.split('\n');
-  const startIndex = codeLines.findIndex(line => line.includes(startMatch));
+  const codeLines = code.split("\n");
+  const startIndex = codeLines.findIndex((line) => line.includes(startMatch));
 
   if (startIndex === -1) {
-    throw new Error(`startMatch "${startMatch}" not found in generated code for ${id}/${generator}`);
+    throw new Error(
+      `startMatch "${startMatch}" not found in generated code for ${id}/${generator}`,
+    );
   }
 
   let endIndex: number;
@@ -80,14 +92,14 @@ if (startMatch) {
   hasMoreBefore = startIndex > 0;
   hasMoreAfter = endIndex < codeLines.length;
 
-  let extracted = codeLines.slice(startIndex, endIndex).join('\n');
+  let extracted = codeLines.slice(startIndex, endIndex).join("\n");
 
   // Add ellipses to the code itself
   if (hasMoreBefore) {
-    extracted = '// ...\n\n' + extracted;
+    extracted = "// ...\n\n" + extracted;
   }
   if (hasMoreAfter) {
-    extracted = extracted + '\n\n// ...';
+    extracted = extracted + "\n\n// ...";
   }
 
   code = extracted;

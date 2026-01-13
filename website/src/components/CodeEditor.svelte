@@ -72,7 +72,7 @@ let initialized = false;
 onMount(async () => {
   const params = new URLSearchParams(window.location.search);
   const exampleId = params.get("example");
-  
+
   // Use initial props if provided, otherwise fall back to URL params or defaults
   if (initialCode !== undefined) {
     sqlCode = initialCode;
@@ -82,7 +82,7 @@ onMount(async () => {
       sqlCode = engine === "duckdb" ? DUCKDB_TEMPLATE : DEFAULT_TEMPLATE;
     }
   }
-  
+
   if (initialEngine !== undefined) {
     selectedDatabase = initialEngine;
   } else {
@@ -91,7 +91,7 @@ onMount(async () => {
       selectedDatabase = engine;
     }
   }
-  
+
   if (initialLanguage !== undefined) {
     selectedLanguage = initialLanguage;
   } else {
@@ -100,14 +100,14 @@ onMount(async () => {
       selectedLanguage = lang;
     }
   }
-  
+
   // Update URL to include example ID if present
   if (exampleId) {
     updateUrl();
   }
-  
+
   initialized = true;
-  
+
   // Auto-generate code after template is set
   await tick();
   if (sqlCode.trim()) {
@@ -120,7 +120,7 @@ function updateUrl() {
   if (!initialized) return;
   const params = new URLSearchParams(window.location.search);
   const exampleId = params.get("example");
-  
+
   // Preserve example ID if present
   if (exampleId) {
     params.set("example", exampleId);

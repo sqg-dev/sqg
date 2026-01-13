@@ -113,6 +113,37 @@ Shows:
 
 ---
 
+### `sqg mcp`
+
+Start MCP (Model Context Protocol) server for AI assistants.
+
+```bash
+sqg mcp
+```
+
+The MCP server runs on stdio and provides AI assistants (like Claude Desktop and Cursor) with access to SQG's code generation capabilities.
+
+**Available tools:**
+- `generate_code` - Generate type-safe code from SQL queries
+- `validate_sql` - Validate SQL queries with SQG annotations
+
+**Example configuration for Claude Desktop:**
+
+```json
+{
+  "mcpServers": {
+    "sqg": {
+      "command": "sqg",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+See the [Build with AI guide](/guides/build-with-ai/) for detailed setup instructions.
+
+---
+
 ## Global Options
 
 These options work with all commands:

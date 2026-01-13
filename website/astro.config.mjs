@@ -40,6 +40,7 @@ export default defineConfig({
           items: [
             { label: "Installation", slug: "guides/getting-started" },
             { label: "SQL Syntax", slug: "guides/sql-syntax" },
+            { label: "Build with AI", slug: "guides/build-with-ai" },
           ],
         },
         {

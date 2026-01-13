@@ -1,7 +1,7 @@
 ---
+import { getEntry } from "astro:content";
 import CodeEditor from "@components/CodeEditor.svelte";
 import Layout from "../layouts/Layout.astro";
-import { getEntry } from "astro:content";
 
 const exampleId = Astro.url.searchParams.get("example");
 let initialCode: string | undefined;
@@ -15,13 +15,13 @@ if (exampleId) {
       initialCode = example.data.sql;
       initialEngine = example.data.engine;
       initialLanguage = example.data.language;
-      
+
       // Override with URL params if provided
       const engineParam = Astro.url.searchParams.get("engine");
       if (engineParam === "sqlite" || engineParam === "duckdb") {
         initialEngine = engineParam;
       }
-      
+
       const langParam = Astro.url.searchParams.get("lang");
       if (langParam === "java-jdbc" || langParam === "java-arrow" || langParam === "typescript") {
         initialLanguage = langParam;
