@@ -89,19 +89,15 @@ RunResult
 {{#if isQuery}}
 {{#if isOne}}
 {{#if isPluck}}
-{{#with (lookup columns 0)}}
-const row = stmt.get({{> params}}) as { {{name}}: {{mapType .}} } | undefined;
-return row?.{{name}};
-{{/with}}
+const row = stmt.get({{> params}}) as Record<string, {{> rowType}}> | undefined;
+return row ? Object.values(row)[0] : undefined;
 {{else}}
 return stmt.get({{> params}}) as {{> rowType}} | undefined;
 {{/if}}
 {{else}}
 {{#if isPluck}}
-{{#with (lookup columns 0)}}
-const rows = stmt.all({{> params}}) as { {{name}}: {{mapType .}} }[];
-return rows.map(row => row.{{name}});
-{{/with}}
+const rows = stmt.all({{> params}}) as Record<string, {{> rowType}}>[];
+return rows.map(row => Object.values(row)[0]);
 {{else}}
 return stmt.all({{> params}}) as {{> rowType}}[];
 {{/if}}

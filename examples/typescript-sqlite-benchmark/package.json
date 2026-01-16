@@ -1,0 +1,21 @@
+{
+  "name": "typescript-sqlite-benchmark",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "generate": "sqg sqg.yaml", 
+    "build": "tsc --noEmit",
+    "bench": "pnpm build && tsx src/benchmark.ts"
+  },
+  "dependencies": {
+    "better-sqlite3": "catalog:",
+    "tinybench": "catalog:"
+  },
+  "devDependencies": {
+    "@sqg/sqg": "workspace:",
+    "@types/better-sqlite3": "catalog:",
+    "@types/node": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:"
+  }
+}

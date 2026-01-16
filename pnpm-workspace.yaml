@@ -3,6 +3,7 @@ packages:
   - website
   - examples/typescript-sqlite
   - examples/typescript-duckdb
+  - examples/typescript-sqlite-benchmark
 
 catalog:
   '@astrojs/check': ^0.9.6
@@ -49,6 +50,7 @@ catalog:
   starlight-blog: ^0.25.2
   svelte: ^5.46.1
   tailwindcss: ^4.1.18
+  tinybench: ^6.0.0
   tsdown: 0.18.0
   tsx: ^4.21.0
   typescript: ^5.9.3

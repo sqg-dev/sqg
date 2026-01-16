@@ -1,0 +1,123 @@
+---
+title: "SQLite Driver Benchmark: better-sqlite3 vs node:sqlite"
+date: 2026-01-16
+authors:
+  - name: Uwe Maurer
+    url: https://github.com/uwemaurer
+---
+
+import BenchmarkReport from "@components/BenchmarkReport.astro";
+
+**SQG** (SQL Query Generator) is a build-time tool that generates type-safe database access code from annotated SQL files. You write SQL queries with simple comment annotations, and SQG generates TypeScript or Java code with full type safety—no ORM required, just pure SQL with generated types.
+
+We've added support for Node.js's built-in SQLite module (`node:sqlite`) as an alternative to better-sqlite3. To help you choose the right driver, we ran comprehensive benchmarks comparing both options using SQG-generated code.
+
+## TL;DR
+
+- **better-sqlite3** is 20-39% faster for read operations
+- **Write operations** are essentially equal (better-sqlite3 slightly ahead by 1-4%)
+- **node:sqlite** requires zero external dependencies
+- My recommendation: Use **better-sqlite3**, maybe **node:sqlite** for zero-dependency requirements
+
+## The Contenders
+
+### better-sqlite3
+
+The de facto standard for SQLite in Node.js. It's a mature, well-optimized native addon that's been battle-tested in production for years.
+
+- [Documentation](https://github.com/WiseLibs/better-sqlite3)
+
+```yaml
+generator: typescript/sqlite  # or typescript/sqlite/better-sqlite3
+```
+
+### node:sqlite
+
+Node.js 22 introduced a built-in SQLite module. It's still experimental but offers zero-dependency SQLite access.
+
+- [Documentation](https://nodejs.org/api/sqlite.html)
+
+```yaml
+generator: typescript/sqlite/node
+```
+
+## Benchmark Setup
+
+We tested both drivers with:
+
+- **10,000 users** and **500,000 posts** (50 per user)
+- **Optimized pragma settings** (WAL mode, 64MB cache, memory-mapped I/O)
+- **Various query patterns**: simple selects, JOINs, aggregates, inserts, updates
+
+### Test Environment
+
+- **Node.js**: v25.3.0
+- **Platform**: Linux x64
+- **CPU**: 12th Gen Intel Core i9-12900K (24 cores)
+- **Memory**: 31.07 GB
+
+### SQLite Configuration
+
+Both databases used these settings:
+
+```sql
+PRAGMA journal_mode = WAL;       -- Write-Ahead Logging
+PRAGMA synchronous = NORMAL;      -- Balance safety/speed
+PRAGMA cache_size = -64000;       -- 64MB cache
+PRAGMA temp_store = MEMORY;       -- Temp tables in memory
+PRAGMA mmap_size = 268435456;     -- 256MB memory-mapped I/O
+```
+
+## Results
+
+<BenchmarkReport />
+
+
+## Using Both Generators with SQG
+
+SQG can generate code for both drivers from the same SQL file, 
+making it easy to benchmark or switch drivers:
+
+```yaml
+version: 1
+name: my-app
+
+sql:
+  - files:
+      - queries.sql
+    gen:
+      - generator: typescript/sqlite/better-sqlite3
+        output: ./src/db-better-sqlite3.ts
+      - generator: typescript/sqlite/node
+        output: ./src/db-node-sqlite.ts
+```
+
+This lets you:
+- **Benchmark with your actual queries** - See real-world performance differences
+- **Switch drivers without changing SQL** - Just update your imports
+- **A/B test in production** - Run both and compare
+
+## Try It Yourself
+
+The benchmark code is available in our [examples repository](https://github.com/sqg-dev/sqg/tree/main/examples/typescript-sqlite-benchmark):
+
+```bash
+git clone https://github.com/sqg-dev/sqg
+cd sqg/examples/typescript-sqlite-benchmark
+pnpm install
+pnpm generate
+pnpm bench
+```
+
+This will generate an HTML report with detailed bar charts and system information. You can run it on your own hardware to see how the drivers perform in your environment.
+
+## Conclusion
+
+I've been a long-time fan of better-sqlite3 and have used it extensively in production. After running these benchmarks, I'm sticking with it.
+
+
+The great news is that SQG supports both generators, so you can easily benchmark with your actual queries and make an informed decision. For me, better-sqlite3 remains the default choice—it's proven, fast, and reliable.
+
+---
+
+*Have questions or feedback? Open an issue on [GitHub](https://github.com/sqg-dev/sqg).*

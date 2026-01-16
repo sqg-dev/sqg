@@ -48,16 +48,16 @@ export class TestSqlite {
   }
   users2(): string | undefined {
     const stmt = this.prepare("users2", `select id from users where id = '1';`);
-    const row = stmt.get() as { id: string } | undefined;
-    return row?.id;
+    const row = stmt.get() as Record<string, string> | undefined;
+    return row ? Object.values(row)[0] : undefined;
   }
   users3(): string | undefined {
     const stmt = this.prepare(
       "users3",
       `select name from users where id = '1';`,
     );
-    const row = stmt.get() as { name: string } | undefined;
-    return row?.name;
+    const row = stmt.get() as Record<string, string> | undefined;
+    return row ? Object.values(row)[0] : undefined;
   }
   users4(): { email: string | null; name: string } | undefined {
     const stmt = this.prepare(

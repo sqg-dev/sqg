@@ -1,0 +1,11 @@
+version: 1
+name: typescript-sqlite-benchmark
+
+sql:
+  - files:
+      - queries.sql
+    gen:
+      - generator: typescript/sqlite/better-sqlite3
+        output: src/db-better-sqlite3.ts
+      - generator: typescript/sqlite/node
+        output: src/db-node-sqlite.ts

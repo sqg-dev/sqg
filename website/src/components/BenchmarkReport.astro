@@ -1,0 +1,54 @@
+---
+/**
+ * This component reads the benchmark report HTML at BUILD TIME using Astro's import.meta.glob.
+ * The file is loaded during the build process and embedded directly into the page output.
+ * 
+ * The benchmark report should be placed in public/benchmark-report.html before building.
+ */
+// Load benchmark report HTML at build time using Astro's glob import (like GeneratedCode.astro)
+const benchmarkReports = import.meta.glob("/public/benchmark-report.html", {
+  query: "?raw",
+  import: "default",
+  eager: true,
+}) as Record<string, string | undefined>;
+
+const filePath = "/public/benchmark-report.html";
+const htmlContent = benchmarkReports[filePath];
+
+if (!htmlContent) {
+  throw new Error(
+    `Benchmark report not found: ${filePath}. Run the benchmark to generate it and place it in public/benchmark-report.html`,
+  );
+}
+
+// Extract just the body content (remove html, head, body tags)
+// This keeps the styles and content but removes the outer HTML structure
+const bodyMatch = htmlContent.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+const bodyContent = bodyMatch ? bodyMatch[1] : htmlContent;
+
+// Extract styles from head
+const styleMatch = htmlContent.match(/<style[^>]*>([\s\S]*)<\/style>/i);
+const styles = styleMatch ? styleMatch[1] : "";
+---
+
+<div class="benchmark-report-wrapper">
+  <style set:html={styles}></style>
+  <Fragment set:html={bodyContent} />
+</div>
+
+<style>
+  .benchmark-report-wrapper {
+    margin: 2rem 0;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+    background: white;
+  }
+  
+  .benchmark-report-wrapper :global(.container) {
+    margin: 0;
+    padding: 2rem;
+    box-shadow: none;
+  }
+</style>
+
