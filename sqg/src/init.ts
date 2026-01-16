@@ -6,13 +6,13 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import consola from "consola";
 import {
-  SHORT_GENERATOR_NAMES,
-  GENERATOR_NAMES,
+  type DbEngine,
   findSimilarGenerators,
+  GENERATOR_NAMES,
+  getGeneratorEngine,
   isValidGenerator,
   parseGenerator,
-  getGeneratorEngine,
-  type DbEngine,
+  SHORT_GENERATOR_NAMES,
 } from "./constants.js";
 import { InvalidGeneratorError, SqgError } from "./errors.js";
 

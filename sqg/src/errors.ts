@@ -133,13 +133,24 @@ export class DatabaseError extends SqgError {
  * Error for SQL execution issues
  */
 export class SqlExecutionError extends SqgError {
-  constructor(message: string, queryName: string, file: string, sql: string, originalError?: Error) {
-    super(`Failed to execute query '${queryName}' in ${file}: ${message}`, "SQL_EXECUTION_ERROR", undefined, {
-      query: queryName,
-      file,
-      sql,
-      originalError: originalError?.message,
-    });
+  constructor(
+    message: string,
+    queryName: string,
+    file: string,
+    sql: string,
+    originalError?: Error,
+  ) {
+    super(
+      `Failed to execute query '${queryName}' in ${file}: ${message}`,
+      "SQL_EXECUTION_ERROR",
+      undefined,
+      {
+        query: queryName,
+        file,
+        sql,
+        originalError: originalError?.message,
+      },
+    );
     this.name = "SqlExecutionError";
   }
 }
@@ -150,11 +161,16 @@ export class SqlExecutionError extends SqgError {
 export class TypeMappingError extends SqgError {
   constructor(message: string, columnName: string, queryName?: string, file?: string) {
     const location = queryName && file ? ` in query '${queryName}' (${file})` : "";
-    super(`Type mapping error for column '${columnName}'${location}: ${message}`, "TYPE_MAPPING_ERROR", undefined, {
-      columnName,
-      query: queryName,
-      file,
-    });
+    super(
+      `Type mapping error for column '${columnName}'${location}: ${message}`,
+      "TYPE_MAPPING_ERROR",
+      undefined,
+      {
+        columnName,
+        query: queryName,
+        file,
+      },
+    );
     this.name = "TypeMappingError";
   }
 }
@@ -214,4 +230,3 @@ export function formatErrorForOutput(err: unknown): {
     },
   };
 }
-

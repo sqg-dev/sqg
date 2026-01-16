@@ -5,6 +5,7 @@ import Handlebars from "handlebars";
 import typescriptPlugin from "prettier/parser-typescript";
 import estree from "prettier/plugins/estree";
 import prettier from "prettier/standalone";
+import type { DbEngine } from "../constants.js";
 import {
   type ColumnInfo,
   EnumType,
@@ -17,7 +18,6 @@ import {
 import type { GeneratorConfig, SqlQueryHelper } from "../sqltool.js";
 import { TypeScriptTypeMapper } from "../type-mapping.js";
 import { BaseGenerator } from "./base-generator.js";
-import { DbEngine } from "../constants.js";
 
 export class TsGenerator extends BaseGenerator {
   constructor(template: string) {
@@ -51,7 +51,12 @@ export class TsGenerator extends BaseGenerator {
     Handlebars.registerHelper("appendMethod", (column: ColumnInfo) => {
       const typeStr = column.type?.toString().toUpperCase() || "";
       // INTEGER types -> appendInteger (JS number)
-      if (typeStr === "INTEGER" || typeStr === "INT" || typeStr === "INT4" || typeStr === "SIGNED") {
+      if (
+        typeStr === "INTEGER" ||
+        typeStr === "INT" ||
+        typeStr === "INT4" ||
+        typeStr === "SIGNED"
+      ) {
         return "Integer";
       }
       if (typeStr === "SMALLINT" || typeStr === "INT2" || typeStr === "SHORT") {
@@ -81,7 +86,12 @@ export class TsGenerator extends BaseGenerator {
         return "UBigInt";
       }
       // Float types
-      if (typeStr === "DOUBLE" || typeStr === "FLOAT8" || typeStr === "NUMERIC" || typeStr === "DECIMAL") {
+      if (
+        typeStr === "DOUBLE" ||
+        typeStr === "FLOAT8" ||
+        typeStr === "NUMERIC" ||
+        typeStr === "DECIMAL"
+      ) {
         return "Double";
       }
       if (typeStr === "FLOAT" || typeStr === "FLOAT4" || typeStr === "REAL") {
@@ -102,7 +112,12 @@ export class TsGenerator extends BaseGenerator {
         return "Time";
       }
       // Binary
-      if (typeStr === "BLOB" || typeStr === "BYTEA" || typeStr === "BINARY" || typeStr === "VARBINARY") {
+      if (
+        typeStr === "BLOB" ||
+        typeStr === "BYTEA" ||
+        typeStr === "BINARY" ||
+        typeStr === "VARBINARY"
+      ) {
         return "Blob";
       }
       // UUID
@@ -123,14 +138,35 @@ export class TsGenerator extends BaseGenerator {
       let baseType: string;
 
       // Map SQL types to TypeScript types for appender row interface
-      if (typeStr === "INTEGER" || typeStr === "INT" || typeStr === "INT4" ||
-          typeStr === "SMALLINT" || typeStr === "INT2" || typeStr === "TINYINT" || typeStr === "INT1" ||
-          typeStr === "UINTEGER" || typeStr === "UINT4" || typeStr === "USMALLINT" || typeStr === "UINT2" ||
-          typeStr === "UTINYINT" || typeStr === "UINT1" ||
-          typeStr === "DOUBLE" || typeStr === "FLOAT8" || typeStr === "FLOAT" || typeStr === "FLOAT4" || typeStr === "REAL") {
+      if (
+        typeStr === "INTEGER" ||
+        typeStr === "INT" ||
+        typeStr === "INT4" ||
+        typeStr === "SMALLINT" ||
+        typeStr === "INT2" ||
+        typeStr === "TINYINT" ||
+        typeStr === "INT1" ||
+        typeStr === "UINTEGER" ||
+        typeStr === "UINT4" ||
+        typeStr === "USMALLINT" ||
+        typeStr === "UINT2" ||
+        typeStr === "UTINYINT" ||
+        typeStr === "UINT1" ||
+        typeStr === "DOUBLE" ||
+        typeStr === "FLOAT8" ||
+        typeStr === "FLOAT" ||
+        typeStr === "FLOAT4" ||
+        typeStr === "REAL"
+      ) {
         baseType = "number";
-      } else if (typeStr === "BIGINT" || typeStr === "INT8" || typeStr === "HUGEINT" || typeStr === "INT128" ||
-                 typeStr === "UBIGINT" || typeStr === "UINT8") {
+      } else if (
+        typeStr === "BIGINT" ||
+        typeStr === "INT8" ||
+        typeStr === "HUGEINT" ||
+        typeStr === "INT128" ||
+        typeStr === "UBIGINT" ||
+        typeStr === "UINT8"
+      ) {
         baseType = "bigint";
       } else if (typeStr === "BOOLEAN" || typeStr === "BOOL") {
         baseType = "boolean";

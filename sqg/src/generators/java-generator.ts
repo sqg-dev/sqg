@@ -4,11 +4,11 @@ import { camelCase, pascalCase } from "es-toolkit/string";
 import Handlebars from "handlebars";
 import prettier from "prettier/standalone";
 import prettierPluginJava from "prettier-plugin-java";
+import type { DbEngine } from "../constants.js";
 import type { ColumnInfo, SQLQuery, TableInfo } from "../sql-query.js";
 import type { GeneratorConfig, SqlQueryHelper, SqlQueryPart } from "../sqltool.js";
 import { JavaTypeMapper } from "../type-mapping.js";
 import { BaseGenerator } from "./base-generator.js";
-import { DbEngine } from "../constants.js";
 
 export class JavaGenerator extends BaseGenerator {
   constructor(public template: string) {

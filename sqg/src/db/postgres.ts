@@ -9,7 +9,8 @@ const databaseName = "sqg-db-temp";
 
 // PostgreSQL connection configuration
 // TODO: Make this configurable via sqg.yaml
-const connectionString = process.env.SQG_POSTGRES_URL || "postgresql://sqg:secret@localhost:15432/sqg-db";
+const connectionString =
+  process.env.SQG_POSTGRES_URL || "postgresql://sqg:secret@localhost:15432/sqg-db";
 const connectionStringTemp = process.env.SQG_POSTGRES_URL
   ? process.env.SQG_POSTGRES_URL.replace(/\/[^/]+$/, `/${databaseName}`)
   : `postgresql://sqg:secret@localhost:15432/${databaseName}`;

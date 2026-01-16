@@ -1,7 +1,7 @@
 import BetterSqlite3, { type Database } from "better-sqlite3";
 import consola from "consola";
 import { isNotNil } from "es-toolkit";
-import { DatabaseError, SqlExecutionError, SqgError } from "../errors.js";
+import { DatabaseError, SqgError, SqlExecutionError } from "../errors.js";
 import type { SQLQuery, TableInfo } from "../sql-query.js";
 import { type DatabaseEngine, initializeDatabase } from "./types.js";
 

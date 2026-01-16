@@ -1,0 +1,10 @@
+version: 1
+
+name: test-sqlite
+
+sql:
+  - files:
+      - test-sqlite.sql
+    gen:
+        - generator: typescript/sqlite/node
+          output: /tmp/node/

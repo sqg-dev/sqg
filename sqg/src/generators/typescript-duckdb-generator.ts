@@ -1,4 +1,5 @@
 import Handlebars from "handlebars";
+import type { DbEngine } from "../constants.js";
 import {
   type ColumnInfo,
   EnumType,
@@ -10,7 +11,6 @@ import {
 } from "../sql-query.js";
 import type { GeneratorConfig } from "../sqltool.js";
 import { TsGenerator } from "./typescript-generator.js";
-import { DbEngine } from "../constants.js";
 
 /**
  * TypeScript generator for DuckDB.

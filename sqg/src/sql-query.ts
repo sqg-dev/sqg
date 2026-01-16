@@ -166,7 +166,7 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
 
   const tree = parser.parse(content);
   const cursor = tree.cursor();
-  
+
   function getLineNumber(position: number): number {
     return content.slice(0, position).split("\n").length;
   }
@@ -198,7 +198,9 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
         getStr("LineCommentStartSpecial", true) ?? getStr("BlockCommentStartSpecial");
       const queryType = queryTypeRaw.replace("--", "").replace("/*", "").trim();
       const name = getStr("Name").trim();
-      const modifiers = cursor.node.getChildren("Modifiers").map((node: SyntaxNode) => nodeStr(node));
+      const modifiers = cursor.node
+        .getChildren("Modifiers")
+        .map((node: SyntaxNode) => nodeStr(node));
       const isOne = modifiers.includes(":one");
       const isPluck = modifiers.includes(":pluck");
 
@@ -233,9 +235,10 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
           }
         }
         const definedVars = Array.from(variables.keys());
-        const suggestion = definedVars.length > 0
-          ? `Add '@set ${varName} = <value>' before the query. Defined variables: ${definedVars.join(", ")}`
-          : `Add '@set ${varName} = <value>' before the query`;
+        const suggestion =
+          definedVars.length > 0
+            ? `Add '@set ${varName} = <value>' before the query. Defined variables: ${definedVars.join(", ")}`
+            : `Add '@set ${varName} = <value>' before the query`;
         throw SqgError.inQuery(
           `Variable '\${${varName}}' is referenced but not defined`,
           "MISSING_VARIABLE",
@@ -247,13 +250,9 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
 
       const sqlNode = cursor.node.getChild("SQLBlock");
       if (!sqlNode) {
-        throw SqgError.inQuery(
-          "SQL block not found",
-          "SQL_PARSE_ERROR",
-          name,
-          filePath,
-          { suggestion: "Ensure the query has valid SQL content after the annotation comment" },
-        );
+        throw SqgError.inQuery("SQL block not found", "SQL_PARSE_ERROR", name, filePath, {
+          suggestion: "Ensure the query has valid SQL content after the annotation comment",
+        });
       }
       const sqlContentStr = nodeStr(sqlNode).trim();
 
@@ -318,7 +317,7 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
         toSqlWithPositionalPlaceholders() {
           const parameters: ParameterEntry[] = [];
           const sqlParts: SqlQueryPart[] = [];
-          let paramIndex = 0;
+          const paramIndex = 0;
 
           for (const part of this.sqlParts) {
             if (typeof part === "string") {
@@ -371,7 +370,9 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
             parameters: this.parameters(),
             sqlParts,
             sql: sqlParts
-              .map((part) => (typeof part === "string" ? part : `$${(part as ParameterEntry).name}`))
+              .map((part) =>
+                typeof part === "string" ? part : `$${(part as ParameterEntry).name}`,
+              )
               .join("")
               .trim(),
           };
@@ -441,12 +442,9 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
         const table = new TableInfo(filePath, name, tableName, includeColumns, hasAppender);
 
         if (queryNames.has(name)) {
-          throw SqgError.inFile(
-            `Duplicate name '${name}'`,
-            "DUPLICATE_QUERY",
-            filePath,
-            { suggestion: `Rename one of the tables/queries to have a unique name` },
-          );
+          throw SqgError.inFile(`Duplicate name '${name}'`, "DUPLICATE_QUERY", filePath, {
+            suggestion: "Rename one of the tables/queries to have a unique name",
+          });
         }
         queryNames.add(name);
 
@@ -480,12 +478,9 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
       );
 
       if (queryNames.has(name)) {
-        throw SqgError.inFile(
-          `Duplicate query name '${name}'`,
-          "DUPLICATE_QUERY",
-          filePath,
-          { suggestion: `Rename one of the queries to have a unique name` },
-        );
+        throw SqgError.inFile(`Duplicate query name '${name}'`, "DUPLICATE_QUERY", filePath, {
+          suggestion: "Rename one of the queries to have a unique name",
+        });
       }
       queryNames.add(name);
 

@@ -1,25 +1,25 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-  ListResourcesRequestSchema,
-  ReadResourceRequestSchema,
-  type Tool,
-} from "@modelcontextprotocol/sdk/types.js";
 import { randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { processProject, validateProject } from "./sqltool.js";
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
+  CallToolRequestSchema,
+  ListResourcesRequestSchema,
+  ListToolsRequestSchema,
+  ReadResourceRequestSchema,
+  type Tool,
+} from "@modelcontextprotocol/sdk/types.js";
+import YAML from "yaml";
+import {
+  DB_ENGINES,
   GENERATORS,
+  getGeneratorEngine,
   SHORT_GENERATOR_NAMES,
   SQL_SYNTAX_REFERENCE,
-  DB_ENGINES,
-  getGeneratorEngine,
 } from "./constants.js";
-import YAML from "yaml";
+import { processProject, validateProject } from "./sqltool.js";
 
 declare const __SQG_VERSION__: string;
 
@@ -68,7 +68,9 @@ function formatGeneratorListWithDescriptions(): string {
 function formatGeneratorListSimple(): string {
   const generators = [...SHORT_GENERATOR_NAMES];
   // Add non-default drivers
-  const seen = new Set(SHORT_GENERATOR_NAMES.map((s) => Object.keys(GENERATORS).find((g) => g.startsWith(`${s}/`))));
+  const seen = new Set(
+    SHORT_GENERATOR_NAMES.map((s) => Object.keys(GENERATORS).find((g) => g.startsWith(`${s}/`))),
+  );
   for (const fullName of Object.keys(GENERATORS)) {
     if (!seen.has(fullName)) {
       generators.push(fullName);
@@ -134,8 +136,7 @@ async function generateCode(
 
     return { code: generatedCode };
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : String(error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return { code: "", error: errorMessage };
   } finally {
     // Clean up temp directory
@@ -230,7 +231,8 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => {
       {
         uri: "sqg://documentation",
         name: "SQG Documentation",
-        description: "Complete documentation for SQG (SQL Query Generator) including syntax, generators, and usage examples",
+        description:
+          "Complete documentation for SQG (SQL Query Generator) including syntax, generators, and usage examples",
         mimeType: "text/markdown",
       },
     ],
@@ -246,7 +248,8 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
     const generatorListMarkdown = Object.entries(GENERATORS)
       .map(([name, info]) => {
         const shortName = `${info.language}/${info.engine}`;
-        const isDefault = Object.keys(GENERATORS).find((g) => g.startsWith(`${shortName}/`)) === name;
+        const isDefault =
+          Object.keys(GENERATORS).find((g) => g.startsWith(`${shortName}/`)) === name;
         const displayName = isDefault ? shortName : name;
         return `- \`${displayName}\` - ${info.description}`;
       })
@@ -446,27 +449,25 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             },
           ],
         };
-      } else {
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(
-                {
-                  valid: false,
-                  errors: validation.errors,
-                },
-                null,
-                2,
-              ),
-            },
-          ],
-          isError: true,
-        };
       }
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                valid: false,
+                errors: validation.errors,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+        isError: true,
+      };
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       return {
         content: [
           {
@@ -503,4 +504,3 @@ export async function startMcpServer() {
   await server.connect(transport);
   console.error("SQG MCP server running on stdio");
 }
-

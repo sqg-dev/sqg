@@ -33,6 +33,14 @@ export const GENERATORS: Record<string, GeneratorInfo> = {
     extension: ".ts",
     template: "better-sqlite3.hbs",
   },
+  "typescript/sqlite/node": {
+    language: "typescript",
+    engine: "sqlite",
+    driver: "node",
+    description: "TypeScript with Node.js built-in SQLite",
+    extension: ".ts",
+    template: "node-sqlite.hbs",
+  },
   "typescript/duckdb/node-api": {
     language: "typescript",
     engine: "duckdb",
@@ -200,7 +208,12 @@ export function formatGeneratorsHelp(): string {
  * Format a simple list of valid generators.
  */
 export function formatGeneratorsList(): string {
-  return [...SHORT_GENERATOR_NAMES, ...GENERATOR_NAMES.filter((t) => !SHORT_GENERATOR_NAMES.some((s) => t === `${s}/${DEFAULT_DRIVERS[s]}`))].join(", ");
+  return [
+    ...SHORT_GENERATOR_NAMES,
+    ...GENERATOR_NAMES.filter(
+      (t) => !SHORT_GENERATOR_NAMES.some((s) => t === `${s}/${DEFAULT_DRIVERS[s]}`),
+    ),
+  ].join(", ");
 }
 
 /** SQL annotation syntax reference */
@@ -231,4 +244,3 @@ Example:
 
   -- TABLE users :appender
 `.trim();
-

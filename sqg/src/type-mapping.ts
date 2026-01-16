@@ -31,10 +31,7 @@ export abstract class TypeMapper {
       return path + this.formatMapTypeName(column.name);
     }
     if (!column.type) {
-      throw new TypeMappingError(
-        `Missing type information`,
-        column.name,
-      );
+      throw new TypeMappingError("Missing type information", column.name);
     }
     return this.mapPrimitiveType(column.type.toString(), column.nullable);
   }

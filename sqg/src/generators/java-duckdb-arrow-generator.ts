@@ -1,11 +1,19 @@
 import consola from "consola";
-import { ListType, MapType, StructType, type ColumnInfo, type ColumnType, type SQLQuery, type TableInfo } from "../sql-query.js";
+import type { DbEngine } from "../constants.js";
+import {
+  type ColumnInfo,
+  type ColumnType,
+  ListType,
+  MapType,
+  type SQLQuery,
+  StructType,
+  type TableInfo,
+} from "../sql-query.js";
 import { type GeneratorConfig, writeGeneratedFile } from "../sqltool.js";
 import { JavaTypeMapper } from "../type-mapping.js";
 import { BaseGenerator } from "./base-generator.js";
 import { JavaGenerator } from "./java-generator.js";
 import type { Generator } from "./types.js";
-import { DbEngine } from "../constants.js";
 
 export class JavaDuckDBArrowGenerator extends BaseGenerator {
   private javaGenerator: Generator;

@@ -1,22 +1,18 @@
 import { exit } from "node:process";
 import { Command } from "commander";
 import consola, { LogLevels } from "consola";
+import { formatGeneratorsHelp, SHORT_GENERATOR_NAMES, SQL_SYNTAX_REFERENCE } from "./constants.js";
+import { formatErrorForOutput, SqgError } from "./errors.js";
+import { initProject } from "./init.js";
+import { startMcpServer } from "./mcp-server.js";
 import {
-  formatGeneratorsHelp,
-  SQL_SYNTAX_REFERENCE,
-  SHORT_GENERATOR_NAMES,
-} from "./constants.js";
-import {
+  buildProjectFromCliOptions,
+  type Project,
   processProject,
   processProjectFromConfig,
   validateProject,
   validateProjectFromConfig,
-  buildProjectFromCliOptions,
-  type Project,
 } from "./sqltool.js";
-import { initProject } from "./init.js";
-import { SqgError, formatErrorForOutput } from "./errors.js";
-import { startMcpServer } from "./mcp-server.js";
 
 declare const __SQG_VERSION__: string;
 declare const __SQG_DESCRIPTION__: string;
@@ -60,12 +56,18 @@ ${formatGeneratorsHelp()}`,
   .option("--verbose", "Enable debug logging (shows SQL execution details)")
   .option("--format <format>", "Output format: text (default) or json", "text")
   .option("--validate", "Validate configuration without generating code")
-  .option("--generator <generator>", `Code generation generator (${SHORT_GENERATOR_NAMES.join(", ")})`)
+  .option(
+    "--generator <generator>",
+    `Code generation generator (${SHORT_GENERATOR_NAMES.join(", ")})`,
+  )
   .option("--file <file>", "SQL file path (can be repeated)", (val, prev: string[] = []) => {
     prev.push(val);
     return prev;
   })
-  .option("--output <path>", "Output file or directory path (optional, if omitted writes to stdout)")
+  .option(
+    "--output <path>",
+    "Output file or directory path (optional, if omitted writes to stdout)",
+  )
   .option("--name <name>", "Project name (optional, defaults to 'generated')")
   .showHelpAfterError()
   .showSuggestionAfterError();
@@ -207,7 +209,11 @@ program
 program
   .command("init")
   .description("Initialize a new SQG project with example configuration")
-  .option("-t, --generator <generator>", `Code generation generator (${SHORT_GENERATOR_NAMES.join(", ")})`, "typescript/sqlite")
+  .option(
+    "-t, --generator <generator>",
+    `Code generation generator (${SHORT_GENERATOR_NAMES.join(", ")})`,
+    "typescript/sqlite",
+  )
   .option("-o, --output <dir>", "Output directory for generated files", "./generated")
   .option("-f, --force", "Overwrite existing files")
   .action(async (options) => {

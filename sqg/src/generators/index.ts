@@ -1,4 +1,10 @@
-import { GENERATOR_NAMES, SHORT_GENERATOR_NAMES, findSimilarGenerators, parseGenerator, resolveGenerator } from "../constants.js";
+import {
+  findSimilarGenerators,
+  GENERATOR_NAMES,
+  parseGenerator,
+  resolveGenerator,
+  SHORT_GENERATOR_NAMES,
+} from "../constants.js";
 import { InvalidGeneratorError } from "../errors.js";
 import { JavaDuckDBArrowGenerator } from "./java-duckdb-arrow-generator.js";
 import { JavaGenerator } from "./java-generator.js";
@@ -27,6 +33,7 @@ export function getGenerator(generator: string): Generator {
     const key = `${info.language}/${info.driver}`;
     switch (key) {
       case "typescript/better-sqlite3":
+      case "typescript/node":
         return new TsGenerator(`templates/${info.template}`);
       case "typescript/node-api":
         return new TsDuckDBGenerator(`templates/${info.template}`);
@@ -41,6 +48,10 @@ export function getGenerator(generator: string): Generator {
   } catch {
     const similar = findSimilarGenerators(generator);
     const validGenerators = [...SHORT_GENERATOR_NAMES, ...GENERATOR_NAMES];
-    throw new InvalidGeneratorError(fullGenerator, validGenerators, similar.length > 0 ? similar[0] : undefined);
+    throw new InvalidGeneratorError(
+      fullGenerator,
+      validGenerators,
+      similar.length > 0 ? similar[0] : undefined,
+    );
   }
 }

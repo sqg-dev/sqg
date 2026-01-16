@@ -1,4 +1,4 @@
-import { DbEngine } from "../constants.js";
+import type { DbEngine } from "../constants.js";
 import type { ColumnInfo, ColumnType, SQLQuery, TableInfo } from "../sql-query.js";
 import type { GeneratorConfig, SqlQueryStatement } from "../sqltool.js";
 import type { TypeMapper } from "../type-mapping.js";

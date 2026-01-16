@@ -168,9 +168,7 @@ export const duckdb = new (class implements DatabaseEngine {
 
       try {
         // Use DESCRIBE to get column information
-        const result = await connection.runAndReadAll(
-          `DESCRIBE ${table.tableName}`,
-        );
+        const result = await connection.runAndReadAll(`DESCRIBE ${table.tableName}`);
         const rows = result.getRows();
 
         function convertType(type: DuckDBType): ColumnType {
