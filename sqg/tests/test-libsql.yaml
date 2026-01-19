@@ -1,0 +1,10 @@
+version: 1
+
+name: test-libsql
+
+sql:
+  - files:
+      - test-sqlite.sql
+    gen:
+        - generator: typescript/sqlite/libsql
+          output: /tmp/libsql/

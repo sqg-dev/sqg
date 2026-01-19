@@ -34,6 +34,8 @@ export function getGenerator(generator: string): Generator {
     switch (key) {
       case "typescript/better-sqlite3":
       case "typescript/node":
+      case "typescript/libsql":
+      case "typescript/turso":
         return new TsGenerator(`templates/${info.template}`);
       case "typescript/node-api":
         return new TsDuckDBGenerator(`templates/${info.template}`);

@@ -41,6 +41,22 @@ export const GENERATORS: Record<string, GeneratorInfo> = {
     extension: ".ts",
     template: "node-sqlite.hbs",
   },
+  "typescript/sqlite/libsql": {
+    language: "typescript",
+    engine: "sqlite",
+    driver: "libsql",
+    description: "TypeScript with @libsql/client (Turso)",
+    extension: ".ts",
+    template: "libsql.hbs",
+  },
+  "typescript/sqlite/turso": {
+    language: "typescript",
+    engine: "sqlite",
+    driver: "turso",
+    description: "TypeScript with Turso (limbo) native driver",
+    extension: ".ts",
+    template: "turso.hbs",
+  },
   "typescript/duckdb/node-api": {
     language: "typescript",
     engine: "duckdb",

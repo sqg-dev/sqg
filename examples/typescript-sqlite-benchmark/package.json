@@ -3,12 +3,14 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "generate": "sqg sqg.yaml", 
+    "generate": "sqg sqg.yaml",
     "build": "tsc --noEmit",
     "bench": "pnpm build && tsx src/benchmark.ts"
   },
   "dependencies": {
     "better-sqlite3": "catalog:",
+    "@libsql/client": "^0.17.0",
+    "@tursodatabase/database": "^0.4.3",
     "tinybench": "catalog:"
   },
   "devDependencies": {

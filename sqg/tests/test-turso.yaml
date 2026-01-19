@@ -1,0 +1,10 @@
+version: 1
+
+name: test-turso
+
+sql:
+  - files:
+      - test-sqlite.sql
+    gen:
+        - generator: typescript/sqlite/turso
+          output: /tmp/turso/

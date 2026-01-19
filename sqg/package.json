@@ -74,6 +74,8 @@
     "@modelcontextprotocol/sdk": "catalog:"
   },
   "devDependencies": {
+    "@libsql/client": "^0.17.0",
+    "@tursodatabase/database": "^0.4.3",
     "@types/better-sqlite3": "catalog:",
     "@types/node": "catalog:",
     "@types/pg": "catalog:",

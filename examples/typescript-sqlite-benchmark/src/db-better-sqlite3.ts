@@ -62,12 +62,12 @@ CREATE INDEX IF NOT EXISTS idx_posts_published ON posts(published);`,
     ]);
   }
 
-  insertUser(name: string, email: string, age: number): RunResult {
-    const stmt = this.prepare<[string, string, number], any>(
+  insertUser(id: number, name: string, email: string, age: number): RunResult {
+    const stmt = this.prepare<[number, string, string, number], any>(
       "insertUser",
-      "INSERT INTO users (name, email, age) VALUES ( ?, ?, ?);",
+      "INSERT INTO users (id, name, email, age) VALUES ( ?, ?, ?, ?);",
     );
-    return stmt.run(name, email, age);
+    return stmt.run(id, name, email, age);
   }
   getAllUsers(): {
     id: number;

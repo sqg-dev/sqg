@@ -24,10 +24,11 @@ CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id);
 CREATE INDEX IF NOT EXISTS idx_posts_published ON posts(published);
 
 -- EXEC insertUser
+@set id = 1
 @set name = 'John'
 @set email = 'john@example.com'
 @set age = 30
-INSERT INTO users (name, email, age) VALUES (${name}, ${email}, ${age});
+INSERT INTO users (id, name, email, age) VALUES (${id}, ${name}, ${email}, ${age});
 
 -- QUERY getAllUsers
 SELECT id, name, email, age, created_at FROM users;

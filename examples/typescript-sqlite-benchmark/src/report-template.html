@@ -6,7 +6,7 @@
       line-height: 1.6;
     }
     .benchmark-report .container {
-      max-width: 900px;
+      max-width: 1100px;
       margin: 0;
       background: transparent;
       padding: 0;
@@ -47,12 +47,7 @@
     }
     .winner {
       font-weight: 600;
-    }
-    .winner.better {
       color: #10b981;
-    }
-    .winner.node {
-      color: #3b82f6;
     }
     .system-info {
       margin-top: 2rem;
@@ -99,8 +94,8 @@
   </style>
   <div class="container">
     <h1>SQLite Driver Benchmark Report</h1>
-    <p class="subtitle">Comparing better-sqlite3 vs node:sqlite</p>
-    
+    <p class="subtitle">Comparing better-sqlite3 vs node:sqlite vs libsql vs turso (baseline: node:sqlite)</p>
+
     {{SYSTEM_INFO}}
 
     <div class="summary">
@@ -111,8 +106,10 @@
             <th>Operation</th>
             <th>better-sqlite3</th>
             <th>node:sqlite</th>
+            <th>libsql</th>
+            <th>turso</th>
             <th>Winner</th>
-            <th>Multiplier</th>
+            <th>vs node:sqlite</th>
           </tr>
         </thead>
         <tbody>
@@ -122,4 +119,3 @@
     </div>
   </div>
 </div>
-

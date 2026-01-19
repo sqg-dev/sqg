@@ -49,6 +49,8 @@ We tested both drivers with:
 - **Optimized pragma settings** (WAL mode, 64MB cache, memory-mapped I/O)
 - **Various query patterns**: simple selects, JOINs, aggregates, inserts, updates
 
+Note: The better-sqlite3 API is synchronous, we compared it against the synchronous API of node:sqlite.
+
 ### Test Environment
 
 - **Node.js**: v25.3.0

@@ -55,4 +55,16 @@ describe("sqg", () => {
       await handleProject("tests/test-node-sqlite.yaml", ["test-sqlite.ts"]);
     });
   });
+
+  describe("processProjectLibsql", () => {
+    it("handle libsql correctly", async () => {
+      await handleProject("tests/test-libsql.yaml", ["test-sqlite.ts"]);
+    });
+  });
+
+  describe("processProjectTurso", () => {
+    it("handle turso correctly", async () => {
+      await handleProject("tests/test-turso.yaml", ["test-sqlite.ts"]);
+    });
+  });
 });

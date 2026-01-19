@@ -9,3 +9,7 @@ sql:
         output: src/db-better-sqlite3.ts
       - generator: typescript/sqlite/node
         output: src/db-node-sqlite.ts
+      - generator: typescript/sqlite/libsql
+        output: src/db-libsql.ts
+      - generator: typescript/sqlite/turso
+        output: src/db-turso.ts
