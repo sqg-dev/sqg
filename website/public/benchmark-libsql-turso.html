@@ -1,0 +1,223 @@
+<div class="benchmark-report">
+  <style>
+    .benchmark-report {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      color: #111827;
+      line-height: 1.6;
+    }
+    .benchmark-report .container {
+      max-width: 1100px;
+      margin: 0;
+      background: transparent;
+      padding: 0;
+    }
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      color: #111827;
+    }
+    .subtitle {
+      color: #6b7280;
+      margin-bottom: 2rem;
+    }
+    .summary {
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 2px solid #e5e7eb;
+    }
+    .summary h2 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .summary-table th,
+    .summary-table td {
+      padding: 0.5rem 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid #e5e7eb;
+      font-size: 0.875rem;
+    }
+    .summary-table th {
+      background: #f9fafb;
+      font-weight: 600;
+      color: #374151;
+    }
+    .winner {
+      font-weight: 600;
+      color: #10b981;
+    }
+    .system-info {
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 2px solid #e5e7eb;
+    }
+    .system-info h3 {
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+      color: #374151;
+    }
+    .system-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .system-table td {
+      padding: 0.375rem 0.5rem;
+      border-bottom: 1px solid #e5e7eb;
+      font-size: 0.875rem;
+    }
+    .system-table td:first-child {
+      font-weight: 600;
+      color: #6b7280;
+      width: 130px;
+    }
+    .benchmark-report h1 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      color: #111827;
+    }
+    .benchmark-report .subtitle {
+      color: #6b7280;
+      margin-bottom: 1.5rem;
+      font-size: 0.9375rem;
+    }
+    .benchmark-report h2 {
+      font-size: 1.25rem;
+      margin-bottom: 0.75rem;
+    }
+    .benchmark-report h3 {
+      font-size: 1.125rem;
+      margin-bottom: 0.75rem;
+    }
+  </style>
+  <div class="container">
+    <h1>SQLite Driver Benchmark Report</h1>
+    <p class="subtitle">Comparing better-sqlite3 vs node:sqlite vs libsql vs turso (baseline: node:sqlite)</p>
+
+    
+    <div class="system-info">
+      <h3>System Information</h3>
+      <table class="system-table">
+        <tr><td>Node.js Version</td><td>v25.3.0</td></tr>
+        <tr><td>Platform</td><td>linux</td></tr>
+        <tr><td>Architecture</td><td>x64</td></tr>
+        <tr><td>CPU</td><td>12th Gen Intel(R) Core(TM) i9-12900K</td></tr>
+        <tr><td>CPU Cores</td><td>24</td></tr>
+        <tr><td>Total Memory</td><td>31.07 GB</td></tr>
+      </table>
+    </div>
+  
+
+    <div class="summary">
+      <h2>Summary</h2>
+      <table class="summary-table">
+        <thead>
+          <tr>
+            <th>Operation</th>
+            <th>better-sqlite3</th>
+            <th>node:sqlite</th>
+            <th>libsql</th>
+            <th>turso</th>
+            <th>Winner</th>
+            <th>vs node:sqlite</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+    <tr>
+      <td>getAllUsers</td>
+      <td class="winner">360 ops/s</td>
+          <td class="">268 ops/s</td>
+          <td class="">50 ops/s</td>
+          <td class="">104 ops/s</td>
+      <td class="winner">better-sqlite3</td>
+      <td>1.34x</td>
+    </tr>
+    <tr>
+      <td>getUserById</td>
+      <td class="winner">1,223,260 ops/s</td>
+          <td class="">1,073,001 ops/s</td>
+          <td class="">61,093 ops/s</td>
+          <td class="">707,859 ops/s</td>
+      <td class="winner">better-sqlite3</td>
+      <td>1.14x</td>
+    </tr>
+    <tr>
+      <td>getUserByEmail</td>
+      <td class="winner">557,631 ops/s</td>
+          <td class="">457,659 ops/s</td>
+          <td class="">49,510 ops/s</td>
+          <td class="">233,913 ops/s</td>
+      <td class="winner">better-sqlite3</td>
+      <td>1.22x</td>
+    </tr>
+    <tr>
+      <td>countUsers (pluck)</td>
+      <td class="winner">538,031 ops/s</td>
+          <td class="">398,431 ops/s</td>
+          <td class="">108,632 ops/s</td>
+          <td class="">5,593 ops/s</td>
+      <td class="winner">better-sqlite3</td>
+      <td>1.35x</td>
+    </tr>
+    <tr>
+      <td>getPostsByUser</td>
+      <td class="winner">1,090,293 ops/s</td>
+          <td class="">980,550 ops/s</td>
+          <td class="">47,304 ops/s</td>
+          <td class="">414,672 ops/s</td>
+      <td class="winner">better-sqlite3</td>
+      <td>1.11x</td>
+    </tr>
+    <tr>
+      <td>getPublishedPosts (JOIN)</td>
+      <td class="">27 ops/s</td>
+          <td class="">27 ops/s</td>
+          <td class="winner">54 ops/s</td>
+          <td class="">7 ops/s</td>
+      <td class="winner">libsql</td>
+      <td>1.98x</td>
+    </tr>
+    <tr>
+      <td>getPostWithAuthor (JOIN :one)</td>
+      <td class="winner">477,271 ops/s</td>
+          <td class="">379,911 ops/s</td>
+          <td class="">32,433 ops/s</td>
+          <td class="">236,297 ops/s</td>
+      <td class="winner">better-sqlite3</td>
+      <td>1.26x</td>
+    </tr>
+    <tr>
+      <td>countPostsByUser (pluck)</td>
+      <td class="winner">1,151,783 ops/s</td>
+          <td class="">689,478 ops/s</td>
+          <td class="">111,824 ops/s</td>
+          <td class="">377,235 ops/s</td>
+      <td class="winner">better-sqlite3</td>
+      <td>1.67x</td>
+    </tr>
+    <tr>
+      <td>insertUser</td>
+      <td class="">53,693 ops/s</td>
+          <td class="">41,291 ops/s</td>
+          <td class="">28,385 ops/s</td>
+          <td class="winner">63,017 ops/s</td>
+      <td class="winner">turso</td>
+      <td>1.53x</td>
+    </tr>
+    <tr>
+      <td>updatePostViews</td>
+      <td class="winner">136,399 ops/s</td>
+          <td class="">97,956 ops/s</td>
+          <td class="">53,598 ops/s</td>
+          <td class="">59,273 ops/s</td>
+      <td class="winner">better-sqlite3</td>
+      <td>1.39x</td>
+    </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

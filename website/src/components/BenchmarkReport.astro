@@ -3,21 +3,27 @@
  * This component reads the benchmark report HTML at BUILD TIME using Astro's import.meta.glob.
  * The file is loaded during the build process and embedded directly into the page output.
  * 
- * The benchmark report should be placed in public/benchmark-report.html before building.
+ * @param file - The path to the benchmark report HTML file (e.g., "benchmark-report.html" or "benchmark-libsql-turso.html")
  */
+interface Props {
+  file?: string;
+}
+
+const { file = "benchmark-report.html" } = Astro.props;
+
 // Load benchmark report HTML at build time using Astro's glob import (like GeneratedCode.astro)
-const benchmarkReports = import.meta.glob("/public/benchmark-report.html", {
+const benchmarkReports = import.meta.glob("/public/*.html", {
   query: "?raw",
   import: "default",
   eager: true,
 }) as Record<string, string | undefined>;
 
-const filePath = "/public/benchmark-report.html";
+const filePath = `/public/${file}`;
 const htmlContent = benchmarkReports[filePath];
 
 if (!htmlContent) {
   throw new Error(
-    `Benchmark report not found: ${filePath}. Run the benchmark to generate it and place it in public/benchmark-report.html`,
+    `Benchmark report not found: ${filePath}. Run the benchmark to generate it and place it in public/${file}`,
   );
 }
 

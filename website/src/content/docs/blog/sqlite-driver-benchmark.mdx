@@ -1,6 +1,6 @@
 ---
-title: "SQLite Driver Benchmark: better-sqlite3 vs node:sqlite"
-date: 2026-01-16
+title: "SQLite Driver Benchmark: Comparing better-sqlite3, node:sqlite, libSQL,   Turso"
+date: 2026-01-19
 authors:
   - name: Uwe Maurer
     url: https://github.com/uwemaurer
@@ -8,59 +8,56 @@ authors:
 
 import BenchmarkReport from "@components/BenchmarkReport.astro";
 
-**SQG** (SQL Query Generator) is a build-time tool that generates type-safe database access code from annotated SQL files. You write SQL queries with simple comment annotations, and SQG generates TypeScript or Java code with full type safety—no ORM required, just pure SQL with generated types.
+Choosing the right SQLite driver for Node.js can impact your application's performance. 
 
-We've added support for Node.js's built-in SQLite module (`node:sqlite`) as an alternative to better-sqlite3. To help you choose the right driver, we ran comprehensive benchmarks comparing both options using SQG-generated code.
+We ran performance tests comparing **better-sqlite3**, **node:sqlite**, **libSQL**, and **Turso** across common database operations. Here's what we found.
 
-## TL;DR
-
-- **better-sqlite3** is 20-39% faster for read operations
-- **Write operations** are essentially equal (better-sqlite3 slightly ahead by 1-4%)
-- **node:sqlite** requires zero external dependencies
-- My recommendation: Use **better-sqlite3**, maybe **node:sqlite** for zero-dependency requirements
-
-## The Contenders
+## The Four SQLite Options for Node.js
 
 ### better-sqlite3
 
-The de facto standard for SQLite in Node.js. It's a mature, well-optimized native addon that's been battle-tested in production for years.
+This library has been tested in production for years, 
+offering excellent performance through a **synchronous API**. The synchronous API makes it very performant 
+and easy to use, and is perfect for fast queries.
 
-- [Documentation](https://github.com/WiseLibs/better-sqlite3)
-
-```yaml
-generator: typescript/sqlite  # or typescript/sqlite/better-sqlite3
-```
+→ [GitHub better-sqlite3](https://github.com/WiseLibs/better-sqlite3)
 
 ### node:sqlite
 
-Node.js 22 introduced a built-in SQLite module. It's still experimental but offers zero-dependency SQLite access.
+Node.js 22+ includes a **built-in SQLite module** (still experimental). 
+It provides zero-dependency SQLite access with a synchronous API similar to better-sqlite3, 
+and also an asynchronous API.
 
-- [Documentation](https://nodejs.org/api/sqlite.html)
+→ [Node.js SQlite Documentation](https://nodejs.org/api/sqlite.html)
 
-```yaml
-generator: typescript/sqlite/node
-```
+### libSQL
 
-## Benchmark Setup
+An open-source fork of SQLite created by the Turso team. It provides an **async API** and supports both local database files and remote libSQL/Turso servers.
+Fully compatible with the original SQLite (file format, API)
 
-We tested both drivers with:
+
+→ [libSQL TypeScript](https://github.com/tursodatabase/libsql-client-ts)
+
+### Turso
+
+Turso is a SQLite compatible database written in Rust. Currently still in beta.
+
+
+→ [Turso for Javascript](https://github.com/tursodatabase/turso/tree/main/bindings/javascript)
+
+## Benchmark Methodology
+
+We tested all four drivers with identical queries. A simple scenario with a [user and posts table](https://github.com/sqg-dev/sqg/blob/main/examples/typescript-sqlite-benchmark/queries.sql).
 
 - **10,000 users** and **500,000 posts** (50 per user)
 - **Optimized pragma settings** (WAL mode, 64MB cache, memory-mapped I/O)
-- **Various query patterns**: simple selects, JOINs, aggregates, inserts, updates
+- **Various query patterns**: simple selects, indexed lookups, JOINs, aggregates, inserts, updates
 
-Note: The better-sqlite3 API is synchronous, we compared it against the synchronous API of node:sqlite.
-
-### Test Environment
-
-- **Node.js**: v25.3.0
-- **Platform**: Linux x64
-- **CPU**: 12th Gen Intel Core i9-12900K (24 cores)
-- **Memory**: 31.07 GB
+Note: better-sqlite3 and node:sqlite use synchronous APIs, while libSQL and Turso use async/await. 
 
 ### SQLite Configuration
 
-Both databases used these settings:
+All databases used these optimized settings:
 
 ```sql
 PRAGMA journal_mode = WAL;       -- Write-Ahead Logging
@@ -72,18 +69,23 @@ PRAGMA mmap_size = 268435456;     -- 256MB memory-mapped I/O
 
 ## Results
 
-<BenchmarkReport />
+<BenchmarkReport file="benchmark-libsql-turso.html" />
 
+## Key Findings
 
-## Using Both Generators with SQG
+- **better-sqlite3 is the fastest** for most operations, with node:sqlite second
+- **Turso has a surprisingly slow query** for `countPostsByUser` (better-sqlite3 is almost 100x faster here). 
+   I did not investigate why this is, it might be that the Turso database like many others (eg Postgresql) needs 
+  to scan the full table in order to count the number of rows and has no fast handling for this special case.
 
-SQG can generate code for both drivers from the same SQL file, 
-making it easy to benchmark or switch drivers:
+## Benchmark Implementation
+
+The benchmark is implemented using [SQG](https://sqg.dev), a SQL to code generator.
+
+One advantage of using a code generator like [SQG](https://sqg.dev) is that you can switch between SQLite drivers without rewriting your queries. SQG generates type-safe code for all four drivers from the same SQL file:
 
 ```yaml
-version: 1
-name: my-app
-
+# sqg.yaml - generate code for multiple drivers
 sql:
   - files:
       - queries.sql
@@ -92,12 +94,13 @@ sql:
         output: ./src/db-better-sqlite3.ts
       - generator: typescript/sqlite/node
         output: ./src/db-node-sqlite.ts
+      - generator: typescript/sqlite/libsql
+        output: ./src/db-libsql.ts
+      - generator: typescript/sqlite/turso
+        output: ./src/db-turso.ts
 ```
 
-This lets you:
-- **Benchmark with your actual queries** - See real-world performance differences
-- **Switch drivers without changing SQL** - Just update your imports
-- **A/B test in production** - Run both and compare
+This makes it easy to benchmark with your actual queries and switch drivers by changing imports.
 
 ## Try It Yourself
 
@@ -111,15 +114,16 @@ pnpm generate
 pnpm bench
 ```
 
-This will generate an HTML report with detailed bar charts and system information. You can run it on your own hardware to see how the drivers perform in your environment.
+This will generate an HTML report with the results table shown above.
+
+
 
 ## Conclusion
 
-I've been a long-time fan of better-sqlite3 and have used it extensively in production. After running these benchmarks, I'm sticking with it.
+I think for most applications, [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) remains the best choice.
 
 
-The great news is that SQG supports both generators, so you can easily benchmark with your actual queries and make an informed decision. For me, better-sqlite3 remains the default choice—it's proven, fast, and reliable.
 
 ---
 
-*Have questions or feedback? Open an issue on [GitHub](https://github.com/sqg-dev/sqg).*
+*Benchmarks generated using [SQG](https://sqg.dev). Have questions? Open an issue on [GitHub](https://github.com/sqg-dev/sqg).*
