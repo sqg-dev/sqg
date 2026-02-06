@@ -157,8 +157,21 @@ export class JavaTypeMapper extends TypeMapper {
     BIT: "String",
     BIGNUM: "BigDecimal",
 
-    // Postgres types
+    // PostgreSQL types (from pg-types.builtins)
+    INT2: "Short",
     INT4: "Integer",
+    INT8: "Long",
+    FLOAT4: "Float",
+    FLOAT8: "Double",
+    NUMERIC: "BigDecimal",
+    BOOL: "Boolean",
+    BYTEA: "byte[]",
+    TIMESTAMPTZ: "OffsetDateTime",
+    JSON: "String",
+    JSONB: "String",
+    OID: "Long",
+    SERIAL: "Integer",
+    BIGSERIAL: "Long",
   };
 
   // Java reserved keywords that cannot be used as identifiers
@@ -226,6 +239,13 @@ export class JavaTypeMapper extends TypeMapper {
       return mappedType;
     }
 
+    // Handle PostgreSQL array types (e.g., _TEXT, _INT4, _INT8)
+    if (upperType.startsWith("_")) {
+      const baseType = upperType.substring(1);
+      const elementType = this.typeMap[baseType] || "Object";
+      return `List<${elementType}>`;
+    }
+
     // Handle parameterized types
     if (upperType.startsWith("DECIMAL(") || upperType.startsWith("NUMERIC(")) {
       return "BigDecimal";
@@ -241,8 +261,8 @@ export class JavaTypeMapper extends TypeMapper {
       return "Object";
     }
 
-    console.warn("Mapped type is unknown:", type);
-    return "Object";
+    // Unknown types (including user-defined ENUMs) default to String
+    return "String";
   }
 
   formatListType(elementType: string): string {
@@ -331,6 +351,12 @@ export class JavaTypeMapper extends TypeMapper {
     if (upperType === "TIME") {
       return `toLocalTime((java.sql.Time)${value})`;
     }
+    // Handle PostgreSQL array types (e.g., _TEXT, _INT4)
+    if (upperType.startsWith("_")) {
+      const baseType = upperType.substring(1);
+      const elementType = this.typeMap[baseType] || "Object";
+      return `arrayToList((Array)${value}, ${elementType}[].class)`;
+    }
     return `(${fieldType})${value}`;
   }
 
@@ -406,8 +432,21 @@ export class TypeScriptTypeMapper extends TypeMapper {
     BIT: "{ data: Uint8Array }",
     BIGNUM: "bigint",
 
-    // Postgres types
+    // PostgreSQL types (from pg-types.builtins)
+    INT2: "number",
     INT4: "number",
+    INT8: "bigint",
+    FLOAT4: "number",
+    FLOAT8: "number",
+    NUMERIC: "string", // PostgreSQL numeric can be very large, return as string
+    BOOL: "boolean",
+    BYTEA: "Buffer",
+    TIMESTAMPTZ: "Date",
+    JSON: "unknown",
+    JSONB: "unknown",
+    OID: "number",
+    SERIAL: "number",
+    BIGSERIAL: "bigint",
   };
 
   // Language-specific implementations
@@ -416,6 +455,14 @@ export class TypeScriptTypeMapper extends TypeMapper {
     const mappedType = this.typeMap[upperType];
     if (mappedType) {
       return nullable ? `${mappedType} | null` : mappedType;
+    }
+
+    // Handle PostgreSQL array types (e.g., _TEXT, _INT4, _INT8)
+    if (upperType.startsWith("_")) {
+      const baseType = upperType.substring(1);
+      const elementType = this.typeMap[baseType] || "unknown";
+      const arrayType = `${elementType}[]`;
+      return nullable ? `${arrayType} | null` : arrayType;
     }
 
     // Handle parameterized types
@@ -451,8 +498,8 @@ export class TypeScriptTypeMapper extends TypeMapper {
       return "{ items: unknown[] }";
     }
 
-    console.warn("Mapped type is unknown:", type);
-    return "unknown";
+    // Unknown types (including user-defined ENUMs) default to string
+    return nullable ? "string | null" : "string";
   }
 
   formatListType(elementType: string): string {

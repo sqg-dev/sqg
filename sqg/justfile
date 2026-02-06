@@ -1,7 +1,7 @@
 all: build-duckdb build-duckdb-arrow build-pg build-sqlite build-sources
   echo "All done"
 
-all-ci: build-duckdb build-duckdb-arrow build-sqlite build-sources
+all-ci: build-duckdb build-duckdb-arrow build-pg build-sqlite build-sources
   echo "All done"
 
 build-duckdb:
@@ -19,8 +19,8 @@ build-sqlite:
 build-sources: create-users-sqlite
   pnpm sqg tests/test-sources.yaml
 
-start-pg: 
-  docker run --name sqg-postgres -p 15432:5432 -e POSTGRES_PASSWORD=secret -e POSTGRES_USER=sqg -e POSTGRES_DB=sqg-db -d postgres
+start-pg:
+  docker run --name sqg-postgres -p 15432:5432 -e POSTGRES_PASSWORD=secret -e POSTGRES_USER=sqg -e POSTGRES_DB=sqg-db -d postgres:16-alpine
 
 stop-pg:
   docker stop sqg-postgres
@@ -40,5 +40,3 @@ release:
   git commit -m "release: $PACKAGE_VERSION" package.json
   git tag $PACKAGE_VERSION
   git push && git push --tags
-
-  

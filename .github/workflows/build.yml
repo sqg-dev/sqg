@@ -43,5 +43,5 @@ jobs:
 
       - name: Test
         working-directory: sqg
-        run: pnpm test:run --exclude sqltool-pg.test.ts
+        run: pnpm test:run
 

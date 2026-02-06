@@ -67,6 +67,7 @@
     "handlebars": "catalog:",
     "pg": "catalog:",
     "pg-types": "catalog:",
+    "@testcontainers/postgresql": "^10.21.0",
     "prettier": "catalog:",
     "prettier-plugin-java": "catalog:",
     "yaml": "catalog:",

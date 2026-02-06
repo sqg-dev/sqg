@@ -7,8 +7,11 @@ guava = "33.4.5-jre"
 [libraries]
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
 duckdb = "org.duckdb:duckdb_jdbc:1.4.2.0"
+postgresql = "org.postgresql:postgresql:42.7.5"
 assertj = "org.assertj:assertj-core:3.27.6"
 junit = "org.junit.jupiter:junit-jupiter-api:6.0.1"
+testcontainersPostgresql = "org.testcontainers:postgresql:1.20.6"
+testcontainersJunit = "org.testcontainers:junit-jupiter:1.20.6"
 arrowVector = "org.apache.arrow:arrow-vector:18.3.0"
 arrowCData = "org.apache.arrow:arrow-c-data:18.3.0"
 arrowMemory = "org.apache.arrow:arrow-memory-netty:18.3.0"

@@ -10,5 +10,7 @@ sql:
           output: /tmp/
           config:
             package: com.test
-
-
+        - generator: java/postgres
+          output: ../java/src/main/java/sqg/generated/
+          config:
+            package: sqg.generated

@@ -10,6 +10,7 @@ repositories {
 dependencies {
     implementation(libs.guava)
     implementation(libs.duckdb)
+    implementation(libs.postgresql)
     implementation(libs.arrowVector)
     implementation(libs.arrowCData)
     runtimeOnly(libs.arrowMemory)
@@ -19,6 +20,8 @@ dependencies {
 
     testImplementation(libs.assertj)
     testImplementation(libs.junit)
+    testImplementation(libs.testcontainersPostgresql)
+    testImplementation(libs.testcontainersJunit)
 }
 
 testing {
