@@ -258,6 +258,7 @@ function generateSourceFile(
   templatePath: string,
   generator: Generator,
   engine: DbEngine,
+  projectName: string,
   config?: any,
 ): string {
   const templateSrc = readFileSync(templatePath, "utf-8");
@@ -282,6 +283,7 @@ function generateSourceFile(
       queries: queries.map((q) => new SqlQueryHelper(q, generator, generator.getStatement(q))),
       tables: tableHelpers,
       className: generator.getClassName(name),
+      projectName,
       config,
     },
     {
@@ -512,6 +514,7 @@ export interface GeneratorConfig {
   template?: string;
   config?: any;
   name?: string;
+  projectName?: string;
 }
 
 export function getOutputPath(
@@ -580,6 +583,7 @@ export async function writeGeneratedFile(
   const templateDir = dirname(new URL(import.meta.url).pathname);
   const templatePath = join(templateDir, gen.template ?? generator.template);
   const name = gen.name ?? basename(file, extname(file));
+  const projectName = gen.projectName ?? name;
   const sourceFile = generateSourceFile(
     name,
     queries,
@@ -587,6 +591,7 @@ export async function writeGeneratedFile(
     templatePath,
     generator,
     engine,
+    projectName,
     gen.config,
   );
 
@@ -804,9 +809,10 @@ export async function processProjectFromConfig(
 
           for (const gen of gens) {
             const generator = getGenerator(gen.generator);
+            const genWithProject: GeneratorConfig = { ...gen, projectName: project.name };
             const outputPath = await writeGeneratedFile(
               projectDir,
-              gen,
+              genWithProject,
               generator,
               sqlFile,
               queries,

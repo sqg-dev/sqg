@@ -134,9 +134,66 @@ public class {{className}} {
         {{/each}}
     );
 
-    public static List<String> getMigrations() {   
+{{#if config.migrations}}
+    private static final List<String> migrationIds = List.of(
+        {{#each migrations}}"{{id}}"{{#unless @last}},{{/unless}}
+        {{/each}}
+    );
+{{/if}}
+
+    public static List<String> getMigrations() {
         return migrations;
     }
+
+{{#if config.migrations}}
+    public static void applyMigrations(Connection connection) throws SQLException {
+        applyMigrations(connection, "{{projectName}}");
+    }
+
+    public static void applyMigrations(Connection connection, String projectName) throws SQLException {
+        try (var stmt = connection.createStatement()) {
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS _sqg_migrations (
+                    project TEXT NOT NULL,
+                    migration_id TEXT NOT NULL,
+                    applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (project, migration_id)
+                )""");
+        }
+        boolean wasAutoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try {
+            var applied = new java.util.HashSet<String>();
+            try (var stmt = connection.prepareStatement("SELECT migration_id FROM _sqg_migrations WHERE project = ?")) {
+                stmt.setString(1, projectName);
+                try (var rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        applied.add(rs.getString(1));
+                    }
+                }
+            }
+            for (int i = 0; i < migrations.size(); i++) {
+                var id = migrationIds.get(i);
+                if (!applied.contains(id)) {
+                    try (var stmt = connection.createStatement()) {
+                        stmt.execute(migrations.get(i));
+                    }
+                    try (var stmt = connection.prepareStatement("INSERT INTO _sqg_migrations (project, migration_id) VALUES (?, ?)")) {
+                        stmt.setString(1, projectName);
+                        stmt.setString(2, id);
+                        stmt.executeUpdate();
+                    }
+                }
+            }
+            connection.commit();
+        } catch (SQLException e) {
+            connection.rollback();
+            throw e;
+        } finally {
+            connection.setAutoCommit(wasAutoCommit);
+        }
+    }
+{{/if}}
 
     {{#each queries}}
     {{#unless skipGenerateFunction}}

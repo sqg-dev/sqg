@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -64,6 +65,12 @@ public class Queries {
 
     private static LocalTime toLocalTime(java.sql.Time t) {
         return t != null ? t.toLocalTime() : null;
+    }
+
+    private static OffsetDateTime toOffsetDateTime(java.sql.Timestamp ts) {
+        return ts != null
+            ? ts.toInstant().atOffset(java.time.ZoneOffset.UTC)
+            : null;
     }
 
     private static <K> List<K> arrayToList(

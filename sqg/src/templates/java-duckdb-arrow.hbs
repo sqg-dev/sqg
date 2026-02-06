@@ -29,9 +29,19 @@ public class {{className}} {
     }
 
 
-    public static List<String> getMigrations() {   
+    public static List<String> getMigrations() {
         return {{className}}Jdbc.getMigrations();
     }
+
+{{#if config.migrations}}
+    public static void applyMigrations(Connection connection) throws SQLException {
+        {{className}}Jdbc.applyMigrations(connection);
+    }
+
+    public static void applyMigrations(Connection connection, String projectName) throws SQLException {
+        {{className}}Jdbc.applyMigrations(connection, projectName);
+    }
+{{/if}}
 
     {{#each queries}}
     {{#unless skipGenerateFunction}}

@@ -28,6 +28,39 @@ export class {{className}} {
         ];
     }
 
+{{#if config.migrations}}
+    static applyMigrations(db: DatabaseSync, projectName = '{{projectName}}'): void {
+        db.exec(`CREATE TABLE IF NOT EXISTS _sqg_migrations (
+            project TEXT NOT NULL,
+            migration_id TEXT NOT NULL,
+            applied_at TEXT NOT NULL DEFAULT (datetime('now')),
+            PRIMARY KEY (project, migration_id)
+        )`);
+        db.exec('BEGIN IMMEDIATE');
+        try {
+            const rows = db.prepare('SELECT migration_id FROM _sqg_migrations WHERE project = ?')
+                .all(projectName) as { migration_id: string }[];
+            const applied = new Set(rows.map(r => r.migration_id));
+            const migrations: [string, string][] = [
+                {{#each migrations}}
+                ['{{{id}}}', {{{quote sqlQuery}}}],
+                {{/each}}
+            ];
+            for (const [id, sql] of migrations) {
+                if (!applied.has(id)) {
+                    db.exec(sql);
+                    db.prepare('INSERT INTO _sqg_migrations (project, migration_id) VALUES (?, ?)')
+                        .run(projectName, id);
+                }
+            }
+            db.exec('COMMIT');
+        } catch (e) {
+            db.exec('ROLLBACK');
+            throw e;
+        }
+    }
+{{/if}}
+
     static getQueryNames(): Map<string, keyof {{className}}> {
         return new Map([
             {{#each queries}} {{#unless skipGenerateFunction}}

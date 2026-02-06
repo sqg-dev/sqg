@@ -18,13 +18,43 @@ export class {{className}} {
         return stmt as Statement<BindParameters, Result>;
     }
 
-    static getMigrations(): string[] {   
+    static getMigrations(): string[] {
         return [
             {{#each migrations}}
             {{{quote sqlQuery}}},
             {{/each}}
         ];
     }
+
+{{#if config.migrations}}
+    static applyMigrations(db: Database, projectName = '{{projectName}}'): void {
+        db.exec(`CREATE TABLE IF NOT EXISTS _sqg_migrations (
+            project TEXT NOT NULL,
+            migration_id TEXT NOT NULL,
+            applied_at TEXT NOT NULL DEFAULT (datetime('now')),
+            PRIMARY KEY (project, migration_id)
+        )`);
+        const runMigrations = db.transaction(() => {
+            const applied = new Set(
+                db.prepare('SELECT migration_id FROM _sqg_migrations WHERE project = ?')
+                    .pluck().all(projectName) as string[]
+            );
+            const migrations: [string, string][] = [
+                {{#each migrations}}
+                ['{{{id}}}', {{{quote sqlQuery}}}],
+                {{/each}}
+            ];
+            for (const [id, sql] of migrations) {
+                if (!applied.has(id)) {
+                    db.exec(sql);
+                    db.prepare('INSERT INTO _sqg_migrations (project, migration_id) VALUES (?, ?)')
+                        .run(projectName, id);
+                }
+            }
+        });
+        runMigrations.immediate();
+    }
+{{/if}}
 
     static getQueryNames(): Map<string, keyof {{className}}> {
         return new Map([

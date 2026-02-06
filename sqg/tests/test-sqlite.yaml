@@ -8,9 +8,12 @@ sql:
     gen:
         - generator: typescript/sqlite
           output: /tmp/
+          config:
+            migrations: true
         - generator: java/sqlite
           output: /tmp/
           config:
             package: com.test.db
+            migrations: true
 
 

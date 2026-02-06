@@ -5,13 +5,49 @@ export class {{className}} {
     
     constructor(private conn: DuckDBConnection) {}
 
-    static getMigrations(): string[] {   
+    static getMigrations(): string[] {
         return [
             {{#each migrations}}
             {{{quote sqlQuery}}},
             {{/each}}
         ];
     }
+
+{{#if config.migrations}}
+    static async applyMigrations(conn: DuckDBConnection, projectName = '{{projectName}}'): Promise<void> {
+        await conn.run(`CREATE TABLE IF NOT EXISTS _sqg_migrations (
+            project TEXT NOT NULL,
+            migration_id TEXT NOT NULL,
+            applied_at TIMESTAMP NOT NULL DEFAULT now(),
+            PRIMARY KEY (project, migration_id)
+        )`);
+        await conn.run('BEGIN');
+        try {
+            const result = await conn.runAndReadAll(
+                'SELECT migration_id FROM _sqg_migrations WHERE project = $1', [projectName]
+            );
+            const applied = new Set(result.getRows().map((row) => row[0] as string));
+            const migrations: [string, string][] = [
+                {{#each migrations}}
+                ['{{{id}}}', {{{quote sqlQuery}}}],
+                {{/each}}
+            ];
+            for (const [id, sql] of migrations) {
+                if (!applied.has(id)) {
+                    await conn.run(sql);
+                    await conn.run(
+                        'INSERT INTO _sqg_migrations (project, migration_id) VALUES ($1, $2)',
+                        [projectName, id]
+                    );
+                }
+            }
+            await conn.run('COMMIT');
+        } catch (e) {
+            await conn.run('ROLLBACK');
+            throw e;
+        }
+    }
+{{/if}}
 
     static getQueryNames(): Map<string, keyof {{className}}> {
         return new Map([

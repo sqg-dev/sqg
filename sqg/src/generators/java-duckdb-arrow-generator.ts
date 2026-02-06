@@ -40,6 +40,7 @@ export class JavaDuckDBArrowGenerator extends BaseGenerator {
         generator: "java/duckdb/jdbc",
         output: gen.output,
         config: gen.config,
+        projectName: gen.projectName,
       },
       this.javaGenerator,
       name,

@@ -31,6 +31,42 @@ export class TestSqlite {
     ];
   }
 
+  static applyMigrations(db: Database, projectName = "test-sqlite"): void {
+    db.exec(`CREATE TABLE IF NOT EXISTS _sqg_migrations (
+            project TEXT NOT NULL,
+            migration_id TEXT NOT NULL,
+            applied_at TEXT NOT NULL DEFAULT (datetime('now')),
+            PRIMARY KEY (project, migration_id)
+        )`);
+    const runMigrations = db.transaction(() => {
+      const applied = new Set(
+        db
+          .prepare("SELECT migration_id FROM _sqg_migrations WHERE project = ?")
+          .pluck()
+          .all(projectName) as string[],
+      );
+      const migrations: [string, string][] = [
+        [
+          "1",
+          `create table  users (
+    id text primary key,
+    name text not null,
+    email text unique
+) strict;`,
+        ],
+      ];
+      for (const [id, sql] of migrations) {
+        if (!applied.has(id)) {
+          db.exec(sql);
+          db.prepare(
+            "INSERT INTO _sqg_migrations (project, migration_id) VALUES (?, ?)",
+          ).run(projectName, id);
+        }
+      }
+    });
+    runMigrations.immediate();
+  }
+
   static getQueryNames(): Map<string, keyof TestSqlite> {
     return new Map([
       ["users1", "users1"],
