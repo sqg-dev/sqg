@@ -345,6 +345,9 @@ export class JavaTypeMapper extends TypeMapper {
     if (upperType === "TIMESTAMP" || upperType === "DATETIME") {
       return `toLocalDateTime((java.sql.Timestamp)${value})`;
     }
+    if (upperType === "TIMESTAMPTZ") {
+      return `toOffsetDateTime((java.sql.Timestamp)${value})`;
+    }
     if (upperType === "DATE") {
       return `toLocalDate((java.sql.Date)${value})`;
     }

@@ -67,6 +67,12 @@ public class TestDuckdb {
         return t != null ? t.toLocalTime() : null;
     }
 
+    private static OffsetDateTime toOffsetDateTime(java.sql.Timestamp ts) {
+        return ts != null
+            ? ts.toInstant().atOffset(java.time.ZoneOffset.UTC)
+            : null;
+    }
+
     private static <K> List<K> arrayToList(
         Array array,
         Class<? extends K[]> baseType
