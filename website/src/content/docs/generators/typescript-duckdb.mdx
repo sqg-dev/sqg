@@ -45,6 +45,8 @@ sql:
     gen:
       - generator: typescript/duckdb
         output: ./src/generated/
+        config:
+          migrations: true  # generates applyMigrations() function
 ```
 
 ## Quick Start
@@ -78,10 +80,8 @@ sql:
      const instance = await DuckDBInstance.create(':memory:');
      const connection = await instance.connect();
 
-     // Run migrations
-     for (const migration of MyApp.getMigrations()) {
-       await connection.run(migration);
-     }
+     // Apply migrations (with built-in tracking)
+     await MyApp.applyMigrations(connection);
 
      // Create query instance
      const queries = new MyApp(connection);

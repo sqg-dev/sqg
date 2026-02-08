@@ -33,9 +33,9 @@ SQG automates all of this by introspecting your actual database.
 ### What databases are supported?
 
 Currently supported:
-- **SQLite** - via better-sqlite3
+- **SQLite** - via better-sqlite3, node:sqlite, libSQL, or Turso
 - **DuckDB** - via @duckdb/node-api
-- **PostgreSQL** - via pg
+- **PostgreSQL** - via pg (with ENUM, array, and TIMESTAMPTZ support)
 
 ### What languages can I generate?
 
@@ -317,33 +317,36 @@ Yes, in several ways:
 
 ### How do I handle migrations in production?
 
-SQG generates a `getMigrations()` method that returns an array of migration SQL strings. You're responsible for:
+**Recommended: Use the built-in migration runner.** Enable it with `config.migrations: true` in your `sqg.yaml`:
 
-1. Tracking which migrations have run (e.g., migrations table)
-2. Running new migrations in order
-3. Handling rollbacks if needed
+```yaml
+gen:
+  - generator: typescript/sqlite
+    output: ./src/generated/
+    config:
+      migrations: true
+```
 
-Example migration runner:
+This generates a static `applyMigrations()` method that handles everything:
 
 ```typescript
-function runMigrations(db: Database) {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS _migrations (
-      id INTEGER PRIMARY KEY,
-      applied_at TEXT DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
+import Database from 'better-sqlite3';
+import { MyApp } from './generated/my-app';
 
-  const applied = db.prepare('SELECT id FROM _migrations').all().map(r => r.id);
-  const migrations = MyApp.getMigrations();
+const db = new Database('app.db');
 
-  migrations.forEach((sql, index) => {
-    const migrationId = index + 1;
-    if (!applied.includes(migrationId)) {
-      db.exec(sql);
-      db.prepare('INSERT INTO _migrations (id) VALUES (?)').run(migrationId);
-    }
-  });
+// Tracks applied migrations in _sqg_migrations table
+// Applies new ones in order, inside a transaction
+MyApp.applyMigrations(db);
+```
+
+The tracking table is scoped by project name (from `sqg.yaml`), so **multiple sqg projects can share the same database**.
+
+**Alternative: Manual migration management.** SQG also generates a `getMigrations()` method that returns raw SQL strings if you prefer to use external migration tools:
+
+```typescript
+for (const migration of MyApp.getMigrations()) {
+  db.exec(migration);
 }
 ```
 
@@ -375,6 +378,8 @@ export SQG_POSTGRES_URL="postgresql://user:password@localhost:5432/dbname"
 ```
 
 SQG creates a temporary database for introspection, so the user needs CREATE DATABASE privileges.
+
+If `SQG_POSTGRES_URL` is not set, SQG will automatically start a PostgreSQL container using [Testcontainers](https://testcontainers.com/) (requires Docker).
 
 ### Generated types are all `any`
 

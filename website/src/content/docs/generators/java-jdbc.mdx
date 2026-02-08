@@ -84,9 +84,12 @@ sql:
         output: ./src/main/java/com/myapp/db/
         config:
           package: com.myapp.db
+          migrations: true  # generates applyMigrations() method
 ```
 
-The `config.package` option specifies the Java package name for generated classes.
+**Config options:**
+- `package` - Java package name for generated classes
+- `migrations` - When `true`, generates an `applyMigrations()` method with built-in tracking
 
 ## Quick Start
 
@@ -114,10 +117,8 @@ The `config.package` option specifies the Java package name for generated classe
            // Connect to database
            Connection conn = DriverManager.getConnection("jdbc:sqlite:app.db");
 
-           // Run migrations
-           for (String migration : MyApp.getMigrations()) {
-               conn.createStatement().execute(migration);
-           }
+           // Apply migrations (with built-in tracking)
+           MyApp.applyMigrations(conn);
 
            // Create query instance
            MyApp queries = new MyApp(conn);
@@ -157,6 +158,7 @@ The generator creates a single Java file with:
 - **Record types** for each query result
 - **A class** with methods for each query/exec
 - **Static `getMigrations()`** method returning migration SQL strings
+- **Static `applyMigrations()`** method (when `config.migrations: true`) that tracks and applies migrations automatically
 
 <GeneratedCode id="java-jdbc-full" title="Generated Java"  startMatch="allUsers()" endMatch="GetUserResult"/>
 
@@ -176,9 +178,86 @@ The generator creates a single Java file with:
 | `BOOLEAN` | `Boolean` |
 | `DATE` | `LocalDate` |
 | `TIMESTAMP` | `LocalDateTime` |
+| `TIMESTAMPTZ` | `OffsetDateTime` |
 | `TIME` | `LocalTime` |
 | `DECIMAL`, `NUMERIC` | `BigDecimal` |
 | `UUID` | `UUID` |
+| `TEXT[]`, `INTEGER[]` | `List<String>`, `List<Integer>` |
+| `ENUM` | `String` |
 
 All types are nullable (using wrapper classes).
+
+## PostgreSQL
+
+SQG supports PostgreSQL via the `java/postgres` generator. PostgreSQL-specific features include:
+
+### Setup
+
+PostgreSQL requires a running server for type introspection. Provide the connection string via environment variable:
+
+```bash
+export SQG_POSTGRES_URL="postgresql://user:password@localhost:5432/mydb"
+```
+
+If `SQG_POSTGRES_URL` is not set, SQG will automatically start a PostgreSQL container using [Testcontainers](https://testcontainers.com/) (requires Docker).
+
+### User-Defined Types (ENUMs)
+
+SQG introspects PostgreSQL's `pg_type` catalog to resolve user-defined types like ENUMs:
+
+```sql
+-- MIGRATE 1
+CREATE TYPE task_status AS ENUM ('pending', 'active', 'completed', 'cancelled');
+
+CREATE TABLE tasks (
+    id SERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    status task_status DEFAULT 'pending'
+);
+
+-- QUERY get_tasks_by_status
+@set status = 'active'
+SELECT id, title, status FROM tasks WHERE status = ${status}::task_status;
+```
+
+ENUM values are mapped to `String` in Java.
+
+### Array Types
+
+PostgreSQL arrays are mapped to Java `List<T>`:
+
+```sql
+CREATE TABLE tasks (
+    id SERIAL PRIMARY KEY,
+    tags TEXT[],
+    priority_scores INTEGER[]
+);
+```
+
+```java
+// Generated record
+record GetAllTasksResult(Integer id, String title, List<String> tags, List<Integer> priorityScores) {}
+
+// Usage
+for (var task : queries.getAllTasks()) {
+    System.out.println(task.tags());            // [urgent, backend]
+    System.out.println(task.priorityScores());  // [10, 20, 30]
+}
+```
+
+### TIMESTAMPTZ Support
+
+PostgreSQL `TIMESTAMPTZ` columns are mapped to `OffsetDateTime` (with UTC offset):
+
+```sql
+CREATE TABLE events (
+    id SERIAL PRIMARY KEY,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+```java
+// Generated type uses OffsetDateTime
+record EventResult(Integer id, OffsetDateTime createdAt) {}
+```
 

@@ -52,6 +52,8 @@ sql:
     gen:
       - generator: typescript/sqlite
         output: ./src/generated/
+        config:
+          migrations: true  # generates applyMigrations() function
 ```
 
 ## Quick Start
@@ -83,10 +85,8 @@ sql:
    // Create database connection
    const db = new Database('app.db');
 
-   // Run migrations
-   for (const migration of MyApp.getMigrations()) {
-     db.exec(migration);
-   }
+   // Apply migrations (with built-in tracking)
+   MyApp.applyMigrations(db);
 
    // Create query instance
    const queries = new MyApp(db);
@@ -119,6 +119,7 @@ The generator creates a single TypeScript file with:
 - **Type definitions** for each query result
 - **A class** with methods for each query/exec
 - **Static `getMigrations()`** method returning migration SQL strings
+- **Static `applyMigrations()`** method (when `config.migrations: true`) that tracks and applies migrations automatically
 
 <GeneratedCode id="typescript-sqlite-full" title="Generated TypeScript" startMatch="allUsers(" endMatch="getUser(" />
 
@@ -163,6 +164,22 @@ db.close();
 | `NULL` | `null` |
 
 Nullable columns use union types: `string | null`
+
+## Migrations
+
+SQG generates a `getMigrations()` method that returns migration SQL strings. With `config.migrations: true`, you also get `applyMigrations()` which handles tracking automatically:
+
+```typescript
+// Recommended: built-in migration tracking
+MyApp.applyMigrations(db);
+
+// Or manual migration management
+for (const migration of MyApp.getMigrations()) {
+  db.exec(migration);
+}
+```
+
+The built-in migration runner uses a `_sqg_migrations` table to track which migrations have been applied. Multiple sqg projects can share the same database — each project's migrations are tracked separately using the project name from `sqg.yaml`.
 
 ## Best Practices
 

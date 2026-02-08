@@ -108,6 +108,8 @@ sqg sqg.yaml
        gen:
          - generator: typescript/sqlite
            output: ./src/generated/
+           config:
+             migrations: true
    ```
 
 3. **Run the generator**
@@ -127,10 +129,8 @@ sqg sqg.yaml
    // Initialize database
    const db = new Database('app.db');
 
-   // Run migrations
-   for (const migration of MyApp.getMigrations()) {
-     db.exec(migration);
-   }
+   // Apply migrations (creates tracking table, applies in order)
+   MyApp.applyMigrations(db);
 
    // Create query instance
    const queries = new MyApp(db);
@@ -196,7 +196,7 @@ See individual generator documentation for configuration options, type mappings,
 
 **Notes:**
 - SQLite and DuckDB use in-memory databases for type introspection (no server needed)
-- PostgreSQL requires a running server; set `SQG_POSTGRES_URL` environment variable
+- PostgreSQL requires a running server; set `SQG_POSTGRES_URL` environment variable, or SQG will auto-start a container via [Testcontainers](https://testcontainers.com/)
 - See individual generator pages for installation and usage details
 
 ## Development Workflow with DBeaver

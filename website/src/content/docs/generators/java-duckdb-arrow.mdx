@@ -86,6 +86,7 @@ sql:
         output: ./src/main/java/com/myapp/analytics/
         config:
           package: com.myapp.analytics
+          migrations: true  # generates applyMigrations() method
 ```
 
 ## Quick Start
@@ -121,10 +122,8 @@ sql:
            DuckDBConnection conn = (DuckDBConnection) DriverManager
                .getConnection("jdbc:duckdb:");
 
-           // Run migrations
-           for (String migration : Analytics.getMigrations()) {
-               conn.createStatement().execute(migration);
-           }
+           // Apply migrations (with built-in tracking)
+           Analytics.applyMigrations(conn);
 
            // Create query instance
            Analytics queries = new Analytics(conn);

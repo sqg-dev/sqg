@@ -48,8 +48,62 @@ ALTER TABLE users ADD COLUMN email TEXT UNIQUE;
 **Rules:**
 - Migrations must be numbered sequentially starting from 1
 - Each migration is executed once during type introspection
-- Generated code includes a `getMigrations()` static method
-- You're responsible for tracking which migrations have run in production
+- Generated code includes a `getMigrations()` static method returning migration SQL strings
+- Use the built-in `applyMigrations()` function (see below) or manage migration tracking yourself
+
+### Built-in Migration Runner
+
+SQG can generate an `applyMigrations()` function that automatically tracks and applies migrations. Enable it with `config.migrations: true`:
+
+```yaml
+# sqg.yaml
+gen:
+  - generator: typescript/sqlite
+    output: ./src/generated/
+    config:
+      migrations: true
+```
+
+This generates a static `applyMigrations()` method that:
+- Creates a `_sqg_migrations` tracking table (if it doesn't exist)
+- Checks which migrations have already been applied for this project
+- Applies unapplied migrations in order
+- Records each applied migration with a timestamp
+- Runs everything inside a transaction for safety
+
+The tracking table uses the project `name` from your `sqg.yaml` to scope migrations, so **multiple sqg projects can share the same database** without conflicts.
+
+**TypeScript (SQLite):**
+```typescript
+// Apply migrations with default project name (from sqg.yaml)
+MyApp.applyMigrations(db);
+
+// Override project name (for multi-tenant scenarios)
+MyApp.applyMigrations(db, 'custom-project-name');
+```
+
+**TypeScript (DuckDB):**
+```typescript
+await MyApp.applyMigrations(connection);
+```
+
+**Java (JDBC):**
+```java
+MyApp.applyMigrations(connection);
+
+// Or with a custom project name
+MyApp.applyMigrations(connection, "custom-project-name");
+```
+
+The `_sqg_migrations` table schema:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `project` | TEXT | Project name (from `sqg.yaml`) |
+| `migration_id` | TEXT | Migration identifier (e.g., `"1"`, `"2"`) |
+| `applied_at` | TIMESTAMP | When the migration was applied |
+
+Primary key: `(project, migration_id)`
 
 ### TESTDATA
 
