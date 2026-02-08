@@ -1,0 +1,169 @@
+---
+title: "v0.8.0: PostgreSQL Support & Built-in Migration Tracking"
+date: 2026-02-06
+authors:
+  - name: Uwe Maurer
+    url: https://github.com/uwemaurer
+---
+
+SQG v0.8.0 brings two major features: improved PostgreSQL support for Java and a built-in migration runner that tracks which migrations have been applied.
+
+## Built-in Migration Tracking
+
+Until now, SQG generated a `getMigrations()` method that returned raw SQL strings — you were responsible for tracking which ones had been applied. That meant writing your own migration runner or integrating an external tool.
+
+With v0.8.0, you can now enable a built-in `applyMigrations()` method:
+
+```yaml
+# sqg.yaml
+version: 1
+name: my-app
+
+sql:
+  - files:
+      - queries.sql
+    gen:
+      - generator: typescript/sqlite
+        output: ./src/generated/
+        config:
+          migrations: true  # enable built-in migration tracking
+```
+
+Then in your application:
+
+```typescript
+import Database from 'better-sqlite3';
+import { MyApp } from './generated/my-app';
+
+const db = new Database('app.db');
+
+// One line — creates tracking table, checks what's applied, runs the rest
+MyApp.applyMigrations(db);
+
+const queries = new MyApp(db);
+```
+
+### How It Works
+
+The generated `applyMigrations()` method:
+
+1. **Creates a `_sqg_migrations` table** if it doesn't exist
+2. **Checks which migrations** have already been applied for this project
+3. **Applies new migrations** in order
+4. **Records each migration** with a timestamp
+5. **Wraps everything in a transaction** for safety
+
+The tracking table uses a composite primary key of `(project, migration_id)`, which means **multiple SQG projects can share the same database** without conflicts. The project name comes from the `name` field in your `sqg.yaml`.
+
+```typescript
+// Default project name from sqg.yaml
+MyApp.applyMigrations(db);
+
+// Override for multi-tenant scenarios
+MyApp.applyMigrations(db, 'tenant-123');
+```
+
+### Supported Across All Generators
+
+The migration runner works with every SQG generator:
+
+| Generator | Method |
+|-----------|--------|
+| TypeScript/SQLite (better-sqlite3) | `MyApp.applyMigrations(db)` |
+| TypeScript/SQLite (node:sqlite) | `MyApp.applyMigrations(db)` |
+| TypeScript/SQLite (libSQL) | `await MyApp.applyMigrations(client)` |
+| TypeScript/DuckDB | `await MyApp.applyMigrations(conn)` |
+| Java/JDBC (any engine) | `MyApp.applyMigrations(connection)` |
+| Java/DuckDB Arrow | `Analytics.applyMigrations(connection)` |
+
+Each implementation uses the appropriate transaction mechanism for its engine — `BEGIN IMMEDIATE` for SQLite, `setAutoCommit(false)` for JDBC, and so on.
+
+### Still Optional
+
+The feature is entirely opt-in. Without `config.migrations: true`, SQG generates the same `getMigrations()` method as before. You can continue using external migration tools like Flyway, Liquibase, or your own scripts.
+
+## PostgreSQL Improvements
+
+v0.8.0 significantly improves PostgreSQL support for the `java/postgres` generator.
+
+### User-Defined Types (ENUMs)
+
+SQG now introspects PostgreSQL's `pg_type` system catalog to resolve user-defined types. This means ENUMs work out of the box:
+
+```sql
+-- MIGRATE 1
+CREATE TYPE task_status AS ENUM ('pending', 'active', 'completed', 'cancelled');
+
+CREATE TABLE tasks (
+    id SERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    status task_status DEFAULT 'pending'
+);
+
+-- QUERY get_tasks_by_status
+@set status = 'active'
+SELECT id, title, status FROM tasks WHERE status = ${status}::task_status;
+```
+
+SQG resolves the ENUM OID from `pg_type` and maps it to `String` in the generated Java code.
+
+### Array Types
+
+PostgreSQL array columns like `TEXT[]` and `INTEGER[]` are now properly mapped to `List<T>` in Java:
+
+```sql
+CREATE TABLE tasks (
+    id SERIAL PRIMARY KEY,
+    tags TEXT[],
+    priority_scores INTEGER[]
+);
+```
+
+```java
+// Generated record
+record GetAllTasksResult(Integer id, String title, List<String> tags, List<Integer> priorityScores) {}
+
+for (var task : queries.getAllTasks()) {
+    System.out.println(task.tags());            // [urgent, backend]
+    System.out.println(task.priorityScores());  // [10, 20, 30]
+}
+```
+
+### TIMESTAMPTZ Support
+
+`TIMESTAMPTZ` columns are now correctly mapped to `OffsetDateTime` (instead of `LocalDateTime`), preserving timezone information:
+
+```java
+// TIMESTAMPTZ -> OffsetDateTime with UTC offset
+record EventResult(Integer id, OffsetDateTime createdAt) {}
+```
+
+### Automatic Testcontainers
+
+If the `SQG_POSTGRES_URL` environment variable is not set, SQG now automatically starts a PostgreSQL container using [Testcontainers](https://testcontainers.com/). This makes it easy to get started without installing PostgreSQL locally — just have Docker running:
+
+```bash
+# No env var needed — SQG starts a container automatically
+sqg sqg.yaml
+```
+
+For CI/CD or production builds, set the environment variable to point to your PostgreSQL server:
+
+```bash
+export SQG_POSTGRES_URL="postgresql://user:password@localhost:5432/mydb"
+sqg sqg.yaml
+```
+
+## Get Started
+
+Install or update SQG:
+
+```bash
+pnpm add -g @sqg/sqg@latest
+```
+
+Enable migration tracking by adding `config.migrations: true` to your generator config. Check out the updated [SQL Syntax Reference](/guides/sql-syntax/#built-in-migration-runner) and [generator documentation](/generators/java-jdbc/#postgresql) for full details.
+
+---
+
+*Have questions or feedback? Open an issue on [GitHub](https://github.com/sqg-dev/sqg).*
