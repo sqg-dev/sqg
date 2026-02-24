@@ -16,6 +16,15 @@ CREATE TABLE tasks (
     priority_scores INTEGER[]
 );
 
+CREATE TABLE bigint_test (
+    id BIGINT PRIMARY KEY,
+    serial_id BIGSERIAL NOT NULL,
+    small_id SMALLINT,
+    regular_id INTEGER,
+    amount BIGINT NOT NULL,
+    name TEXT NOT NULL
+);
+
 
 -- TESTDATA seed_tasks
 INSERT INTO tasks (title, status, tags, priority_scores) VALUES
@@ -79,3 +88,15 @@ SELECT tags FROM tasks WHERE id = 1;
 
 -- QUERY get_task_priorities :one :pluck
 SELECT priority_scores FROM tasks WHERE id = 1;
+
+
+-- QUERY get_bigint_record :one
+@set id = 1
+SELECT id, serial_id, small_id, regular_id, amount, name FROM bigint_test WHERE id = ${id};
+
+-- QUERY get_bigint_amount :one :pluck
+@set id = 1
+SELECT amount FROM bigint_test WHERE id = ${id};
+
+-- QUERY count_bigint_test :one :pluck
+SELECT COUNT(*) FROM bigint_test;

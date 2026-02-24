@@ -151,6 +151,15 @@ public class TestPg {
             status task_status DEFAULT 'pending',
             tags TEXT[],
             priority_scores INTEGER[]
+        );
+
+        CREATE TABLE bigint_test (
+            id BIGINT PRIMARY KEY,
+            serial_id BIGSERIAL NOT NULL,
+            small_id SMALLINT,
+            regular_id INTEGER,
+            amount BIGINT NOT NULL,
+            name TEXT NOT NULL
         );"""
     );
 
@@ -392,6 +401,62 @@ public class TestPg {
                 return rs.next()
                     ? arrayToList((Array) rs.getObject(1), Integer[].class)
                     : null;
+            }
+        }
+    }
+
+    public record GetBigintRecordResult(
+        Long id,
+        Long serialId,
+        Short smallId,
+        Integer regularId,
+        Long amount,
+        String name
+    ) {}
+
+    public GetBigintRecordResult getBigintRecord(Long id) throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "SELECT id, serial_id, small_id, regular_id, amount, name FROM bigint_test WHERE id =?;"
+            )
+        ) {
+            stmt.setObject(1, id);
+            try (var rs = stmt.executeQuery()) {
+                return rs.next()
+                    ? new GetBigintRecordResult(
+                          (Long) rs.getObject(1),
+                          (Long) rs.getObject(2),
+                          (Short) rs.getObject(3),
+                          (Integer) rs.getObject(4),
+                          (Long) rs.getObject(5),
+                          (String) rs.getObject(6)
+                      )
+                    : null;
+            }
+        }
+    }
+
+    public Long getBigintAmount(Long id) throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "SELECT amount FROM bigint_test WHERE id =?;"
+            )
+        ) {
+            stmt.setObject(1, id);
+            try (var rs = stmt.executeQuery()) {
+                return rs.next() ? (Long) rs.getObject(1) : null;
+            }
+        }
+    }
+
+    public Long countBigintTest() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "SELECT COUNT(*) FROM bigint_test;"
+            )
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                return rs.next() ? (Long) rs.getObject(1) : null;
             }
         }
     }

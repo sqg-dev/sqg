@@ -71,6 +71,9 @@ export class SQLQuery {
 
   allColumns!: ColumnInfo;
 
+  /** Database-reported parameter types (variable name → SQL type name), set by database adapters */
+  parameterTypes?: Map<string, string>;
+
   constructor(
     public filename: string,
     public id: string,

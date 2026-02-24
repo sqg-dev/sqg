@@ -174,7 +174,10 @@ export class SqlQueryHelper {
   get variables(): { name: string; type: string }[] {
     return Array.from(this.query.variables.entries()).map(([name, value]) => ({
       name,
-      type: this.generator.mapParameterType(detectParameterType(value), false),
+      type: this.generator.mapParameterType(
+        this.query.parameterTypes?.get(name) ?? detectParameterType(value),
+        false,
+      ),
     }));
   }
 

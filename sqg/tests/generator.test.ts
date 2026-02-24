@@ -16,6 +16,30 @@ describe("JavaGenerator", () => {
       expect(generator.mapParameterType("INTEGER", false)).toMatchInlineSnapshot(`"Integer"`);
       expect(generator.mapParameterType("TEXT", true)).toMatchInlineSnapshot(`"String"`);
     });
+
+    it("should map BIGINT to Long (not Integer)", () => {
+      // BIGINT (DuckDB type name)
+      expect(generator.mapParameterType("BIGINT", false)).toBe("Long");
+      expect(generator.mapParameterType("BIGINT", true)).toBe("Long");
+
+      // INT8 (PostgreSQL type name for BIGINT)
+      expect(generator.mapParameterType("INT8", false)).toBe("Long");
+      expect(generator.mapParameterType("INT8", true)).toBe("Long");
+
+      // Lowercase variants (as may come from information_schema)
+      expect(generator.mapParameterType("bigint", false)).toBe("Long");
+      expect(generator.mapParameterType("int8", false)).toBe("Long");
+    });
+
+    it("should map PostgreSQL integer types correctly", () => {
+      expect(generator.mapParameterType("INT2", false)).toBe("Short");
+      expect(generator.mapParameterType("INT4", false)).toBe("Integer");
+      expect(generator.mapParameterType("INT8", false)).toBe("Long");
+      expect(generator.mapParameterType("SMALLINT", false)).toBe("Short");
+      expect(generator.mapParameterType("INTEGER", false)).toBe("Integer");
+      expect(generator.mapParameterType("BIGINT", false)).toBe("Long");
+      expect(generator.mapParameterType("BIGSERIAL", false)).toBe("Long");
+    });
   });
 
   describe("getFunctionName", () => {
