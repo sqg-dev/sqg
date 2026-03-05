@@ -13,11 +13,7 @@ public class Main {
 
             // Run migrations to create tables
             System.out.println("Running migrations...");
-            for (String migration : Queries.getMigrations()) {
-                try (var stmt = connection.createStatement()) {
-                    stmt.execute(migration);
-                }
-            }
+            Queries.applyMigrations(connection);
             System.out.println("Migrations complete.\n");
 
             // Create the type-safe queries instance

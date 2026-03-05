@@ -19,9 +19,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 public class TestPg {
 
@@ -163,8 +169,72 @@ public class TestPg {
         );"""
     );
 
+    private static final List<String> migrationIds = List.of("1");
+
     public static List<String> getMigrations() {
         return migrations;
+    }
+
+    public static void applyMigrations(Connection connection)
+        throws SQLException {
+        applyMigrations(connection, "test-pg");
+    }
+
+    public static void applyMigrations(
+        Connection connection,
+        String projectName
+    ) throws SQLException {
+        try (var stmt = connection.createStatement()) {
+            stmt.execute(
+                """
+                CREATE TABLE IF NOT EXISTS _sqg_migrations (
+                    project TEXT NOT NULL,
+                    migration_id TEXT NOT NULL,
+                    applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (project, migration_id)
+                )"""
+            );
+        }
+        boolean wasAutoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try {
+            var applied = new java.util.HashSet<String>();
+            try (
+                var stmt = connection.prepareStatement(
+                    "SELECT migration_id FROM _sqg_migrations WHERE project = ?"
+                )
+            ) {
+                stmt.setString(1, projectName);
+                try (var rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        applied.add(rs.getString(1));
+                    }
+                }
+            }
+            for (int i = 0; i < migrations.size(); i++) {
+                var id = migrationIds.get(i);
+                if (!applied.contains(id)) {
+                    try (var stmt = connection.createStatement()) {
+                        stmt.execute(migrations.get(i));
+                    }
+                    try (
+                        var stmt = connection.prepareStatement(
+                            "INSERT INTO _sqg_migrations (project, migration_id) VALUES (?, ?)"
+                        )
+                    ) {
+                        stmt.setString(1, projectName);
+                        stmt.setString(2, id);
+                        stmt.executeUpdate();
+                    }
+                }
+            }
+            connection.commit();
+        } catch (SQLException e) {
+            connection.rollback();
+            throw e;
+        } finally {
+            connection.setAutoCommit(wasAutoCommit);
+        }
     }
 
     public record Users1Result(String id, String name, String email) {}
@@ -185,6 +255,50 @@ public class TestPg {
                 return results;
             }
         }
+    }
+
+    public Stream<Users1Result> users1Stream() throws SQLException {
+        var stmt = connection.prepareStatement("select * from users;");
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<Users1Result>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public Users1Result next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new Users1Result(
+                        (String) rs.getObject(1),
+                        (String) rs.getObject(2),
+                        (String) rs.getObject(3)
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     public String users2() throws SQLException {
@@ -253,6 +367,51 @@ public class TestPg {
         }
     }
 
+    public Stream<Users5Result> users5Stream() throws SQLException {
+        var stmt = connection.prepareStatement(
+            "select 10 count, email from users where id = '1';"
+        );
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<Users5Result>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public Users5Result next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new Users5Result(
+                        (Integer) rs.getObject(1),
+                        (String) rs.getObject(2)
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     public record Users6Result(String id, String name, String email) {}
 
     public Users6Result users6(String name) throws SQLException {
@@ -299,6 +458,53 @@ public class TestPg {
         }
     }
 
+    public Stream<Users7Result> users7Stream(String name) throws SQLException {
+        var stmt = connection.prepareStatement(
+            "SELECT * FROM users WHERE name =?"
+        );
+        stmt.setObject(1, name);
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<Users7Result>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public Users7Result next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new Users7Result(
+                        (String) rs.getObject(1),
+                        (String) rs.getObject(2),
+                        (String) rs.getObject(3)
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     public record GetTasksByStatusResult(
         Integer id,
         String title,
@@ -339,6 +545,56 @@ public class TestPg {
         }
     }
 
+    public Stream<GetTasksByStatusResult> getTasksByStatusStream(String status)
+        throws SQLException {
+        var stmt = connection.prepareStatement(
+            "SELECT id, title, status, tags, priority_scores FROM tasks WHERE status =?::task_status;"
+        );
+        stmt.setObject(1, status);
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<GetTasksByStatusResult>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public GetTasksByStatusResult next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new GetTasksByStatusResult(
+                        (Integer) rs.getObject(1),
+                        (String) rs.getObject(2),
+                        (String) rs.getObject(3),
+                        arrayToList((Array) rs.getObject(4), String[].class),
+                        arrayToList((Array) rs.getObject(5), Integer[].class)
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     public record GetAllTasksResult(
         Integer id,
         String title,
@@ -375,6 +631,54 @@ public class TestPg {
                 return results;
             }
         }
+    }
+
+    public Stream<GetAllTasksResult> getAllTasksStream() throws SQLException {
+        var stmt = connection.prepareStatement(
+            "SELECT id, title, status, tags, priority_scores FROM tasks;"
+        );
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<GetAllTasksResult>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public GetAllTasksResult next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new GetAllTasksResult(
+                        (Integer) rs.getObject(1),
+                        (String) rs.getObject(2),
+                        (String) rs.getObject(3),
+                        arrayToList((Array) rs.getObject(4), String[].class),
+                        arrayToList((Array) rs.getObject(5), Integer[].class)
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     public List<String> getTaskTags() throws SQLException {

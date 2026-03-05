@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.lang.reflect.Modifier;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.List;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,13 +27,26 @@ class PostgresTest {
 
     @BeforeEach
     void setUp() throws SQLException {
-        // Clean up database before each test
         try (Connection conn = postgres.createConnection("")) {
             try (var stmt = conn.createStatement()) {
+                stmt.execute("DROP TABLE IF EXISTS _sqg_migrations CASCADE");
                 stmt.execute("DROP TABLE IF EXISTS tasks CASCADE");
                 stmt.execute("DROP TABLE IF EXISTS users CASCADE");
+                stmt.execute("DROP TABLE IF EXISTS bigint_test CASCADE");
                 stmt.execute("DROP TYPE IF EXISTS task_status CASCADE");
             }
+        }
+    }
+
+    private void applyMigrationsAndInsertTasks(Connection conn) throws SQLException {
+        TestPg.applyMigrations(conn);
+
+        try (var stmt = conn.createStatement()) {
+            stmt.execute("""
+                INSERT INTO tasks (title, status, tags, priority_scores) VALUES
+                    ('Task 1', 'active', ARRAY['urgent', 'backend'], ARRAY[10, 20, 30]),
+                    ('Task 2', 'pending', ARRAY['frontend'], ARRAY[5, 15])
+                """);
         }
     }
 
@@ -39,26 +54,8 @@ class PostgresTest {
     void testAllQueries() throws SQLException {
         try (Connection conn = postgres.createConnection("")) {
             TestPg pg = new TestPg(conn);
+            applyMigrationsAndInsertTasks(conn);
 
-            // Run migrations
-            TestPg.getMigrations().forEach(m -> {
-                try (var stmt = conn.createStatement()) {
-                    stmt.execute(m);
-                } catch (SQLException e) {
-                    throw new RuntimeException(e);
-                }
-            });
-
-            // Insert test data
-            try (var stmt = conn.createStatement()) {
-                stmt.execute("""
-                    INSERT INTO tasks (title, status, tags, priority_scores) VALUES
-                        ('Task 1', 'active', ARRAY['urgent', 'backend'], ARRAY[10, 20, 30]),
-                        ('Task 2', 'pending', ARRAY['frontend'], ARRAY[5, 15])
-                    """);
-            }
-
-            // Test all no-arg public methods via reflection
             for (var method : pg.getClass().getMethods()) {
                 if (method.getParameterCount() == 0 && Modifier.isPublic(method.getModifiers())
                         && !Modifier.isStatic(method.getModifiers())
@@ -78,24 +75,7 @@ class PostgresTest {
     void testEnumAndArrayTypes() throws SQLException {
         try (Connection conn = postgres.createConnection("")) {
             TestPg pg = new TestPg(conn);
-
-            // Run migrations
-            TestPg.getMigrations().forEach(m -> {
-                try (var stmt = conn.createStatement()) {
-                    stmt.execute(m);
-                } catch (SQLException e) {
-                    throw new RuntimeException(e);
-                }
-            });
-
-            // Insert test data
-            try (var stmt = conn.createStatement()) {
-                stmt.execute("""
-                    INSERT INTO tasks (title, status, tags, priority_scores) VALUES
-                        ('Task 1', 'active', ARRAY['urgent', 'backend'], ARRAY[10, 20, 30]),
-                        ('Task 2', 'pending', ARRAY['frontend'], ARRAY[5, 15])
-                    """);
-            }
+            applyMigrationsAndInsertTasks(conn);
 
             // Test ENUM type query
             var tasksByStatus = pg.getTasksByStatus("active");
@@ -117,6 +97,44 @@ class PostgresTest {
 
             var priorities = pg.getTaskPriorities();
             assertThat(priorities).containsExactly(10, 20, 30);
+        }
+    }
+
+    @Test
+    void testStreamReturnsAllRows() throws SQLException {
+        try (Connection conn = postgres.createConnection("")) {
+            TestPg pg = new TestPg(conn);
+            applyMigrationsAndInsertTasks(conn);
+
+            // Stream should return same data as List
+            List<TestPg.GetAllTasksResult> listResult = pg.getAllTasks();
+            List<TestPg.GetAllTasksResult> streamResult;
+            try (Stream<TestPg.GetAllTasksResult> stream = pg.getAllTasksStream()) {
+                streamResult = stream.toList();
+            }
+            assertThat(streamResult).isEqualTo(listResult);
+            assertThat(streamResult).hasSize(2);
+
+            // Stream with parameters
+            List<TestPg.GetTasksByStatusResult> listByStatus = pg.getTasksByStatus("active");
+            List<TestPg.GetTasksByStatusResult> streamByStatus;
+            try (Stream<TestPg.GetTasksByStatusResult> stream = pg.getTasksByStatusStream("active")) {
+                streamByStatus = stream.toList();
+            }
+            assertThat(streamByStatus).isEqualTo(listByStatus);
+            assertThat(streamByStatus).hasSize(1);
+        }
+    }
+
+    @Test
+    void testStreamClosesResources() throws SQLException {
+        try (Connection conn = postgres.createConnection("")) {
+            TestPg pg = new TestPg(conn);
+            TestPg.applyMigrations(conn);
+
+            // Closing a stream without consuming should not throw
+            Stream<TestPg.GetAllTasksResult> stream = pg.getAllTasksStream();
+            stream.close();
         }
     }
 }

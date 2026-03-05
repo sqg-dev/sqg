@@ -41,6 +41,58 @@ export class Queries {
     ];
   }
 
+  static applyMigrations(
+    db: Database,
+    projectName = "typescript-sqlite-example",
+  ): void {
+    db.exec(`CREATE TABLE IF NOT EXISTS _sqg_migrations (
+            project TEXT NOT NULL,
+            migration_id TEXT NOT NULL,
+            applied_at TEXT NOT NULL DEFAULT (datetime('now')),
+            PRIMARY KEY (project, migration_id)
+        )`);
+    const runMigrations = db.transaction(() => {
+      const applied = new Set(
+        db
+          .prepare("SELECT migration_id FROM _sqg_migrations WHERE project = ?")
+          .pluck()
+          .all(projectName) as string[],
+      );
+      const migrations: [string, string][] = [
+        [
+          "createUsersTable",
+          `CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);`,
+        ],
+        [
+          "createPostsTable",
+          `CREATE TABLE IF NOT EXISTS posts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT,
+    published INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);`,
+        ],
+      ];
+      for (const [id, sql] of migrations) {
+        if (!applied.has(id)) {
+          db.exec(sql);
+          db.prepare(
+            "INSERT INTO _sqg_migrations (project, migration_id) VALUES (?, ?)",
+          ).run(projectName, id);
+        }
+      }
+    });
+    runMigrations.immediate();
+  }
+
   static getQueryNames(): Map<string, keyof Queries> {
     return new Map([
       ["insertUser", "insertUser"],

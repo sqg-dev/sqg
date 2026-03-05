@@ -11,9 +11,7 @@ async function main() {
 
   // Run migrations
   console.log("Running migrations...");
-  for (const migration of Queries.getMigrations()) {
-    await conn.run(migration);
-  }
+  await Queries.applyMigrations(conn);
   console.log("Migrations complete!\n");
 
   // Insert some users

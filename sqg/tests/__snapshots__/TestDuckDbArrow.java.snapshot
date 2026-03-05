@@ -31,6 +31,18 @@ public class TestDuckDbArrow {
         return TestDuckDbArrowJdbc.getMigrations();
     }
 
+    public static void applyMigrations(Connection connection)
+        throws SQLException {
+        TestDuckDbArrowJdbc.applyMigrations(connection);
+    }
+
+    public static void applyMigrations(
+        Connection connection,
+        String projectName
+    ) throws SQLException {
+        TestDuckDbArrowJdbc.applyMigrations(connection, projectName);
+    }
+
     public int insert(String name, String email)
         throws SQLException, IOException {
         var stmt = connection.prepareStatement(

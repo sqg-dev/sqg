@@ -17,11 +17,17 @@ import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Collections;
+import java.util.NoSuchElementException;
+import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 {{#if tables.length}}
 import org.duckdb.DuckDBAppender;
 import org.duckdb.DuckDBConnection;
@@ -203,6 +209,36 @@ public class {{className}} {
             {{> execute}}
         }
     }
+    {{#if isQuery}}{{#unless isOne}}
+    public Stream<{{rowType}}> {{functionName}}Stream({{#each variables}}{{{type}}} {{name}}{{#unless @last}}, {{/unless}}{{/each}}) throws SQLException {
+        var stmt = connection.prepareStatement({{{partsToString sqlQueryParts}}});
+        {{#each parameterNames}}stmt.setObject({{plusOne @index}}, {{this}});
+        {{/each}}
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<{{rowType}}>() {
+            private Boolean hasNext = null;
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try { hasNext = rs.next(); }
+                    catch (SQLException e) { throw new RuntimeException(e); }
+                }
+                return hasNext;
+            }
+            public {{rowType}} next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try { return {{> readRow}}; }
+                catch (SQLException e) { throw new RuntimeException(e); }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED), false
+        ).onClose(() -> {
+            try { rs.close(); stmt.close(); }
+            catch (SQLException e) { throw new RuntimeException(e); }
+        });
+    }
+    {{/unless}}{{/if}}
     {{/unless}}
     {{/each}}
 

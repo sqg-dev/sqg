@@ -595,7 +595,7 @@ export async function writeGeneratedFile(
     generator,
     engine,
     projectName,
-    gen.config,
+    { migrations: true, ...gen.config },
   );
 
   if (writeToStdout) {

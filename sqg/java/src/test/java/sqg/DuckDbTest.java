@@ -6,6 +6,8 @@ import java.lang.reflect.Modifier;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.List;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 
@@ -18,14 +20,7 @@ class DuckDbTest {
     void test() throws SQLException {
         Connection conn = DriverManager.getConnection("jdbc:duckdb:");
         TestDuckdb duckdb = new TestDuckdb(conn);
-
-        TestDuckdb.getMigrations().forEach(m -> {
-            try (var stmt = conn.createStatement()) {
-                stmt.execute(m);
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
-        });
+        TestDuckdb.applyMigrations(conn);
 
         for (var method : duckdb.getClass().getMethods()) {
             if (method.getParameterCount() == 0 && Modifier.isPublic(method.getModifiers())
@@ -51,5 +46,53 @@ class DuckDbTest {
         assertThat(duckdb.testNested3().toString()).isEqualTo(
             "TestNested3Result[a=[1, 2, 3], b=2, c=CResult[x=[XResult[a=1]], y=YResult[z=3]]]");
 
+    }
+
+    @Test
+    void streamReturnsAllRows() throws SQLException {
+        Connection conn = DriverManager.getConnection("jdbc:duckdb:");
+        TestDuckdb duckdb = new TestDuckdb(conn);
+        TestDuckdb.applyMigrations(conn);
+
+        // Compare stream results with list results
+        List<TestDuckdb.AllResult> listResult = duckdb.all();
+        List<TestDuckdb.AllResult> streamResult;
+        try (Stream<TestDuckdb.AllResult> stream = duckdb.allStream()) {
+            streamResult = stream.toList();
+        }
+        assertThat(streamResult).isEqualTo(listResult);
+    }
+
+    @Test
+    void streamSupportsLazyOperations() throws SQLException {
+        Connection conn = DriverManager.getConnection("jdbc:duckdb:");
+        TestDuckdb duckdb = new TestDuckdb(conn);
+        TestDuckdb.applyMigrations(conn);
+
+        // Stream with filter and limit - exercises lazy evaluation
+        try (Stream<TestDuckdb.AllResult> stream = duckdb.allStream()) {
+            List<String> names = stream
+                .map(TestDuckdb.AllResult::name)
+                .limit(2)
+                .toList();
+            assertThat(names).hasSize(Math.min(2, duckdb.all().size()));
+        }
+    }
+
+    @Test
+    void streamClosesResources() throws SQLException {
+        Connection conn = DriverManager.getConnection("jdbc:duckdb:");
+        TestDuckdb duckdb = new TestDuckdb(conn);
+        TestDuckdb.applyMigrations(conn);
+
+        // Verify stream can be closed without consuming all rows
+        Stream<TestDuckdb.AllResult> stream = duckdb.allStream();
+        stream.close(); // should not throw
+
+        // Verify pluck stream works too
+        try (Stream<String> emailStream = duckdb.allEmailsStream()) {
+            List<String> emails = emailStream.toList();
+            assertThat(emails).isEqualTo(duckdb.allEmails());
+        }
     }
 }

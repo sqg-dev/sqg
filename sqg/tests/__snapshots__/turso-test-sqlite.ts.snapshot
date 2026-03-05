@@ -33,6 +33,54 @@ export class TestSqlite {
     ];
   }
 
+  static async applyMigrations(
+    db: Database,
+    projectName = "test-turso",
+  ): Promise<void> {
+    const createStmt =
+      await db.prepare(`CREATE TABLE IF NOT EXISTS _sqg_migrations (
+            project TEXT NOT NULL,
+            migration_id TEXT NOT NULL,
+            applied_at TEXT NOT NULL DEFAULT (datetime('now')),
+            PRIMARY KEY (project, migration_id)
+        )`);
+    await createStmt.run();
+    const tx = await db.transaction("write");
+    try {
+      const selectStmt = await tx.prepare(
+        "SELECT migration_id FROM _sqg_migrations WHERE project = ?",
+      );
+      const rows = (await selectStmt.all(projectName)) as {
+        migration_id: string;
+      }[];
+      const applied = new Set(rows.map((r) => r.migration_id));
+      const migrations: [string, string][] = [
+        [
+          "1",
+          `create table  users (
+    id text primary key,
+    name text not null,
+    email text unique
+) strict;`,
+        ],
+      ];
+      for (const [id, sql] of migrations) {
+        if (!applied.has(id)) {
+          const execStmt = await tx.prepare(sql);
+          await execStmt.run();
+          const insertStmt = await tx.prepare(
+            "INSERT INTO _sqg_migrations (project, migration_id) VALUES (?, ?)",
+          );
+          await insertStmt.run(projectName, id);
+        }
+      }
+      await tx.commit();
+    } catch (e) {
+      await tx.rollback();
+      throw e;
+    }
+  }
+
   static getQueryNames(): Map<string, keyof TestSqlite> {
     return new Map([
       ["users1", "users1"],

@@ -19,9 +19,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import org.duckdb.DuckDBAppender;
 import org.duckdb.DuckDBConnection;
 
@@ -163,8 +169,72 @@ public class TestDuckdb {
         );"""
     );
 
+    private static final List<String> migrationIds = List.of("1");
+
     public static List<String> getMigrations() {
         return migrations;
+    }
+
+    public static void applyMigrations(Connection connection)
+        throws SQLException {
+        applyMigrations(connection, "test-duckdb");
+    }
+
+    public static void applyMigrations(
+        Connection connection,
+        String projectName
+    ) throws SQLException {
+        try (var stmt = connection.createStatement()) {
+            stmt.execute(
+                """
+                CREATE TABLE IF NOT EXISTS _sqg_migrations (
+                    project TEXT NOT NULL,
+                    migration_id TEXT NOT NULL,
+                    applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (project, migration_id)
+                )"""
+            );
+        }
+        boolean wasAutoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try {
+            var applied = new java.util.HashSet<String>();
+            try (
+                var stmt = connection.prepareStatement(
+                    "SELECT migration_id FROM _sqg_migrations WHERE project = ?"
+                )
+            ) {
+                stmt.setString(1, projectName);
+                try (var rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        applied.add(rs.getString(1));
+                    }
+                }
+            }
+            for (int i = 0; i < migrations.size(); i++) {
+                var id = migrationIds.get(i);
+                if (!applied.contains(id)) {
+                    try (var stmt = connection.createStatement()) {
+                        stmt.execute(migrations.get(i));
+                    }
+                    try (
+                        var stmt = connection.prepareStatement(
+                            "INSERT INTO _sqg_migrations (project, migration_id) VALUES (?, ?)"
+                        )
+                    ) {
+                        stmt.setString(1, projectName);
+                        stmt.setString(2, id);
+                        stmt.executeUpdate();
+                    }
+                }
+            }
+            connection.commit();
+        } catch (SQLException e) {
+            connection.rollback();
+            throw e;
+        } finally {
+            connection.setAutoCommit(wasAutoCommit);
+        }
     }
 
     public int insert(String name, String email) throws SQLException {
@@ -211,6 +281,54 @@ public class TestDuckdb {
         }
     }
 
+    public Stream<AllResult> allStream() throws SQLException {
+        var stmt = connection.prepareStatement(
+            "select 'abc' as a,1 as x,* from users;"
+        );
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<AllResult>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public AllResult next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new AllResult(
+                        (String) rs.getObject(1),
+                        (Integer) rs.getObject(2),
+                        (Integer) rs.getObject(3),
+                        (String) rs.getObject(4),
+                        (String) rs.getObject(5)
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     public List<String> allEmails() throws SQLException {
         try (
             var stmt = connection.prepareStatement("select email from users;")
@@ -223,6 +341,46 @@ public class TestDuckdb {
                 return results;
             }
         }
+    }
+
+    public Stream<String> allEmailsStream() throws SQLException {
+        var stmt = connection.prepareStatement("select email from users;");
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<String>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public String next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return (String) rs.getObject(1);
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     public record ByIdResult(Integer id, String name, String email) {}
@@ -337,6 +495,56 @@ public class TestDuckdb {
         }
     }
 
+    public Stream<ActionsByUserIdResult> actionsByUserIdStream(Integer user_id)
+        throws SQLException {
+        var stmt = connection.prepareStatement(
+            "select * from actions where user_id =?;"
+        );
+        stmt.setObject(1, user_id);
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<ActionsByUserIdResult>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public ActionsByUserIdResult next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new ActionsByUserIdResult(
+                        (Integer) rs.getObject(1),
+                        (String) rs.getObject(2),
+                        (Double) rs.getObject(3),
+                        (Integer) rs.getObject(4),
+                        (Integer) rs.getObject(5)
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     public record ActionsByUserIdAndActionResult(
         Integer id,
         String action,
@@ -379,6 +587,64 @@ public class TestDuckdb {
         }
     }
 
+    public Stream<
+        ActionsByUserIdAndActionResult
+    > actionsByUserIdAndActionStream(Integer user_id, String action)
+        throws SQLException {
+        var stmt = connection.prepareStatement(
+            """
+            select * from actions
+
+              where user_id =? and action =?;
+
+             """
+        );
+        stmt.setObject(1, user_id);
+        stmt.setObject(2, action);
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<ActionsByUserIdAndActionResult>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public ActionsByUserIdAndActionResult next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new ActionsByUserIdAndActionResult(
+                        (Integer) rs.getObject(1),
+                        (String) rs.getObject(2),
+                        (Double) rs.getObject(3),
+                        (Integer) rs.getObject(4),
+                        (Integer) rs.getObject(5)
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     public record TopUsersResult(Integer userId, Double totalValue) {}
 
     public List<TopUsersResult> topUsers() throws SQLException {
@@ -402,6 +668,51 @@ public class TestDuckdb {
         }
     }
 
+    public Stream<TopUsersResult> topUsersStream() throws SQLException {
+        var stmt = connection.prepareStatement(
+            "SELECT user_id, SUM(value) as total_value FROM actions GROUP BY user_id ORDER BY total_value DESC LIMIT 10;"
+        );
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<TopUsersResult>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public TopUsersResult next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new TopUsersResult(
+                        (Integer) rs.getObject(1),
+                        (Double) rs.getObject(2)
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     public record TestResult(Integer n) {}
 
     public List<TestResult> test(Integer a) throws SQLException {
@@ -421,6 +732,49 @@ public class TestDuckdb {
         }
     }
 
+    public Stream<TestResult> testStream(Integer a) throws SQLException {
+        var stmt = connection.prepareStatement(
+            "select 1 as n where? ::int is null; "
+        );
+        stmt.setObject(1, a);
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<TestResult>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public TestResult next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new TestResult((Integer) rs.getObject(1));
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     public record Test2Result(Integer n) {}
 
     public List<Test2Result> test2() throws SQLException {
@@ -433,6 +787,46 @@ public class TestDuckdb {
                 return results;
             }
         }
+    }
+
+    public Stream<Test2Result> test2Stream() throws SQLException {
+        var stmt = connection.prepareStatement("select  1 as n;");
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<Test2Result>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public Test2Result next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new Test2Result((Integer) rs.getObject(1));
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     public record Test3Result(String b, Integer a) {}
@@ -456,6 +850,49 @@ public class TestDuckdb {
         }
     }
 
+    public Stream<Test3Result> test3Stream() throws SQLException {
+        var stmt = connection.prepareStatement("select '--ok' b,2 as a ");
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<Test3Result>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public Test3Result next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new Test3Result(
+                        (String) rs.getObject(1),
+                        (Integer) rs.getObject(2)
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     public record Test4Result(String s, Integer z) {}
 
     public List<Test4Result> test4() throws SQLException {
@@ -477,6 +914,49 @@ public class TestDuckdb {
                 return results;
             }
         }
+    }
+
+    public Stream<Test4Result> test4Stream() throws SQLException {
+        var stmt = connection.prepareStatement("select '/* lol */' s , 5 as z");
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<Test4Result>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public Test4Result next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new Test4Result(
+                        (String) rs.getObject(1),
+                        (Integer) rs.getObject(2)
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     public record Test5Result(String x, String y, Integer c) {}
@@ -503,6 +983,52 @@ public class TestDuckdb {
         }
     }
 
+    public Stream<Test5Result> test5Stream() throws SQLException {
+        var stmt = connection.prepareStatement(
+            "select 'a 	' x , 'a	 a' y, 1 as c"
+        );
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<Test5Result>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public Test5Result next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new Test5Result(
+                        (String) rs.getObject(1),
+                        (String) rs.getObject(2),
+                        (Integer) rs.getObject(3)
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     public record TestListResult(List<String> names) {}
 
     public List<TestListResult> testList() throws SQLException {
@@ -525,6 +1051,50 @@ public class TestDuckdb {
         }
     }
 
+    public Stream<TestListResult> testListStream() throws SQLException {
+        var stmt = connection.prepareStatement(
+            "select ['a','b', 'c'] as names"
+        );
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<TestListResult>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public TestListResult next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new TestListResult(
+                        arrayToList((Array) rs.getObject(1), String[].class)
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     public List<List<String>> testList2() throws SQLException {
         try (
             var stmt = connection.prepareStatement(
@@ -541,6 +1111,48 @@ public class TestDuckdb {
                 return results;
             }
         }
+    }
+
+    public Stream<List<String>> testList2Stream() throws SQLException {
+        var stmt = connection.prepareStatement(
+            "select ['a','b', 'c'] as names"
+        );
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<List<String>>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public List<String> next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return arrayToList((Array) rs.getObject(1), String[].class);
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     public List<String> testList3() throws SQLException {
@@ -575,6 +1187,46 @@ public class TestDuckdb {
         }
     }
 
+    public Stream<TestMapResult> testMapStream() throws SQLException {
+        var stmt = connection.prepareStatement("select props: MAP {'a' : 1}");
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<TestMapResult>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public TestMapResult next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new TestMapResult((HashMap) rs.getObject(1));
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     public record TestMap2Result(HashMap props) {}
 
     public List<TestMap2Result> testMap2() throws SQLException {
@@ -595,6 +1247,50 @@ public class TestDuckdb {
         }
     }
 
+    public Stream<TestMap2Result> testMap2Stream() throws SQLException {
+        var stmt = connection.prepareStatement(
+            """
+
+            select props: MAP { 1 : 2 }"""
+        );
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<TestMap2Result>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public TestMap2Result next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new TestMap2Result((HashMap) rs.getObject(1));
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     public record TestMap3Result(HashMap props) {}
 
     public List<TestMap3Result> testMap3() throws SQLException {
@@ -613,6 +1309,50 @@ public class TestDuckdb {
                 return results;
             }
         }
+    }
+
+    public Stream<TestMap3Result> testMap3Stream() throws SQLException {
+        var stmt = connection.prepareStatement(
+            """
+
+            select props: MAP { [1] : 2 }"""
+        );
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<TestMap3Result>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public TestMap3Result next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new TestMap3Result((HashMap) rs.getObject(1));
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     public record TestStructResult(DataResult data) {
@@ -659,6 +1399,52 @@ public class TestDuckdb {
         }
     }
 
+    public Stream<TestStructResult> testStructStream() throws SQLException {
+        var stmt = connection.prepareStatement(
+            "select data: {'test' : 1, 'name' : 'abc', 'nested' : {'test' : true}}"
+        );
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<TestStructResult>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public TestStructResult next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new TestStructResult(
+                        TestStructResult.DataResult.fromAttributes(
+                            getAttr((Struct) rs.getObject(1))
+                        )
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     public record TestStruct2Result(
         Integer test,
         String name,
@@ -697,6 +1483,50 @@ public class TestDuckdb {
                 return results;
             }
         }
+    }
+
+    public Stream<TestStruct2Result> testStruct2Stream() throws SQLException {
+        var stmt = connection.prepareStatement(
+            "select data: {'test' : 1, 'name' : 'abc', 'nested' : {'test' : true}}"
+        );
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<TestStruct2Result>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public TestStruct2Result next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return TestStruct2Result.fromAttributes(
+                        getAttr((Struct) rs.getObject(1))
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     public record TestStruct3Result(
@@ -840,6 +1670,48 @@ public class TestDuckdb {
                 return results;
             }
         }
+    }
+
+    public Stream<TestNestedResult> testNestedStream() throws SQLException {
+        var stmt = connection.prepareStatement(
+            "select MAP {'x' : [{'a' : 1}]} as data"
+        );
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<TestNestedResult>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public TestNestedResult next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new TestNestedResult((HashMap) rs.getObject(1));
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     public record TestNested2Result(DataResult data) {
@@ -1126,6 +1998,124 @@ public class TestDuckdb {
         }
     }
 
+    public Stream<TestAllTypesResult> testAllTypesStream() throws SQLException {
+        var stmt = connection.prepareStatement(
+            """
+
+            select * from test_all_types();"""
+        );
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<TestAllTypesResult>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public TestAllTypesResult next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new TestAllTypesResult(
+                        (Boolean) rs.getObject(1),
+                        (Byte) rs.getObject(2),
+                        (Short) rs.getObject(3),
+                        (Integer) rs.getObject(4),
+                        (Long) rs.getObject(5),
+                        (BigInteger) rs.getObject(6),
+                        (BigInteger) rs.getObject(7),
+                        (Short) rs.getObject(8),
+                        (Integer) rs.getObject(9),
+                        (Long) rs.getObject(10),
+                        (BigInteger) rs.getObject(11),
+                        (BigDecimal) rs.getObject(12),
+                        toLocalDate((java.sql.Date) rs.getObject(13)),
+                        toLocalTime((java.sql.Time) rs.getObject(14)),
+                        toLocalDateTime((java.sql.Timestamp) rs.getObject(15)),
+                        (Instant) rs.getObject(16),
+                        (Instant) rs.getObject(17),
+                        (Instant) rs.getObject(18),
+                        (OffsetTime) rs.getObject(19),
+                        (Instant) rs.getObject(20),
+                        (Float) rs.getObject(21),
+                        (Double) rs.getObject(22),
+                        (BigDecimal) rs.getObject(23),
+                        (BigDecimal) rs.getObject(24),
+                        (BigDecimal) rs.getObject(25),
+                        (BigDecimal) rs.getObject(26),
+                        (UUID) rs.getObject(27),
+                        (String) rs.getObject(28),
+                        (String) rs.getObject(29),
+                        (byte[]) rs.getObject(30),
+                        (String) rs.getObject(31),
+                        (String) rs.getObject(32),
+                        (String) rs.getObject(33),
+                        (String) rs.getObject(34),
+                        arrayToList((Array) rs.getObject(35), Integer[].class),
+                        arrayToList((Array) rs.getObject(36), Double[].class),
+                        arrayToList(
+                            (Array) rs.getObject(37),
+                            LocalDate[].class
+                        ),
+                        arrayToList(
+                            (Array) rs.getObject(38),
+                            LocalDateTime[].class
+                        ),
+                        arrayToList((Array) rs.getObject(39), Instant[].class),
+                        arrayToList((Array) rs.getObject(40), String[].class),
+                        multiDimArrayToList(
+                            (Array) rs.getObject(41),
+                            Integer[].class
+                        ),
+                        TestAllTypesResult.StructResult.fromAttributes(
+                            getAttr((Struct) rs.getObject(42))
+                        ),
+                        TestAllTypesResult.StructOfArraysResult.fromAttributes(
+                            getAttr((Struct) rs.getObject(43))
+                        ),
+                        arrayOfStructToList(
+                            (Array) rs.getObject(44),
+                            TestAllTypesResult
+                                .ArrayOfStructsResult::fromAttributes
+                        ),
+                        (HashMap) rs.getObject(45),
+                        (Object) rs.getObject(46),
+                        (Object) rs.getObject(47),
+                        (Object) rs.getObject(48),
+                        (Object) rs.getObject(49),
+                        (Object) rs.getObject(50),
+                        (Object) rs.getObject(51),
+                        TestAllTypesResult.StructOfFixedArrayResult.fromAttributes(
+                            getAttr((Struct) rs.getObject(52))
+                        ),
+                        (Object) rs.getObject(53),
+                        arrayToList((Array) rs.getObject(54), Object[].class)
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     public int insertEvent(Integer id, String name, List<String> tags)
         throws SQLException {
         try (
@@ -1158,6 +2148,50 @@ public class TestDuckdb {
                 return results;
             }
         }
+    }
+
+    public Stream<AllEventsResult> allEventsStream() throws SQLException {
+        var stmt = connection.prepareStatement("select * from events;");
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<AllEventsResult>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public AllEventsResult next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new AllEventsResult(
+                        (Integer) rs.getObject(1),
+                        (String) rs.getObject(2),
+                        arrayToList((Array) rs.getObject(3), String[].class)
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     // ==================== Appenders ====================

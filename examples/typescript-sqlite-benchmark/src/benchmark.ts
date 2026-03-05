@@ -98,9 +98,7 @@ function setupBetterSqlite3(): { queries: BetterSqlite3Queries; db: BetterSqlite
   const queries = new BetterSqlite3Queries(db);
 
   // Run migrations
-  for (const migration of BetterSqlite3Queries.getMigrations()) {
-    db.exec(migration);
-  }
+  BetterSqlite3Queries.applyMigrations(db);
 
   return { queries, db };
 }
@@ -119,9 +117,7 @@ function setupNodeSqlite(): { queries: NodeSqliteQueries; db: DatabaseSync } {
   const queries = new NodeSqliteQueries(db);
 
   // Run migrations
-  for (const migration of NodeSqliteQueries.getMigrations()) {
-    db.exec(migration);
-  }
+  NodeSqliteQueries.applyMigrations(db);
 
   return { queries, db };
 }
@@ -143,9 +139,7 @@ async function setupLibsql(): Promise<{ queries: LibsqlQueries; client: LibsqlCl
   const queries = new LibsqlQueries(client);
 
   // Run migrations
-  for (const migration of LibsqlQueries.getMigrations()) {
-    await client.execute(migration);
-  }
+  await LibsqlQueries.applyMigrations(client);
 
   return { queries, client };
 }
@@ -170,10 +164,7 @@ async function setupTurso(): Promise<{ queries: TursoQueries; db: TursoDatabase 
   const queries = new TursoQueries(db);
 
   // Run migrations
-  for (const migration of TursoQueries.getMigrations()) {
-    const stmt = await db.prepare(migration);
-    await stmt.run();
-  }
+  await TursoQueries.applyMigrations(db);
 
   return { queries, db };
 }

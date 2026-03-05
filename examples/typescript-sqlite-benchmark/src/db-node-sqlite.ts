@@ -44,6 +44,67 @@ CREATE INDEX IF NOT EXISTS idx_posts_published ON posts(published);`,
     ];
   }
 
+  static applyMigrations(
+    db: DatabaseSync,
+    projectName = "typescript-sqlite-benchmark",
+  ): void {
+    db.exec(`CREATE TABLE IF NOT EXISTS _sqg_migrations (
+            project TEXT NOT NULL,
+            migration_id TEXT NOT NULL,
+            applied_at TEXT NOT NULL DEFAULT (datetime('now')),
+            PRIMARY KEY (project, migration_id)
+        )`);
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      const rows = db
+        .prepare("SELECT migration_id FROM _sqg_migrations WHERE project = ?")
+        .all(projectName) as { migration_id: string }[];
+      const applied = new Set(rows.map((r) => r.migration_id));
+      const migrations: [string, string][] = [
+        [
+          "1",
+          `CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    age INTEGER,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);`,
+        ],
+        [
+          "2",
+          `CREATE TABLE IF NOT EXISTS posts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT,
+    views INTEGER DEFAULT 0,
+    published INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);`,
+        ],
+        [
+          "3",
+          `CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id);
+CREATE INDEX IF NOT EXISTS idx_posts_published ON posts(published);`,
+        ],
+      ];
+      for (const [id, sql] of migrations) {
+        if (!applied.has(id)) {
+          db.exec(sql);
+          db.prepare(
+            "INSERT INTO _sqg_migrations (project, migration_id) VALUES (?, ?)",
+          ).run(projectName, id);
+        }
+      }
+      db.exec("COMMIT");
+    } catch (e) {
+      db.exec("ROLLBACK");
+      throw e;
+    }
+  }
+
   static getQueryNames(): Map<string, keyof Queries> {
     return new Map([
       ["insertUser", "insertUser"],

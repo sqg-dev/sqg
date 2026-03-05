@@ -19,9 +19,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 public class TestSqlite {
 
@@ -232,6 +238,50 @@ public class TestSqlite {
         }
     }
 
+    public Stream<Users1Result> users1Stream() throws SQLException {
+        var stmt = connection.prepareStatement("select * from users;");
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<Users1Result>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public Users1Result next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new Users1Result(
+                        (String) rs.getObject(1),
+                        (String) rs.getObject(2),
+                        (String) rs.getObject(3)
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     public String users2() throws SQLException {
         try (
             var stmt = connection.prepareStatement(
@@ -298,6 +348,51 @@ public class TestSqlite {
         }
     }
 
+    public Stream<Users5Result> users5Stream() throws SQLException {
+        var stmt = connection.prepareStatement(
+            "select 10 count, email from users where id = '1';"
+        );
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<Users5Result>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public Users5Result next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new Users5Result(
+                        (Integer) rs.getObject(1),
+                        (String) rs.getObject(2)
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     public record Users6Result(String id, String name, String email) {}
 
     public Users6Result users6(String name) throws SQLException {
@@ -342,5 +437,52 @@ public class TestSqlite {
                 return results;
             }
         }
+    }
+
+    public Stream<Users7Result> users7Stream(String name) throws SQLException {
+        var stmt = connection.prepareStatement(
+            "SELECT * FROM users WHERE name =?"
+        );
+        stmt.setObject(1, name);
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<Users7Result>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public Users7Result next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new Users7Result(
+                        (String) rs.getObject(1),
+                        (String) rs.getObject(2),
+                        (String) rs.getObject(3)
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 }

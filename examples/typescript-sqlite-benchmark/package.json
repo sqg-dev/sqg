@@ -8,9 +8,9 @@
     "bench": "pnpm build && tsx src/benchmark.ts"
   },
   "dependencies": {
-    "better-sqlite3": "catalog:",
     "@libsql/client": "^0.17.0",
-    "@tursodatabase/database": "^0.4.3",
+    "@tursodatabase/database": "^0.5.0",
+    "better-sqlite3": "catalog:",
     "tinybench": "catalog:"
   },
   "devDependencies": {

@@ -9,9 +9,7 @@ const queries = new Queries(db);
 
 // Run migrations
 console.log("Running migrations...");
-for (const migration of Queries.getMigrations()) {
-  db.exec(migration);
-}
+Queries.applyMigrations(db);
 console.log("Migrations complete!\n");
 
 // Insert some users

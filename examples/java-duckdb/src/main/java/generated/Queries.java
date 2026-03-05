@@ -19,9 +19,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import org.duckdb.DuckDBAppender;
 import org.duckdb.DuckDBConnection;
 
@@ -166,8 +172,76 @@ public class Queries {
         );"""
     );
 
+    private static final List<String> migrationIds = List.of(
+        "createUsersTable",
+        "createPostsTable",
+        "createTopics"
+    );
+
     public static List<String> getMigrations() {
         return migrations;
+    }
+
+    public static void applyMigrations(Connection connection)
+        throws SQLException {
+        applyMigrations(connection, "java-duckdb-example");
+    }
+
+    public static void applyMigrations(
+        Connection connection,
+        String projectName
+    ) throws SQLException {
+        try (var stmt = connection.createStatement()) {
+            stmt.execute(
+                """
+                CREATE TABLE IF NOT EXISTS _sqg_migrations (
+                    project TEXT NOT NULL,
+                    migration_id TEXT NOT NULL,
+                    applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (project, migration_id)
+                )"""
+            );
+        }
+        boolean wasAutoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try {
+            var applied = new java.util.HashSet<String>();
+            try (
+                var stmt = connection.prepareStatement(
+                    "SELECT migration_id FROM _sqg_migrations WHERE project = ?"
+                )
+            ) {
+                stmt.setString(1, projectName);
+                try (var rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        applied.add(rs.getString(1));
+                    }
+                }
+            }
+            for (int i = 0; i < migrations.size(); i++) {
+                var id = migrationIds.get(i);
+                if (!applied.contains(id)) {
+                    try (var stmt = connection.createStatement()) {
+                        stmt.execute(migrations.get(i));
+                    }
+                    try (
+                        var stmt = connection.prepareStatement(
+                            "INSERT INTO _sqg_migrations (project, migration_id) VALUES (?, ?)"
+                        )
+                    ) {
+                        stmt.setString(1, projectName);
+                        stmt.setString(2, id);
+                        stmt.executeUpdate();
+                    }
+                }
+            }
+            connection.commit();
+        } catch (SQLException e) {
+            connection.rollback();
+            throw e;
+        } finally {
+            connection.setAutoCommit(wasAutoCommit);
+        }
     }
 
     public record GetTopicsResult(
@@ -196,6 +270,51 @@ public class Queries {
                 return results;
             }
         }
+    }
+
+    public Stream<GetTopicsResult> getTopicsStream() throws SQLException {
+        var stmt = connection.prepareStatement("SELECT * from topics;");
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<GetTopicsResult>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public GetTopicsResult next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new GetTopicsResult(
+                        (Integer) rs.getObject(1),
+                        (String) rs.getObject(2),
+                        (String) rs.getObject(3),
+                        toLocalDateTime((java.sql.Timestamp) rs.getObject(4))
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     public int insertUser(String name, String email) throws SQLException {
@@ -240,6 +359,53 @@ public class Queries {
                 return results;
             }
         }
+    }
+
+    public Stream<GetUsersResult> getUsersStream() throws SQLException {
+        var stmt = connection.prepareStatement(
+            "SELECT id, name, email, created_at FROM users;"
+        );
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<GetUsersResult>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public GetUsersResult next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new GetUsersResult(
+                        (Integer) rs.getObject(1),
+                        (String) rs.getObject(2),
+                        (String) rs.getObject(3),
+                        toLocalDateTime((java.sql.Timestamp) rs.getObject(4))
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     public record GetUserByIdResult(
@@ -347,6 +513,60 @@ public class Queries {
         }
     }
 
+    public Stream<GetPostsByUserResult> getPostsByUserStream(Integer userId)
+        throws SQLException {
+        var stmt = connection.prepareStatement(
+            """
+            SELECT id, user_id, title, content, published, tags, created_at
+            FROM posts WHERE user_id =?;"""
+        );
+        stmt.setObject(1, userId);
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<GetPostsByUserResult>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public GetPostsByUserResult next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new GetPostsByUserResult(
+                        (Integer) rs.getObject(1),
+                        (Integer) rs.getObject(2),
+                        (String) rs.getObject(3),
+                        (String) rs.getObject(4),
+                        (Boolean) rs.getObject(5),
+                        arrayToList((Array) rs.getObject(6), String[].class),
+                        toLocalDateTime((java.sql.Timestamp) rs.getObject(7))
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     public record GetPublishedPostsResult(
         Integer id,
         String title,
@@ -384,6 +604,59 @@ public class Queries {
                 return results;
             }
         }
+    }
+
+    public Stream<GetPublishedPostsResult> getPublishedPostsStream()
+        throws SQLException {
+        var stmt = connection.prepareStatement(
+            """
+            SELECT p.id, p.title, p.content, p.created_at, u.name as author_name
+            FROM posts p
+            JOIN users u ON p.user_id = u.id
+            WHERE p.published = true;"""
+        );
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<GetPublishedPostsResult>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public GetPublishedPostsResult next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new GetPublishedPostsResult(
+                        (Integer) rs.getObject(1),
+                        (String) rs.getObject(2),
+                        (String) rs.getObject(3),
+                        toLocalDateTime((java.sql.Timestamp) rs.getObject(4)),
+                        (String) rs.getObject(5)
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     // ==================== Appenders ====================

@@ -33,6 +33,72 @@ CREATE INDEX IF NOT EXISTS idx_posts_published ON posts(published);`,
     ];
   }
 
+  static async applyMigrations(
+    client: Client,
+    projectName = "typescript-sqlite-benchmark",
+  ): Promise<void> {
+    await client.execute({
+      sql: `CREATE TABLE IF NOT EXISTS _sqg_migrations (
+                project TEXT NOT NULL,
+                migration_id TEXT NOT NULL,
+                applied_at TEXT NOT NULL DEFAULT (datetime('now')),
+                PRIMARY KEY (project, migration_id)
+            )`,
+      args: [],
+    });
+    const tx = await client.transaction("write");
+    try {
+      const result = await tx.execute({
+        sql: "SELECT migration_id FROM _sqg_migrations WHERE project = ?",
+        args: [projectName],
+      });
+      const applied = new Set(result.rows.map((r) => r.migration_id as string));
+      const migrations: [string, string][] = [
+        [
+          "1",
+          `CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    age INTEGER,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);`,
+        ],
+        [
+          "2",
+          `CREATE TABLE IF NOT EXISTS posts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT,
+    views INTEGER DEFAULT 0,
+    published INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);`,
+        ],
+        [
+          "3",
+          `CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id);
+CREATE INDEX IF NOT EXISTS idx_posts_published ON posts(published);`,
+        ],
+      ];
+      for (const [id, sql] of migrations) {
+        if (!applied.has(id)) {
+          await tx.execute({ sql, args: [] });
+          await tx.execute({
+            sql: "INSERT INTO _sqg_migrations (project, migration_id) VALUES (?, ?)",
+            args: [projectName, id],
+          });
+        }
+      }
+      await tx.commit();
+    } catch (e) {
+      await tx.rollback();
+      throw e;
+    }
+  }
+
   static getQueryNames(): Map<string, keyof Queries> {
     return new Map([
       ["insertUser", "insertUser"],

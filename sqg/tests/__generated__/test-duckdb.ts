@@ -50,6 +50,66 @@ create table if not exists events (
     ];
   }
 
+  static async applyMigrations(
+    conn: DuckDBConnection,
+    projectName = "test-duckdb",
+  ): Promise<void> {
+    await conn.run(`CREATE TABLE IF NOT EXISTS _sqg_migrations (
+            project TEXT NOT NULL,
+            migration_id TEXT NOT NULL,
+            applied_at TIMESTAMP NOT NULL DEFAULT now(),
+            PRIMARY KEY (project, migration_id)
+        )`);
+    await conn.run("BEGIN");
+    try {
+      const result = await conn.runAndReadAll(
+        "SELECT migration_id FROM _sqg_migrations WHERE project = $1",
+        [projectName],
+      );
+      const applied = new Set(result.getRows().map((row) => row[0] as string));
+      const migrations: [string, string][] = [
+        [
+          "1",
+          `CREATE SEQUENCE seq_users_id START 1;
+
+create table if not exists users (
+    id integer primary key not null default nextval('seq_users_id'),
+    name text not null,
+    email text not null unique
+);
+
+
+create table if not exists actions (
+    id integer primary key not null,
+    action text not null,
+    value double,
+    user_id integer not null references users(id),
+    timestamp integer not null
+);
+
+create table if not exists events (
+    id integer primary key not null,
+    name text not null,
+    tags text[] not null
+);`,
+        ],
+      ];
+      for (const [id, sql] of migrations) {
+        if (!applied.has(id)) {
+          await conn.run(sql);
+          await conn.run(
+            "INSERT INTO _sqg_migrations (project, migration_id) VALUES ($1, $2)",
+            [projectName, id],
+          );
+        }
+      }
+      await conn.run("COMMIT");
+    } catch (e) {
+      await conn.run("ROLLBACK");
+      throw e;
+    }
+  }
+
   static getQueryNames(): Map<string, keyof TestDuckdb> {
     return new Map([
       ["insert", "insert"],

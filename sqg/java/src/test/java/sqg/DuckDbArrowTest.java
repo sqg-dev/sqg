@@ -7,13 +7,11 @@ import java.lang.reflect.Modifier;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.List;
 
 import org.duckdb.DuckDBConnection;
 import org.junit.jupiter.api.Test;
 
 import sqg.generated.TestDuckDbArrow;
-import sqg.generated.TestDuckdb;
 
 class DuckDbArrowTest {
     private static final Class<?> driver = org.duckdb.DuckDBDriver.class;
@@ -26,15 +24,8 @@ class DuckDbArrowTest {
     private final TestDuckDbArrow duckdb = new TestDuckDbArrow(conn);
 
     @Test
-    void test() {
-
-        TestDuckdb.getMigrations().forEach(m -> {
-            try (var stmt = conn.createStatement()) {
-                stmt.execute(m);
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
-        });
+    void test() throws SQLException {
+        TestDuckDbArrow.applyMigrations(conn);
 
         for (var method : duckdb.getClass().getMethods()) {
             if (method.getParameterCount() == 0 && Modifier.isPublic(method.getModifiers())
@@ -54,11 +45,8 @@ class DuckDbArrowTest {
 
     @Test
     void test2() throws SQLException, IOException {
-        var stmt = conn.createStatement();
-        conn.setAutoCommit(true);
-        for (var migration : TestDuckDbArrow.getMigrations()) {
-            stmt.execute(migration);
-        }
+        TestDuckDbArrow.applyMigrations(conn);
+
         for (int i = 0; i < 100; i++) {
             duckdb.insert("name" + i, "email" + i);
         }
@@ -79,18 +67,13 @@ class DuckDbArrowTest {
 
     @Test
     void testListTypes() throws SQLException, IOException {
-        var stmt = conn.createStatement();
-        conn.setAutoCommit(true);
+        TestDuckDbArrow.applyMigrations(conn);
 
-        // Run migrations (includes events table with varchar[] column)
-        for (var migration : TestDuckDbArrow.getMigrations()) {
-            stmt.execute(migration);
+        try (var stmt = conn.createStatement()) {
+            stmt.execute(
+                "INSERT INTO events (id, name, tags) VALUES (1, 'pageview', ['web', 'mobile'])");
+            stmt.execute("INSERT INTO events (id, name, tags) VALUES (2, 'click', ['web'])");
         }
-
-        // Insert test data with array values
-        stmt.execute(
-            "INSERT INTO events (id, name, tags) VALUES (1, 'pageview', ['web', 'mobile'])");
-        stmt.execute("INSERT INTO events (id, name, tags) VALUES (2, 'click', ['web'])");
 
         // Test all_events query with list column
         try (var result = duckdb.allEvents()) {
