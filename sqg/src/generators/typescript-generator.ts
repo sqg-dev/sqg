@@ -8,6 +8,7 @@ import prettier from "prettier/standalone";
 import type { DbEngine } from "../constants.js";
 import {
   type ColumnInfo,
+  type ColumnType,
   EnumType,
   ListType,
   MapType,
@@ -18,6 +19,29 @@ import {
 import type { GeneratorConfig, SqlQueryHelper } from "../sqltool.js";
 import { TypeScriptTypeMapper } from "../type-mapping.js";
 import { BaseGenerator } from "./base-generator.js";
+
+/** Resolve a ColumnType to its DuckDB type constant name (e.g. "VARCHAR", "INTEGER") for use in generated code. */
+export function resolveElementType(baseType: ColumnType): string {
+  if (baseType instanceof ListType) {
+    return `new DuckDBListType(${resolveElementType(baseType.baseType)})`;
+  }
+  const typeStr = baseType.toString().toUpperCase();
+  const typeMap: Record<string, string> = {
+    VARCHAR: "VARCHAR",
+    TEXT: "VARCHAR",
+    INTEGER: "INTEGER",
+    INT: "INTEGER",
+    BIGINT: "BIGINT",
+    DOUBLE: "DOUBLE",
+    FLOAT: "FLOAT",
+    BOOLEAN: "BOOLEAN",
+    DATE: "DATE",
+    TIMESTAMP: "TIMESTAMP",
+    SMALLINT: "SMALLINT",
+    TINYINT: "TINYINT",
+  };
+  return typeMap[typeStr] || "VARCHAR";
+}
 
 export class TsGenerator extends BaseGenerator {
   constructor(template: string) {
@@ -49,6 +73,9 @@ export class TsGenerator extends BaseGenerator {
     // Map SQL types to DuckDB appender method suffixes
     // Note: DuckDB Node.js appender API uses type-specific methods
     Handlebars.registerHelper("appendMethod", (column: ColumnInfo) => {
+      if (column.type instanceof ListType) {
+        return "List";
+      }
       const typeStr = column.type?.toString().toUpperCase() || "";
       // INTEGER types -> appendInteger (JS number)
       if (
@@ -132,8 +159,19 @@ export class TsGenerator extends BaseGenerator {
       return "Varchar";
     });
 
+    // For list columns in appenders, generate the DuckDBListType expression for the type argument
+    Handlebars.registerHelper("appendListTypeArg", (column: ColumnInfo) => {
+      if (!(column.type instanceof ListType)) return "";
+      return `, new DuckDBListType(${resolveElementType(column.type.baseType)})`;
+    });
+
     // Type helper for appender row types - includes nullability
     Handlebars.registerHelper("tsTypeForAppender", (column: ColumnInfo) => {
+      if (column.type instanceof ListType) {
+        // appendList accepts DuckDBListValue | readonly DuckDBValue[]
+        const baseType = "readonly DuckDBValue[]";
+        return column.nullable ? `${baseType} | null` : baseType;
+      }
       const typeStr = column.type?.toString().toUpperCase() || "";
       let baseType: string;
 

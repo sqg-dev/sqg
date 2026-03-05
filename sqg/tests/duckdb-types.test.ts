@@ -203,6 +203,51 @@ describe("DuckDB test_all_types", () => {
     expect(row.varchar_array).toEqual({ items: ["🦆🦆🦆🦆🦆🦆", "goose", null, ""] });
   });
 
+  it("should insert and read back rows with TEXT[] via appender", async () => {
+    // Use the events appender to bulk insert rows with list columns
+    const appender = await queries.createEventsAppender();
+    appender.append({ id: 1, name: "event1", tags: ["a", "b", "c"] });
+    appender.append({ id: 2, name: "event2", tags: ["x"] });
+    appender.append({ id: 3, name: "event3", tags: [] });
+    appender.close();
+
+    // Read back and verify
+    const events = await queries.allEvents();
+    expect(events).toHaveLength(3);
+
+    expect(events[0].id).toBe(1);
+    expect(events[0].name).toBe("event1");
+    expect(events[0].tags).toEqual({ items: ["a", "b", "c"] });
+
+    expect(events[1].id).toBe(2);
+    expect(events[1].name).toBe("event2");
+    expect(events[1].tags).toEqual({ items: ["x"] });
+
+    expect(events[2].id).toBe(3);
+    expect(events[2].name).toBe("event3");
+    expect(events[2].tags).toEqual({ items: [] });
+  });
+
+  it("should insert and read back rows with TEXT[] via INSERT", async () => {
+    // Clear events from previous test
+    await conn.run("DELETE FROM events");
+
+    // Insert via the generated insertEvent method (uses prepared statement with list parameter)
+    await queries.insertEvent(10, "from_insert", { items: ["hello", "world"] });
+    await queries.insertEvent(11, "empty_tags", { items: [] });
+
+    const events = await queries.allEvents();
+    expect(events).toHaveLength(2);
+
+    expect(events[0].id).toBe(10);
+    expect(events[0].name).toBe("from_insert");
+    expect(events[0].tags).toEqual({ items: ["hello", "world"] });
+
+    expect(events[1].id).toBe(11);
+    expect(events[1].name).toBe("empty_tags");
+    expect(events[1].tags).toEqual({ items: [] });
+  });
+
   it("should return null values for third row", async () => {
     const results = await queries.testAllTypes();
     const row = results[2]; // Third row has null values

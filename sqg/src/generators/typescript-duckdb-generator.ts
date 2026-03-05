@@ -9,8 +9,8 @@ import {
   StructType,
   type TableInfo,
 } from "../sql-query.js";
-import type { GeneratorConfig } from "../sqltool.js";
-import { TsGenerator } from "./typescript-generator.js";
+import type { GeneratorConfig, SqlQueryHelper } from "../sqltool.js";
+import { TsGenerator, resolveElementType } from "./typescript-generator.js";
 
 /**
  * TypeScript generator for DuckDB.
@@ -36,6 +36,31 @@ export class TsDuckDBGenerator extends TsGenerator {
   ): Promise<void> {
     // Call parent to register quote helper
     await super.beforeGenerate(projectDir, gen, queries, tables);
+
+    // Check if a query has any list-typed parameters (needs prepared statement with explicit binds)
+    Handlebars.registerHelper("hasListParams", (queryHelper: SqlQueryHelper) => {
+      const paramTypes = queryHelper.query.parameterTypes;
+      if (!paramTypes) return false;
+      for (const [, colType] of paramTypes) {
+        if (colType instanceof ListType) return true;
+      }
+      return false;
+    });
+
+    // Generate bind statements for prepared statement parameters
+    Handlebars.registerHelper("bindStatements", (queryHelper: SqlQueryHelper) => {
+      const paramNames = queryHelper.parameterNames;
+      const paramTypes = queryHelper.query.parameterTypes;
+      return paramNames
+        .map((name, i) => {
+          const colType = paramTypes?.get(name);
+          if (colType instanceof ListType) {
+            return `stmt.bindList(${i + 1}, ${name}.items, new DuckDBListType(${resolveElementType(colType.baseType)}));`;
+          }
+          return `stmt.bindValue(${i + 1}, ${name});`;
+        })
+        .join("\n        ");
+    });
 
     // Override tsType helper with DuckDB-specific wrapper types
     Handlebars.registerHelper("tsType", (column: ColumnInfo) => {

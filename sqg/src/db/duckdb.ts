@@ -13,6 +13,40 @@ import type { SQLQuery, TableInfo } from "../sql-query.js";
 import { type ColumnType, EnumType, ListType, MapType, StructType } from "../sql-query.js";
 import { type DatabaseEngine, initializeDatabase } from "./types.js";
 
+function convertType(type: DuckDBType): ColumnType {
+  if (type instanceof DuckDBListType) {
+    return new ListType(convertType(type.valueType));
+  }
+  if (type instanceof DuckDBStructType) {
+    return new StructType(
+      type.entryTypes.map((t, index) => ({
+        name: type.entryNames[index],
+        type: convertType(t),
+        nullable: true,
+      })),
+    );
+  }
+  if (type instanceof DuckDBMapType) {
+    return new MapType(
+      {
+        name: "key",
+        type: convertType(type.keyType),
+        nullable: true,
+      },
+      {
+        name: "value",
+        type: convertType(type.valueType),
+        nullable: true,
+      },
+    );
+  }
+  if (type instanceof DuckDBEnumType) {
+    return new EnumType(type.values);
+  }
+
+  return type.toString();
+}
+
 export const duckdb = new (class implements DatabaseEngine {
   db!: DuckDBInstance;
   connection!: DuckDBConnection;
@@ -84,6 +118,18 @@ export const duckdb = new (class implements DatabaseEngine {
         .join("");
 
       const stmt = await connection.prepare(sql);
+
+      // Infer parameter types from the prepared statement
+      if (stmt.parameterCount > 0) {
+        const paramTypes = new Map<string, ColumnType>();
+        for (let i = 0; i < stmt.parameterCount; i++) {
+          const paramType = stmt.parameterType(i + 1);
+          paramTypes.set(statement.parameters[i].name, convertType(paramType));
+        }
+        query.parameterTypes = paramTypes;
+        consola.debug("Parameter types:", Object.fromEntries(paramTypes));
+      }
+
       for (let i = 0; i < stmt.parameterCount; i++) {
         stmt.bindValue(i + 1, statement.parameters[i].value);
       }
@@ -98,40 +144,6 @@ export const duckdb = new (class implements DatabaseEngine {
           "Types:",
           columnTypes.map((t) => `${t.toString()} / ${t.constructor.name}`),
         );
-
-        function convertType(type: DuckDBType): ColumnType {
-          if (type instanceof DuckDBListType) {
-            return new ListType(convertType(type.valueType));
-          }
-          if (type instanceof DuckDBStructType) {
-            return new StructType(
-              type.entryTypes.map((t, index) => ({
-                name: type.entryNames[index],
-                type: convertType(t),
-                nullable: true,
-              })),
-            );
-          }
-          if (type instanceof DuckDBMapType) {
-            return new MapType(
-              {
-                name: "key",
-                type: convertType(type.keyType),
-                nullable: true,
-              },
-              {
-                name: "value",
-                type: convertType(type.valueType),
-                nullable: true,
-              },
-            );
-          }
-          if (type instanceof DuckDBEnumType) {
-            return new EnumType(type.values);
-          }
-
-          return type.toString();
-        }
 
         query.columns = columnNames.map((name, index) => ({
           name,
@@ -167,54 +179,25 @@ export const duckdb = new (class implements DatabaseEngine {
       consola.info(`Introspecting table schema: ${table.tableName}`);
 
       try {
-        // Use DESCRIBE to get column information
-        const result = await connection.runAndReadAll(`DESCRIBE ${table.tableName}`);
-        const rows = result.getRows();
-
-        function convertType(type: DuckDBType): ColumnType {
-          if (type instanceof DuckDBListType) {
-            return new ListType(convertType(type.valueType));
-          }
-          if (type instanceof DuckDBStructType) {
-            return new StructType(
-              type.entryTypes.map((t, index) => ({
-                name: type.entryNames[index],
-                type: convertType(t),
-                nullable: true,
-              })),
-            );
-          }
-          if (type instanceof DuckDBMapType) {
-            return new MapType(
-              {
-                name: "key",
-                type: convertType(type.keyType),
-                nullable: true,
-              },
-              {
-                name: "value",
-                type: convertType(type.valueType),
-                nullable: true,
-              },
-            );
-          }
-          if (type instanceof DuckDBEnumType) {
-            return new EnumType(type.values);
-          }
-          return type.toString();
+        // Use DESCRIBE to get nullability information
+        const descResult = await connection.runAndReadAll(`DESCRIBE ${table.tableName}`);
+        const descRows = descResult.getRows();
+        const nullabilityMap = new Map<string, boolean>();
+        for (const row of descRows) {
+          nullabilityMap.set(row[0] as string, row[2] !== "NO");
         }
 
-        // DESCRIBE returns: column_name, column_type, null, key, default, extra
-        table.columns = rows.map((row) => {
-          const columnName = row[0] as string;
-          const columnType = row[1] as string;
-          const isNullable = row[2] !== "NO";
-          return {
-            name: columnName,
-            type: columnType,
-            nullable: isNullable,
-          };
-        });
+        // Use SELECT to get proper DuckDBType objects for columns (handles complex types like lists, structs, maps)
+        const result = await connection.prepare(`SELECT * FROM ${table.tableName} LIMIT 0`);
+        const stream = await result.stream();
+        const columnNames = stream.columnNames();
+        const columnTypes = stream.columnTypes();
+
+        table.columns = columnNames.map((name, index) => ({
+          name,
+          type: convertType(columnTypes[index]),
+          nullable: nullabilityMap.get(name) ?? true,
+        }));
 
         consola.debug(`Table ${table.tableName} columns:`, table.columns);
         consola.success(`Introspected table: ${table.tableName} (${table.columns.length} columns)`);

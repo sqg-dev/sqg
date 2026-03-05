@@ -154,6 +154,12 @@ public class TestDuckdb {
             value double,
             user_id integer not null references users(id),
             timestamp integer not null
+        );
+
+        create table if not exists events (
+            id integer primary key not null,
+            name text not null,
+            tags text[] not null
         );"""
     );
 
@@ -1120,6 +1126,40 @@ public class TestDuckdb {
         }
     }
 
+    public int insertEvent(Integer id, String name, List<String> tags)
+        throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "INSERT INTO events (id, name, tags) VALUES (?,?,?);"
+            )
+        ) {
+            stmt.setObject(1, id);
+            stmt.setObject(2, name);
+            stmt.setObject(3, tags);
+            return stmt.executeUpdate();
+        }
+    }
+
+    public record AllEventsResult(Integer id, String name, List<String> tags) {}
+
+    public List<AllEventsResult> allEvents() throws SQLException {
+        try (var stmt = connection.prepareStatement("select * from events;")) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<AllEventsResult>();
+                while (rs.next()) {
+                    results.add(
+                        new AllEventsResult(
+                            (Integer) rs.getObject(1),
+                            (String) rs.getObject(2),
+                            arrayToList((Array) rs.getObject(3), String[].class)
+                        )
+                    );
+                }
+                return results;
+            }
+        }
+    }
+
     // ==================== Appenders ====================
 
     /** Create an appender for bulk inserts into users */
@@ -1138,6 +1178,16 @@ public class TestDuckdb {
             ((DuckDBConnection) connection).createAppender(
                 DuckDBConnection.DEFAULT_SCHEMA,
                 "actions"
+            )
+        );
+    }
+
+    /** Create an appender for bulk inserts into events */
+    public EventsAppender createEventsAppender() throws SQLException {
+        return new EventsAppender(
+            ((DuckDBConnection) connection).createAppender(
+                DuckDBConnection.DEFAULT_SCHEMA,
+                "events"
             )
         );
     }
@@ -1251,6 +1301,60 @@ public class TestDuckdb {
 
         /** Append multiple rows */
         public ActionsAppender appendMany(Iterable<ActionsRow> rows)
+            throws SQLException {
+            for (var row : rows) {
+                append(row);
+            }
+            return this;
+        }
+
+        /** Flush and close the appender */
+        @Override
+        public void close() throws SQLException {
+            appender.close();
+        }
+    }
+
+    /** Row type for events appender */
+    public record EventsRow(Integer id, String name, List<String> tags) {}
+
+    /** Appender for bulk inserts into events */
+    public static class EventsAppender implements AutoCloseable {
+
+        private final DuckDBAppender appender;
+
+        EventsAppender(DuckDBAppender appender) {
+            this.appender = appender;
+        }
+
+        /** Get the underlying DuckDB appender for advanced operations */
+        public DuckDBAppender getAppender() {
+            return appender;
+        }
+
+        /** Append a single row */
+        public EventsAppender append(EventsRow row) throws SQLException {
+            appender.beginRow();
+            appender.append(row.id());
+            appender.append(row.name());
+            appender.append(row.tags());
+            appender.endRow();
+            return this;
+        }
+
+        /** Append a single row with individual values */
+        public EventsAppender append(Integer id, String name, List<String> tags)
+            throws SQLException {
+            appender.beginRow();
+            appender.append(id);
+            appender.append(name);
+            appender.append(tags);
+            appender.endRow();
+            return this;
+        }
+
+        /** Append multiple rows */
+        public EventsAppender appendMany(Iterable<EventsRow> rows)
             throws SQLException {
             for (var row : rows) {
                 append(row);

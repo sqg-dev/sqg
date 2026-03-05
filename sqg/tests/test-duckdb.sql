@@ -17,6 +17,12 @@ create table if not exists actions (
     timestamp integer not null
 );
 
+create table if not exists events (
+    id integer primary key not null,
+    name text not null,
+    tags text[] not null
+);
+
 -- EXEC insert
 
 @set name = 'John Doe'
@@ -181,6 +187,17 @@ select a:[1,2,3] ,b:2, c: {'x' : [{'a' : 1}], 'y' : {'z' : 3}}
 -- this is a special duckdb function which returns all supported types
 select * from test_all_types();
 
+-- EXEC insert_event
+@set id = 1
+@set name = 'test'
+@set tags = ['a','b']
+INSERT INTO events (id, name, tags) VALUES (${id}, ${name}, ${tags});
+
+-- QUERY all_events
+select * from events;
+
 -- TABLE users :appender
 
 -- TABLE actions :appender
+
+-- TABLE events :appender

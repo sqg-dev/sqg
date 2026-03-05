@@ -1,5 +1,5 @@
 // {{generatedComment}}
-import type { DuckDBConnection, DuckDBMaterializedResult, DuckDBAppender, DuckDBDateValue, DuckDBTimeValue, DuckDBTimestampValue, DuckDBBlobValue } from "@duckdb/node-api";
+import { DuckDBListType, listValue, VARCHAR, INTEGER, BIGINT, DOUBLE, FLOAT, BOOLEAN, SMALLINT, TINYINT, type DuckDBConnection, type DuckDBMaterializedResult, type DuckDBAppender, type DuckDBDateValue, type DuckDBTimeValue, type DuckDBTimestampValue, type DuckDBBlobValue, type DuckDBValue } from "@duckdb/node-api";
 
 export class {{className}} {
     
@@ -60,6 +60,28 @@ export class {{className}} {
     {{#unless skipGenerateFunction}}
     async {{functionName}}({{#each variables}}{{name}}: {{type}}{{#unless @last}}, {{/unless}}{{/each}}): Promise<{{> returnType }}> {
         const sql = {{{quote sqlQuery}}};
+        {{#if (hasListParams this)}}
+        const stmt = await this.conn.prepare(sql);
+        {{{bindStatements this}}}
+        {{#if isQuery}}
+        const reader = await stmt.runAndReadAll();
+        {{#if isPluck}}
+        {{#if isOne}}
+        return reader.getRows()[0]?.[0] as {{> rowType}} | undefined;
+        {{else}}
+        return reader.getRows().map((row) => row[0] as {{> rowType}});
+        {{/if}}
+        {{else}}
+        {{#if isOne}}
+        return reader.getRowObjects()[0] as {{> rowType}} | undefined;
+        {{else}}
+        return reader.getRowObjects() as {{> rowType}}[];
+        {{/if}}
+        {{/if}}
+        {{else}}
+        return await stmt.run();
+        {{/if}}
+        {{else}}
         {{#if isQuery}}
         const reader = await this.conn.runAndReadAll(sql,[{{> params}}]);
         {{#if isPluck}}
@@ -77,6 +99,7 @@ export class {{className}} {
         {{/if}}
         {{else}}
         return await this.conn.run(sql,[{{> params}}]);
+        {{/if}}
         {{/if}}
     }
     {{/unless}}
@@ -113,10 +136,10 @@ export class {{className}} {
         if (row.{{name}} === null || row.{{name}} === undefined) {
             this.appender.appendNull();
         } else {
-            this.appender.append{{appendMethod this}}(row.{{name}});
+            this.appender.append{{appendMethod this}}(row.{{name}}{{{appendListTypeArg this}}});
         }
         {{else}}
-        this.appender.append{{appendMethod this}}(row.{{name}});
+        this.appender.append{{appendMethod this}}(row.{{name}}{{{appendListTypeArg this}}});
         {{/if}}
         {{/each}}
         this.appender.endRow();
