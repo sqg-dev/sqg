@@ -1,0 +1,35 @@
+---
+title: "SQG v0.10.0: Java Streams & List Type Support"
+date: 2026-03-05
+authors:
+  - name: Uwe Maurer
+    url: https://github.com/uwemaurer
+---
+
+SQG is a type-safe SQL code generator — you write `.sql` files with annotated queries, and it generates strongly-typed database access code for TypeScript and Java by introspecting your queries against real database engines at build time.
+
+Here's what's new in v0.10.0.
+
+## Java: Stream-based result methods
+
+Generated Java code now includes methods that return `Stream<T>` in addition to `List<T>`. This gives you lazy evaluation, easier composition with the standard library, and avoids materializing large result sets into memory when you don't need to.
+
+```java
+try (Stream<User> users = queries.getAllUsersStream()) {
+    users.forEach(user -> process(user));
+}
+```
+
+The stream holds a reference to the underlying `ResultSet`, so it needs to be closed after use — hence the try-with-resources.
+
+## Java: Better array/list field support
+
+Array columns like `TEXT[]` or `INTEGER[]` are now handled correctly in generated Java code. Previously these types could produce incorrect mappings — they now resolve to proper `List<String>`, `List<Integer>`, etc.
+
+## DuckDB: List types in Appender
+
+The DuckDB appender now supports list/array column types. If your table has a column like `tags VARCHAR[]`, the generated appender method accepts the corresponding list type and writes it correctly using DuckDB's bulk insert API.
+
+---
+
+Upgrade with `npm install -g @sqg/sqg@0.10.0` or update your project's dependency. Full source on [GitHub](https://github.com/sqg-dev/sqg). Try it out in the [playground](https://sqg.dev/playground).
