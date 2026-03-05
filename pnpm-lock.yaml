@@ -213,8 +213,8 @@ importers:
         specifier: ^0.17.0
         version: 0.17.0
       '@tursodatabase/database':
-        specifier: ^0.4.3
-        version: 0.4.3
+        specifier: ^0.5.0
+        version: 0.5.0
       better-sqlite3:
         specifier: 'catalog:'
         version: 12.5.0
@@ -2009,13 +2009,27 @@ packages:
   '@tursodatabase/database-common@0.4.3':
     resolution: {integrity: sha512-Eck8V42CrPkASN3Z9xrx77bPWYwVfZwoHvhXlH9hEY2SABBWmPTtgBxrhu6nWanlvfobxR/qxU7q5QziSLUIAw==}
 
+  '@tursodatabase/database-common@0.5.0':
+    resolution: {integrity: sha512-Yw1aJ7rw5Sshy7VvkLk3gZlHqNeM3nqs11G3qzhu1gjqLfVxT1MupVfB4AWLrvOwVMYWs560/Xfl9ITooJu5HQ==}
+
   '@tursodatabase/database-darwin-arm64@0.4.3':
     resolution: {integrity: sha512-+YPBGkpTo7+EA/2xjpUpRvHw2b/Iiw1fnFJL25u2FZWNlq9CwR8nRERb/yXYJcysKMS7r/CQPty34LvbTuU1Cg==}
     cpu: [arm64]
     os: [darwin]
 
+  '@tursodatabase/database-darwin-arm64@0.5.0':
+    resolution: {integrity: sha512-WwgIlXeZ2/RKmQV/pBoduYIiY1t+gAG4zKyza6vq+ubYEV1eV9M/Ag0qxd3w8hVVbnIh3AFv/XA6NGU5fjWIww==}
+    cpu: [arm64]
+    os: [darwin]
+
   '@tursodatabase/database-linux-arm64-gnu@0.4.3':
     resolution: {integrity: sha512-G8Lwe2liC1PmZ2Uyl++y71DJOaPTTdyFfLjH44jO2gyBBRinAUHgk+NMBmDeSJ2ywaiwnJAOd5bj5lPZUMty9w==}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  '@tursodatabase/database-linux-arm64-gnu@0.5.0':
+    resolution: {integrity: sha512-ifhBSd+o0ZGUvbOJUVZHEWq+soY1MQcWTRHR4BF8gKo4VG+83fWfNx9rY6Ag5LK/dMmwLvFE4i6els+wFuHsqg==}
     cpu: [arm64]
     os: [linux]
     libc: [glibc]
@@ -2026,13 +2040,27 @@ packages:
     os: [linux]
     libc: [glibc]
 
+  '@tursodatabase/database-linux-x64-gnu@0.5.0':
+    resolution: {integrity: sha512-m+th09HazKbuQwaj9C2hPBE/5TWvBn6bQ2/YghrXog+mvmjeq1W/GXEpUP0BDUCiQwj//2p30WaNvicLe2VMfg==}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
   '@tursodatabase/database-win32-x64-msvc@0.4.3':
     resolution: {integrity: sha512-mGLYSVnNtUm5zFwclSJwjEqGjbTlExe/JAHsEOu60Y9nnGmp6Yf/yIZqg7E3VvWaNyLVc/uU3TtyzgLOfID/fQ==}
     cpu: [x64]
     os: [win32]
 
+  '@tursodatabase/database-win32-x64-msvc@0.5.0':
+    resolution: {integrity: sha512-3nnbUe6Z0VerPeYhW3frPdiUV6wdDhz97Zg1iCwpl9xUp/CUP4z2KU2EiHKMxlCvPcIXB/U37hMpdgooQMj7dA==}
+    cpu: [x64]
+    os: [win32]
+
   '@tursodatabase/database@0.4.3':
     resolution: {integrity: sha512-AyuvJQv55vZTgLjnMMdBznOxT2twwb7azO9iTSAbngedEm87XpFkTmpKIne7t33OSpMVG4H/3qfEcDvLdHSCcA==}
+
+  '@tursodatabase/database@0.5.0':
+    resolution: {integrity: sha512-PDESKMpgBu9TJ25t6L0zfx5Vj9g0h8Wug38YS/mT+r/Yn+N0MBOFUlL3pR/qZHTVIEoXYWRPdGB/hfemvrcFxg==}
 
   '@tybys/wasm-util@0.10.1':
     resolution: {integrity: sha512-9tTaPJLSiejZKx+Bmog4uSubteqTvFrVrURwkmHixBo0G4seD0zUxp98E1DzUBJxLQ3NPwXrGKDiVjwx/DpPsg==}
@@ -6571,16 +6599,30 @@ snapshots:
 
   '@tursodatabase/database-common@0.4.3': {}
 
+  '@tursodatabase/database-common@0.5.0': {}
+
   '@tursodatabase/database-darwin-arm64@0.4.3':
+    optional: true
+
+  '@tursodatabase/database-darwin-arm64@0.5.0':
     optional: true
 
   '@tursodatabase/database-linux-arm64-gnu@0.4.3':
     optional: true
 
+  '@tursodatabase/database-linux-arm64-gnu@0.5.0':
+    optional: true
+
   '@tursodatabase/database-linux-x64-gnu@0.4.3':
     optional: true
 
+  '@tursodatabase/database-linux-x64-gnu@0.5.0':
+    optional: true
+
   '@tursodatabase/database-win32-x64-msvc@0.4.3':
+    optional: true
+
+  '@tursodatabase/database-win32-x64-msvc@0.5.0':
     optional: true
 
   '@tursodatabase/database@0.4.3':
@@ -6591,6 +6633,15 @@ snapshots:
       '@tursodatabase/database-linux-arm64-gnu': 0.4.3
       '@tursodatabase/database-linux-x64-gnu': 0.4.3
       '@tursodatabase/database-win32-x64-msvc': 0.4.3
+
+  '@tursodatabase/database@0.5.0':
+    dependencies:
+      '@tursodatabase/database-common': 0.5.0
+    optionalDependencies:
+      '@tursodatabase/database-darwin-arm64': 0.5.0
+      '@tursodatabase/database-linux-arm64-gnu': 0.5.0
+      '@tursodatabase/database-linux-x64-gnu': 0.5.0
+      '@tursodatabase/database-win32-x64-msvc': 0.5.0
 
   '@tybys/wasm-util@0.10.1':
     dependencies:
