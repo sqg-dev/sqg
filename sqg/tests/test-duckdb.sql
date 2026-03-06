@@ -196,8 +196,17 @@ INSERT INTO events (id, name, tags) VALUES (${id}, ${name}, ${tags});
 -- QUERY all_events
 select * from events;
 
+-- MIGRATE 2
+create table if not exists log_entries (
+    id integer primary key not null,
+    message text not null,
+    created_at timestamptz not null
+);
+
 -- TABLE users :appender
 
 -- TABLE actions :appender
 
 -- TABLE events :appender
+
+-- TABLE log_entries :appender

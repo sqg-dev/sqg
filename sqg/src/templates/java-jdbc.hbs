@@ -257,7 +257,7 @@ public class {{className}} {
 
 {{#each tables}}
 /** Row type for {{tableName}} appender */
-public record {{rowTypeName}}({{#each columns}}{{{mapType this}}} {{name}}{{#unless @last}}, {{/unless}}{{/each}}) {}
+public record {{rowTypeName}}({{#each columns}}{{{appenderType this}}} {{name}}{{#unless @last}}, {{/unless}}{{/each}}) {}
 
 /** Appender for bulk inserts into {{tableName}} */
 public static class {{className}} implements AutoCloseable {
@@ -283,7 +283,7 @@ public static class {{className}} implements AutoCloseable {
     }
 
     /** Append a single row with individual values */
-    public {{className}} append({{#each columns}}{{{mapType this}}} {{name}}{{#unless @last}}, {{/unless}}{{/each}}) throws SQLException {
+    public {{className}} append({{#each columns}}{{{appenderType this}}} {{name}}{{#unless @last}}, {{/unless}}{{/each}}) throws SQLException {
         appender.beginRow();
         {{#each columns}}
         appender.append({{name}});

@@ -47,6 +47,11 @@ create table if not exists events (
     name text not null,
     tags text[] not null
 );`,
+      `create table if not exists log_entries (
+    id integer primary key not null,
+    message text not null,
+    created_at timestamptz not null
+);`,
     ];
   }
 
@@ -91,6 +96,14 @@ create table if not exists events (
     id integer primary key not null,
     name text not null,
     tags text[] not null
+);`,
+        ],
+        [
+          "2",
+          `create table if not exists log_entries (
+    id integer primary key not null,
+    message text not null,
+    created_at timestamptz not null
 );`,
         ],
       ];
@@ -1399,6 +1412,12 @@ select * from test_all_types();`;
   async createEventsAppender(): Promise<EventsAppender> {
     return new EventsAppender(await this.conn.createAppender("events"));
   }
+
+  async createLogEntriesAppender(): Promise<LogEntriesAppender> {
+    return new LogEntriesAppender(
+      await this.conn.createAppender("log_entries"),
+    );
+  }
 }
 
 /** Row type for users appender */
@@ -1509,6 +1528,45 @@ export class EventsAppender {
 
   /** Append multiple rows */
   appendMany(rows: EventsRow[]): this {
+    for (const row of rows) {
+      this.append(row);
+    }
+    return this;
+  }
+
+  /** Flush buffered data to the table */
+  flush(): this {
+    this.appender.flushSync();
+    return this;
+  }
+
+  /** Flush and close the appender */
+  close(): void {
+    this.appender.closeSync();
+  }
+}
+/** Row type for log_entries appender */
+export interface LogEntriesRow {
+  id: number;
+  message: string;
+  created_at: DuckDBTimestampValue;
+}
+
+/** Appender for bulk inserts into log_entries */
+export class LogEntriesAppender {
+  constructor(public readonly appender: DuckDBAppender) {}
+
+  /** Append a single row */
+  append(row: LogEntriesRow): this {
+    this.appender.appendInteger(row.id);
+    this.appender.appendVarchar(row.message);
+    this.appender.appendTimestamp(row.created_at);
+    this.appender.endRow();
+    return this;
+  }
+
+  /** Append multiple rows */
+  appendMany(rows: LogEntriesRow[]): this {
     for (const row of rows) {
       this.append(row);
     }

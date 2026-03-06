@@ -6,6 +6,8 @@ import java.lang.reflect.Modifier;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -99,6 +101,33 @@ class DuckDbTest {
         assertThat(events.get(1).id()).isEqualTo(2);
         assertThat(events.get(1).name()).isEqualTo("event2");
         assertThat(events.get(1).tags()).isEmpty();
+    }
+
+    @Test
+    void appenderWithTimestamptz() throws SQLException {
+        Connection conn = DriverManager.getConnection("jdbc:duckdb:");
+        TestDuckdb duckdb = new TestDuckdb(conn);
+        TestDuckdb.applyMigrations(conn);
+
+        // Appender accepts OffsetDateTime for TIMESTAMPTZ columns
+        var ts1 = OffsetDateTime.of(2025, 1, 15, 10, 30, 0, 0, ZoneOffset.UTC);
+        var ts2 = OffsetDateTime.of(2025, 6, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+        try (var appender = duckdb.createLogEntriesAppender()) {
+            appender.append(1, "hello", ts1);
+            appender.append(new TestDuckdb.LogEntriesRow(2, "world", ts2));
+        }
+
+        // Verify data was inserted
+        try (var stmt = conn.createStatement()) {
+            var rs = stmt.executeQuery("SELECT id, message, created_at FROM log_entries ORDER BY id");
+            assertThat(rs.next()).isTrue();
+            assertThat(rs.getInt("id")).isEqualTo(1);
+            assertThat(rs.getString("message")).isEqualTo("hello");
+            assertThat(rs.next()).isTrue();
+            assertThat(rs.getInt("id")).isEqualTo(2);
+            assertThat(rs.getString("message")).isEqualTo("world");
+            assertThat(rs.next()).isFalse();
+        }
     }
 
     @Test
