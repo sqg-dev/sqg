@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { JavaGenerator } from "../src/generators/index";
 import type { SQLQuery } from "../src/sql-query";
-import { StructType } from "../src/sql-query";
-import type { SqlQueryPart } from "../src/sqltool";
+import { ListType, StructType } from "../src/sql-query";
+import { SqlQueryHelper, type SqlQueryPart } from "../src/sqltool";
 
 describe("JavaGenerator", () => {
   let generator: JavaGenerator;
@@ -179,5 +179,103 @@ describe("JavaGenerator", () => {
       expect(generator.isCompatibleWith("duckdb")).toBe(true);
       expect(generator.isCompatibleWith("postgres")).toBe(true);
     });
+  });
+});
+
+describe("SqlQueryHelper.parameters", () => {
+  let generator: JavaGenerator;
+
+  beforeEach(() => {
+    generator = new JavaGenerator("test-template");
+  });
+
+  function createHelper(
+    variables: Map<string, string>,
+    parameterNames: string[],
+    parameterTypes?: Map<string, any>,
+  ): SqlQueryHelper {
+    const query = {
+      variables,
+      parameterTypes,
+    } as unknown as SQLQuery;
+    const statement = {
+      parameters: parameterNames.map((name) => ({ name, value: "test" })),
+      sql: "SELECT 1",
+      sqlParts: ["SELECT 1"],
+    };
+    return new SqlQueryHelper(query, generator, statement);
+  }
+
+  it("should detect DuckDB ListType array parameters", () => {
+    const variables = new Map([
+      ["name", "'test'"],
+      ["tags", "['a','b']"],
+    ]);
+    const parameterTypes = new Map<string, any>([
+      ["name", "VARCHAR"],
+      ["tags", new ListType("VARCHAR")],
+    ]);
+    const helper = createHelper(variables, ["name", "tags"], parameterTypes);
+    const params = helper.parameters;
+
+    expect(params[0].name).toBe("name");
+    expect(params[0].isArray).toBe(false);
+    expect(params[0].arrayBaseType).toBeNull();
+
+    expect(params[1].name).toBe("tags");
+    expect(params[1].isArray).toBe(true);
+    expect(params[1].arrayBaseType).toBe("VARCHAR");
+  });
+
+  it("should detect PostgreSQL underscore-prefixed array parameters", () => {
+    const variables = new Map([
+      ["title", "'test'"],
+      ["tags", "ARRAY['a']"],
+    ]);
+    const parameterTypes = new Map<string, any>([
+      ["title", "TEXT"],
+      ["tags", "_TEXT"],
+    ]);
+    const helper = createHelper(variables, ["title", "tags"], parameterTypes);
+    const params = helper.parameters;
+
+    expect(params[0].name).toBe("title");
+    expect(params[0].isArray).toBe(false);
+    expect(params[0].arrayBaseType).toBeNull();
+
+    expect(params[1].name).toBe("tags");
+    expect(params[1].isArray).toBe(true);
+    expect(params[1].arrayBaseType).toBe("TEXT");
+  });
+
+  it("should detect PostgreSQL integer array parameters", () => {
+    const variables = new Map([["scores", "ARRAY[1]"]]);
+    const parameterTypes = new Map<string, any>([["scores", "_INT4"]]);
+    const helper = createHelper(variables, ["scores"], parameterTypes);
+    const params = helper.parameters;
+
+    expect(params[0].isArray).toBe(true);
+    expect(params[0].arrayBaseType).toBe("INT4");
+  });
+
+  it("should handle queries without parameterTypes", () => {
+    const variables = new Map([["name", "'test'"]]);
+    const helper = createHelper(variables, ["name"], undefined);
+    const params = helper.parameters;
+
+    expect(params[0].isArray).toBe(false);
+    expect(params[0].arrayBaseType).toBeNull();
+  });
+
+  it("should handle nested DuckDB list types", () => {
+    const variables = new Map([["matrix", "[['a']]"]]);
+    const parameterTypes = new Map<string, any>([
+      ["matrix", new ListType(new ListType("VARCHAR"))],
+    ]);
+    const helper = createHelper(variables, ["matrix"], parameterTypes);
+    const params = helper.parameters;
+
+    expect(params[0].isArray).toBe(true);
+    expect(params[0].arrayBaseType).toBe("VARCHAR[]");
   });
 });

@@ -259,6 +259,7 @@ public class TestPg {
 
     public Stream<Users1Result> users1Stream() throws SQLException {
         var stmt = connection.prepareStatement("select * from users;");
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<Users1Result>() {
             private Boolean hasNext = null;
@@ -371,6 +372,7 @@ public class TestPg {
         var stmt = connection.prepareStatement(
             "select 10 count, email from users where id = '1';"
         );
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<Users5Result>() {
             private Boolean hasNext = null;
@@ -421,6 +423,7 @@ public class TestPg {
             )
         ) {
             stmt.setObject(1, name);
+
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
                     ? new Users6Result(
@@ -442,6 +445,7 @@ public class TestPg {
             )
         ) {
             stmt.setObject(1, name);
+
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<Users7Result>();
                 while (rs.next()) {
@@ -463,6 +467,7 @@ public class TestPg {
             "SELECT * FROM users WHERE name =?"
         );
         stmt.setObject(1, name);
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<Users7Result>() {
             private Boolean hasNext = null;
@@ -521,6 +526,7 @@ public class TestPg {
             )
         ) {
             stmt.setObject(1, status);
+
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<GetTasksByStatusResult>();
                 while (rs.next()) {
@@ -551,6 +557,7 @@ public class TestPg {
             "SELECT id, title, status, tags, priority_scores FROM tasks WHERE status =?::task_status;"
         );
         stmt.setObject(1, status);
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<GetTasksByStatusResult>() {
             private Boolean hasNext = null;
@@ -637,6 +644,7 @@ public class TestPg {
         var stmt = connection.prepareStatement(
             "SELECT id, title, status, tags, priority_scores FROM tasks;"
         );
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<GetAllTasksResult>() {
             private Boolean hasNext = null;
@@ -709,6 +717,29 @@ public class TestPg {
         }
     }
 
+    public int insertTask(
+        String title,
+        String status,
+        List<String> tags,
+        List<Integer> priority_scores
+    ) throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "INSERT INTO tasks (title, status, tags, priority_scores) VALUES (?,?::task_status,?,?);"
+            )
+        ) {
+            stmt.setObject(1, title);
+            stmt.setObject(2, status);
+            stmt.setArray(3, connection.createArrayOf("TEXT", tags.toArray()));
+            stmt.setArray(
+                4,
+                connection.createArrayOf("INT4", priority_scores.toArray())
+            );
+
+            return stmt.executeUpdate();
+        }
+    }
+
     public record GetBigintRecordResult(
         Long id,
         Long serialId,
@@ -725,6 +756,7 @@ public class TestPg {
             )
         ) {
             stmt.setObject(1, id);
+
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
                     ? new GetBigintRecordResult(
@@ -747,6 +779,7 @@ public class TestPg {
             )
         ) {
             stmt.setObject(1, id);
+
             try (var rs = stmt.executeQuery()) {
                 return rs.next() ? (Long) rs.getObject(1) : null;
             }

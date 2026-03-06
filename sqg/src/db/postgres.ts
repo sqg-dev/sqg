@@ -223,12 +223,12 @@ export const postgres = new (class implements DatabaseEngine {
       // Introspect parameter types using PREPARE + pg_prepared_statements
       if (statement.parameters.length > 0) {
         try {
-          await db.query(`DEALLOCATE ALL`);
+          await db.query("DEALLOCATE ALL");
           await db.query(`PREPARE sqg_param_check AS ${statement.sql}`);
           const paramTypeResult = await db.query(
             `SELECT unnest(parameter_types)::oid AS oid FROM pg_prepared_statements WHERE name = 'sqg_param_check'`,
           );
-          await db.query(`DEALLOCATE sqg_param_check`);
+          await db.query("DEALLOCATE sqg_param_check");
 
           if (paramTypeResult.rows.length === statement.parameters.length) {
             const paramTypes = new Map<string, string>();
@@ -241,7 +241,10 @@ export const postgres = new (class implements DatabaseEngine {
             consola.debug("Parameter types:", Object.fromEntries(paramTypes));
           }
         } catch (e) {
-          consola.debug(`Parameter type introspection failed for ${query.id}, using heuristic:`, (e as Error).message);
+          consola.debug(
+            `Parameter type introspection failed for ${query.id}, using heuristic:`,
+            (e as Error).message,
+          );
         }
       }
 

@@ -245,6 +245,7 @@ public class TestDuckdb {
         ) {
             stmt.setObject(1, name);
             stmt.setObject(2, email);
+
             return stmt.executeUpdate();
         }
     }
@@ -285,6 +286,7 @@ public class TestDuckdb {
         var stmt = connection.prepareStatement(
             "select 'abc' as a,1 as x,* from users;"
         );
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<AllResult>() {
             private Boolean hasNext = null;
@@ -345,6 +347,7 @@ public class TestDuckdb {
 
     public Stream<String> allEmailsStream() throws SQLException {
         var stmt = connection.prepareStatement("select email from users;");
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<String>() {
             private Boolean hasNext = null;
@@ -392,6 +395,7 @@ public class TestDuckdb {
             )
         ) {
             stmt.setObject(1, id);
+
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
                     ? new ByIdResult(
@@ -413,6 +417,7 @@ public class TestDuckdb {
             )
         ) {
             stmt.setObject(1, email);
+
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
                     ? new ByEmailResult(
@@ -432,6 +437,7 @@ public class TestDuckdb {
             )
         ) {
             stmt.setObject(1, email);
+
             try (var rs = stmt.executeQuery()) {
                 return rs.next() ? (Integer) rs.getObject(1) : null;
             }
@@ -446,6 +452,7 @@ public class TestDuckdb {
         ) {
             stmt.setObject(1, email);
             stmt.setObject(2, id);
+
             return stmt.executeUpdate();
         }
     }
@@ -457,6 +464,7 @@ public class TestDuckdb {
             )
         ) {
             stmt.setObject(1, id);
+
             return stmt.executeUpdate();
         }
     }
@@ -477,6 +485,7 @@ public class TestDuckdb {
             )
         ) {
             stmt.setObject(1, user_id);
+
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<ActionsByUserIdResult>();
                 while (rs.next()) {
@@ -501,6 +510,7 @@ public class TestDuckdb {
             "select * from actions where user_id =?;"
         );
         stmt.setObject(1, user_id);
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<ActionsByUserIdResult>() {
             private Boolean hasNext = null;
@@ -569,6 +579,7 @@ public class TestDuckdb {
         ) {
             stmt.setObject(1, user_id);
             stmt.setObject(2, action);
+
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<ActionsByUserIdAndActionResult>();
                 while (rs.next()) {
@@ -601,6 +612,7 @@ public class TestDuckdb {
         );
         stmt.setObject(1, user_id);
         stmt.setObject(2, action);
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<ActionsByUserIdAndActionResult>() {
             private Boolean hasNext = null;
@@ -672,6 +684,7 @@ public class TestDuckdb {
         var stmt = connection.prepareStatement(
             "SELECT user_id, SUM(value) as total_value FROM actions GROUP BY user_id ORDER BY total_value DESC LIMIT 10;"
         );
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<TopUsersResult>() {
             private Boolean hasNext = null;
@@ -722,6 +735,7 @@ public class TestDuckdb {
             )
         ) {
             stmt.setObject(1, a);
+
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<TestResult>();
                 while (rs.next()) {
@@ -737,6 +751,7 @@ public class TestDuckdb {
             "select 1 as n where? ::int is null; "
         );
         stmt.setObject(1, a);
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<TestResult>() {
             private Boolean hasNext = null;
@@ -791,6 +806,7 @@ public class TestDuckdb {
 
     public Stream<Test2Result> test2Stream() throws SQLException {
         var stmt = connection.prepareStatement("select  1 as n;");
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<Test2Result>() {
             private Boolean hasNext = null;
@@ -852,6 +868,7 @@ public class TestDuckdb {
 
     public Stream<Test3Result> test3Stream() throws SQLException {
         var stmt = connection.prepareStatement("select '--ok' b,2 as a ");
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<Test3Result>() {
             private Boolean hasNext = null;
@@ -918,6 +935,7 @@ public class TestDuckdb {
 
     public Stream<Test4Result> test4Stream() throws SQLException {
         var stmt = connection.prepareStatement("select '/* lol */' s , 5 as z");
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<Test4Result>() {
             private Boolean hasNext = null;
@@ -987,6 +1005,7 @@ public class TestDuckdb {
         var stmt = connection.prepareStatement(
             "select 'a 	' x , 'a	 a' y, 1 as c"
         );
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<Test5Result>() {
             private Boolean hasNext = null;
@@ -1055,6 +1074,7 @@ public class TestDuckdb {
         var stmt = connection.prepareStatement(
             "select ['a','b', 'c'] as names"
         );
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<TestListResult>() {
             private Boolean hasNext = null;
@@ -1117,6 +1137,7 @@ public class TestDuckdb {
         var stmt = connection.prepareStatement(
             "select ['a','b', 'c'] as names"
         );
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<List<String>>() {
             private Boolean hasNext = null;
@@ -1189,6 +1210,7 @@ public class TestDuckdb {
 
     public Stream<TestMapResult> testMapStream() throws SQLException {
         var stmt = connection.prepareStatement("select props: MAP {'a' : 1}");
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<TestMapResult>() {
             private Boolean hasNext = null;
@@ -1253,6 +1275,7 @@ public class TestDuckdb {
 
             select props: MAP { 1 : 2 }"""
         );
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<TestMap2Result>() {
             private Boolean hasNext = null;
@@ -1317,6 +1340,7 @@ public class TestDuckdb {
 
             select props: MAP { [1] : 2 }"""
         );
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<TestMap3Result>() {
             private Boolean hasNext = null;
@@ -1403,6 +1427,7 @@ public class TestDuckdb {
         var stmt = connection.prepareStatement(
             "select data: {'test' : 1, 'name' : 'abc', 'nested' : {'test' : true}}"
         );
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<TestStructResult>() {
             private Boolean hasNext = null;
@@ -1489,6 +1514,7 @@ public class TestDuckdb {
         var stmt = connection.prepareStatement(
             "select data: {'test' : 1, 'name' : 'abc', 'nested' : {'test' : true}}"
         );
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<TestStruct2Result>() {
             private Boolean hasNext = null;
@@ -1676,6 +1702,7 @@ public class TestDuckdb {
         var stmt = connection.prepareStatement(
             "select MAP {'x' : [{'a' : 1}]} as data"
         );
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<TestNestedResult>() {
             private Boolean hasNext = null;
@@ -2004,6 +2031,7 @@ public class TestDuckdb {
 
             select * from test_all_types();"""
         );
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<TestAllTypesResult>() {
             private Boolean hasNext = null;
@@ -2125,7 +2153,11 @@ public class TestDuckdb {
         ) {
             stmt.setObject(1, id);
             stmt.setObject(2, name);
-            stmt.setObject(3, tags);
+            stmt.setArray(
+                3,
+                connection.createArrayOf("VARCHAR", tags.toArray())
+            );
+
             return stmt.executeUpdate();
         }
     }
@@ -2152,6 +2184,7 @@ public class TestDuckdb {
 
     public Stream<AllEventsResult> allEventsStream() throws SQLException {
         var stmt = connection.prepareStatement("select * from events;");
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<AllEventsResult>() {
             private Boolean hasNext = null;

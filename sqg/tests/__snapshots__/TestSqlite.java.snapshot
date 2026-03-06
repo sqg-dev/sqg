@@ -240,6 +240,7 @@ public class TestSqlite {
 
     public Stream<Users1Result> users1Stream() throws SQLException {
         var stmt = connection.prepareStatement("select * from users;");
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<Users1Result>() {
             private Boolean hasNext = null;
@@ -352,6 +353,7 @@ public class TestSqlite {
         var stmt = connection.prepareStatement(
             "select 10 count, email from users where id = '1';"
         );
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<Users5Result>() {
             private Boolean hasNext = null;
@@ -402,6 +404,7 @@ public class TestSqlite {
             )
         ) {
             stmt.setObject(1, name);
+
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
                     ? new Users6Result(
@@ -423,6 +426,7 @@ public class TestSqlite {
             )
         ) {
             stmt.setObject(1, name);
+
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<Users7Result>();
                 while (rs.next()) {
@@ -444,6 +448,7 @@ public class TestSqlite {
             "SELECT * FROM users WHERE name =?"
         );
         stmt.setObject(1, name);
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<Users7Result>() {
             private Boolean hasNext = null;

@@ -90,6 +90,13 @@ SELECT tags FROM tasks WHERE id = 1;
 SELECT priority_scores FROM tasks WHERE id = 1;
 
 
+-- EXEC insert_task
+@set title = 'Test Task'
+@set status = 'active'
+@set tags = '{test,urgent}'
+@set priority_scores = '{1,2}'
+INSERT INTO tasks (title, status, tags, priority_scores) VALUES (${title}, ${status}::task_status, ${tags}, ${priority_scores});
+
 -- QUERY get_bigint_record :one
 @set id = 1
 SELECT id, serial_id, small_id, regular_id, amount, name FROM bigint_test WHERE id = ${id};

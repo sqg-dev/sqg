@@ -80,6 +80,28 @@ class DuckDbTest {
     }
 
     @Test
+    void insertEventWithArrayParam() throws SQLException {
+        Connection conn = DriverManager.getConnection("jdbc:duckdb:");
+        TestDuckdb duckdb = new TestDuckdb(conn);
+        TestDuckdb.applyMigrations(conn);
+
+        // Insert rows using setArray for TEXT[] parameter
+        duckdb.insertEvent(1, "event1", List.of("tag1", "tag2"));
+        duckdb.insertEvent(2, "event2", List.of());
+
+        List<TestDuckdb.AllEventsResult> events = duckdb.allEvents();
+        assertThat(events).hasSize(2);
+
+        assertThat(events.get(0).id()).isEqualTo(1);
+        assertThat(events.get(0).name()).isEqualTo("event1");
+        assertThat(events.get(0).tags()).containsExactly("tag1", "tag2");
+
+        assertThat(events.get(1).id()).isEqualTo(2);
+        assertThat(events.get(1).name()).isEqualTo("event2");
+        assertThat(events.get(1).tags()).isEmpty();
+    }
+
+    @Test
     void streamClosesResources() throws SQLException {
         Connection conn = DriverManager.getConnection("jdbc:duckdb:");
         TestDuckdb duckdb = new TestDuckdb(conn);

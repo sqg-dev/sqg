@@ -25,7 +25,7 @@ import {
 } from "./errors.js";
 import { type Generator, getGenerator } from "./generators/index.js";
 import type { ColumnInfo, SQLQuery, TableInfo } from "./sql-query.js";
-import { parseSQLQueries, StructType } from "./sql-query.js";
+import { ListType, parseSQLQueries, StructType } from "./sql-query.js";
 import type { TypeMapper } from "./type-mapping.js";
 
 export const GENERATED_FILE_COMMENT =
@@ -156,12 +156,33 @@ export class SqlQueryHelper {
     return this.query.skipGenerateFunction;
   }
 
-  get parameters(): { name: string; type: string }[] {
+  get parameters(): {
+    name: string;
+    type: string;
+    isArray: boolean;
+    arrayBaseType: string | null;
+  }[] {
     const vars = new Map(this.variables.map((param) => [param.name, param.type]));
-    return this.statement.parameters.map((param) => ({
-      name: param.name,
-      type: vars.get(param.name)!,
-    }));
+    return this.statement.parameters.map((param) => {
+      const rawType = this.query.parameterTypes?.get(param.name);
+      let isArray = false;
+      let arrayBaseType: string | null = null;
+      if (rawType instanceof ListType) {
+        // DuckDB: parameterTypes are ColumnType instances
+        isArray = true;
+        arrayBaseType = rawType.baseType.toString();
+      } else if (typeof rawType === "string" && rawType.startsWith("_")) {
+        // PostgreSQL: array types are prefixed with underscore (e.g., _TEXT, _INT4)
+        isArray = true;
+        arrayBaseType = rawType.substring(1);
+      }
+      return {
+        name: param.name,
+        type: vars.get(param.name)!,
+        isArray,
+        arrayBaseType,
+      };
+    });
   }
 
   get columns(): ColumnInfo[] {

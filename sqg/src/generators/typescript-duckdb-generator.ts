@@ -10,7 +10,7 @@ import {
   type TableInfo,
 } from "../sql-query.js";
 import type { GeneratorConfig, SqlQueryHelper } from "../sqltool.js";
-import { TsGenerator, resolveElementType } from "./typescript-generator.js";
+import { resolveElementType, TsGenerator } from "./typescript-generator.js";
 
 /**
  * TypeScript generator for DuckDB.

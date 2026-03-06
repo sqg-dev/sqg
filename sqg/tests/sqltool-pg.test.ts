@@ -61,6 +61,24 @@ describe("sqg-pg", () => {
       expect(users6.parameterTypes!.get("name")).toBe("TEXT");
     }, 30_000);
 
+    it("should infer array parameter types for TEXT[] and INTEGER[] columns", async () => {
+      const filePath = resolve("tests/test-pg.sql");
+      const { queries } = parseSQLQueries(filePath, []);
+
+      await postgres.initializeDatabase(queries);
+      await postgres.executeQueries(queries);
+      await postgres.close();
+
+      const insertTask = queries.find((q) => q.id === "insert_task")!;
+      expect(insertTask.parameterTypes).toBeDefined();
+      // TEXT[] columns should be reported as _TEXT
+      expect(insertTask.parameterTypes!.get("tags")).toBe("_TEXT");
+      // INTEGER[] columns should be reported as _INT4
+      expect(insertTask.parameterTypes!.get("priority_scores")).toBe("_INT4");
+      // Non-array params should be plain types
+      expect(insertTask.parameterTypes!.get("title")).toBe("TEXT");
+    }, 30_000);
+
     it("should not set parameterTypes for queries without parameters", async () => {
       const filePath = resolve("tests/test-pg.sql");
       const { queries } = parseSQLQueries(filePath, []);

@@ -212,8 +212,9 @@ public class {{className}} {
     {{#if isQuery}}{{#unless isOne}}
     public Stream<{{rowType}}> {{functionName}}Stream({{#each variables}}{{{type}}} {{name}}{{#unless @last}}, {{/unless}}{{/each}}) throws SQLException {
         var stmt = connection.prepareStatement({{{partsToString sqlQueryParts}}});
-        {{#each parameterNames}}stmt.setObject({{plusOne @index}}, {{this}});
-        {{/each}}
+        {{#each parameters}}{{#if isArray}}stmt.setArray({{plusOne @index}}, connection.createArrayOf("{{arrayBaseType}}", {{name}}.toArray()));
+        {{else}}stmt.setObject({{plusOne @index}}, {{name}});
+        {{/if}}{{/each}}
         var rs = stmt.executeQuery();
         var iter = new Iterator<{{rowType}}>() {
             private Boolean hasNext = null;
@@ -327,8 +328,9 @@ int
 {{/inline~}}
 
 {{#*inline "execute"}}
-{{#each parameterNames}}stmt.setObject({{plusOne @index}}, {{this}});
-{{/each}}
+{{#each parameters}}{{#if isArray}}stmt.setArray({{plusOne @index}}, connection.createArrayOf("{{arrayBaseType}}", {{name}}.toArray()));
+{{else}}stmt.setObject({{plusOne @index}}, {{name}});
+{{/if}}{{/each}}
 {{#if isQuery}}
 try(var rs = stmt.executeQuery()) {
 {{#if isOne}}

@@ -4,6 +4,10 @@ all: build-duckdb build-duckdb-arrow build-pg build-sqlite build-sources
 all-ci: build-duckdb build-duckdb-arrow build-pg build-sqlite build-sources
   echo "All done"
 
+test-all: all
+  pnpm test:run
+  cd java && ./gradlew test --rerun
+
 build-duckdb:
   pnpm sqg tests/test-duckdb.yaml
 

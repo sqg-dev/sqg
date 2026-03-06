@@ -227,6 +227,7 @@ public class TestSources {
 
     public Stream<Test1Result> test1Stream() throws SQLException {
         var stmt = connection.prepareStatement("select 1 as x;");
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<Test1Result>() {
             private Boolean hasNext = null;
@@ -306,6 +307,7 @@ public class TestSources {
         var stmt = connection.prepareStatement(
             "select * from users.users limit 10;"
         );
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<Test2Result>() {
             private Boolean hasNext = null;
