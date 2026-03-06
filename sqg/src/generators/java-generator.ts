@@ -86,10 +86,8 @@ export class JavaGenerator extends BaseGenerator {
       }
       return queryHelper.typeMapper.getDeclarations(query.allColumns);
     });
-    // Maps column types for appender context — DuckDBAppender accepts OffsetDateTime, not Instant
     Handlebars.registerHelper("appenderType", (column: ColumnInfo) => {
-      const mapped = this.mapType(column);
-      return mapped === "Instant" ? "OffsetDateTime" : mapped;
+      return this.mapType(column);
     });
     Handlebars.registerHelper("readColumns", (queryHelper: SqlQueryHelper) => {
       const query = queryHelper.query;

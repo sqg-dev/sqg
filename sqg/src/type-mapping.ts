@@ -151,7 +151,8 @@ export class JavaTypeMapper extends TypeMapper {
     TIMESTAMP_S: "Instant",
     TIMESTAMP_MS: "Instant",
     TIMESTAMP_NS: "Instant",
-    "TIMESTAMP WITH TIME ZONE": "Instant",
+    // DuckDB JDBC returns OffsetDateTime natively for TIMESTAMPTZ columns
+    "TIMESTAMP WITH TIME ZONE": "OffsetDateTime",
     UUID: "UUID",
     INTERVAL: "String",
     BIT: "String",
@@ -345,8 +346,13 @@ export class JavaTypeMapper extends TypeMapper {
     if (upperType === "TIMESTAMP" || upperType === "DATETIME") {
       return `toLocalDateTime((java.sql.Timestamp)${value})`;
     }
+    // PostgreSQL JDBC returns java.sql.Timestamp for TIMESTAMPTZ — convert to OffsetDateTime
     if (upperType === "TIMESTAMPTZ") {
       return `toOffsetDateTime((java.sql.Timestamp)${value})`;
+    }
+    // DuckDB JDBC returns OffsetDateTime directly for TIMESTAMP WITH TIME ZONE — no conversion needed
+    if (upperType === "TIMESTAMP WITH TIME ZONE") {
+      return `(OffsetDateTime)${value}`;
     }
     if (upperType === "DATE") {
       return `toLocalDate((java.sql.Date)${value})`;

@@ -158,6 +158,7 @@ create table if not exists events (
       ["test_all_types", "testAllTypes"],
       ["insert_event", "insertEvent"],
       ["all_events", "allEvents"],
+      ["all_log_entries", "allLogEntries"],
     ]);
   }
 
@@ -1396,6 +1397,22 @@ select * from test_all_types();`;
       id: number | null;
       name: string | null;
       tags: { items: (string | null)[] };
+    }[];
+  }
+
+  async allLogEntries(): Promise<
+    {
+      id: number | null;
+      message: string | null;
+      created_at: { micros: bigint } | null;
+    }[]
+  > {
+    const sql = "select * from log_entries;";
+    const reader = await this.conn.runAndReadAll(sql, []);
+    return reader.getRowObjects() as {
+      id: number | null;
+      message: string | null;
+      created_at: { micros: bigint } | null;
     }[];
   }
 

@@ -1855,7 +1855,7 @@ public class TestDuckdb {
         Instant timestampMs,
         Instant timestampNs,
         OffsetTime timeTz,
-        Instant timestampTz,
+        OffsetDateTime timestampTz,
         Float float_,
         Double double_,
         BigDecimal dec41,
@@ -1874,7 +1874,7 @@ public class TestDuckdb {
         List<Double> doubleArray,
         List<LocalDate> dateArray,
         List<LocalDateTime> timestampArray,
-        List<Instant> timestamptzArray,
+        List<OffsetDateTime> timestamptzArray,
         List<String> varcharArray,
         List<List<Integer>> nestedIntArray,
         StructResult struct,
@@ -1954,7 +1954,7 @@ public class TestDuckdb {
                             (Instant) rs.getObject(17),
                             (Instant) rs.getObject(18),
                             (OffsetTime) rs.getObject(19),
-                            (Instant) rs.getObject(20),
+                            (OffsetDateTime) rs.getObject(20),
                             (Float) rs.getObject(21),
                             (Double) rs.getObject(22),
                             (BigDecimal) rs.getObject(23),
@@ -1987,7 +1987,7 @@ public class TestDuckdb {
                             ),
                             arrayToList(
                                 (Array) rs.getObject(39),
-                                Instant[].class
+                                OffsetDateTime[].class
                             ),
                             arrayToList(
                                 (Array) rs.getObject(40),
@@ -2077,7 +2077,7 @@ public class TestDuckdb {
                         (Instant) rs.getObject(17),
                         (Instant) rs.getObject(18),
                         (OffsetTime) rs.getObject(19),
-                        (Instant) rs.getObject(20),
+                        (OffsetDateTime) rs.getObject(20),
                         (Float) rs.getObject(21),
                         (Double) rs.getObject(22),
                         (BigDecimal) rs.getObject(23),
@@ -2102,7 +2102,10 @@ public class TestDuckdb {
                             (Array) rs.getObject(38),
                             LocalDateTime[].class
                         ),
-                        arrayToList((Array) rs.getObject(39), Instant[].class),
+                        arrayToList(
+                            (Array) rs.getObject(39),
+                            OffsetDateTime[].class
+                        ),
                         arrayToList((Array) rs.getObject(40), String[].class),
                         multiDimArrayToList(
                             (Array) rs.getObject(41),
@@ -2214,6 +2217,78 @@ public class TestDuckdb {
                         (Integer) rs.getObject(1),
                         (String) rs.getObject(2),
                         arrayToList((Array) rs.getObject(3), String[].class)
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    public record AllLogEntriesResult(
+        Integer id,
+        String message,
+        OffsetDateTime createdAt
+    ) {}
+
+    public List<AllLogEntriesResult> allLogEntries() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement("select * from log_entries;")
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<AllLogEntriesResult>();
+                while (rs.next()) {
+                    results.add(
+                        new AllLogEntriesResult(
+                            (Integer) rs.getObject(1),
+                            (String) rs.getObject(2),
+                            (OffsetDateTime) rs.getObject(3)
+                        )
+                    );
+                }
+                return results;
+            }
+        }
+    }
+
+    public Stream<AllLogEntriesResult> allLogEntriesStream()
+        throws SQLException {
+        var stmt = connection.prepareStatement("select * from log_entries;");
+
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<AllLogEntriesResult>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public AllLogEntriesResult next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new AllLogEntriesResult(
+                        (Integer) rs.getObject(1),
+                        (String) rs.getObject(2),
+                        (OffsetDateTime) rs.getObject(3)
                     );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);

@@ -203,6 +203,9 @@ create table if not exists log_entries (
     created_at timestamptz not null
 );
 
+-- QUERY all_log_entries
+select * from log_entries;
+
 -- TABLE users :appender
 
 -- TABLE actions :appender

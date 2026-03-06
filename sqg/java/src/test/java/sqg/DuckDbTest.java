@@ -117,17 +117,33 @@ class DuckDbTest {
             appender.append(new TestDuckdb.LogEntriesRow(2, "world", ts2));
         }
 
-        // Verify data was inserted
-        try (var stmt = conn.createStatement()) {
-            var rs = stmt.executeQuery("SELECT id, message, created_at FROM log_entries ORDER BY id");
-            assertThat(rs.next()).isTrue();
-            assertThat(rs.getInt("id")).isEqualTo(1);
-            assertThat(rs.getString("message")).isEqualTo("hello");
-            assertThat(rs.next()).isTrue();
-            assertThat(rs.getInt("id")).isEqualTo(2);
-            assertThat(rs.getString("message")).isEqualTo("world");
-            assertThat(rs.next()).isFalse();
+        // Verify data was inserted and read back as OffsetDateTime via generated query
+        var rows = duckdb.allLogEntries();
+        assertThat(rows).hasSize(2);
+        assertThat(rows.get(0).id()).isEqualTo(1);
+        assertThat(rows.get(0).message()).isEqualTo("hello");
+        assertThat(rows.get(0).createdAt()).isEqualTo(ts1);
+        assertThat(rows.get(1).id()).isEqualTo(2);
+        assertThat(rows.get(1).message()).isEqualTo("world");
+        assertThat(rows.get(1).createdAt()).isEqualTo(ts2);
+    }
+
+    @Test
+    void queryTimestamptzReturnsOffsetDateTime() throws SQLException {
+        Connection conn = DriverManager.getConnection("jdbc:duckdb:");
+        TestDuckdb duckdb = new TestDuckdb(conn);
+        TestDuckdb.applyMigrations(conn);
+
+        var ts = OffsetDateTime.of(2025, 3, 20, 14, 0, 0, 0, ZoneOffset.UTC);
+        try (var appender = duckdb.createLogEntriesAppender()) {
+            appender.append(1, "test", ts);
         }
+
+        // Read back via generated query and verify the type is OffsetDateTime
+        var rows = duckdb.allLogEntries();
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).createdAt()).isInstanceOf(OffsetDateTime.class);
+        assertThat(rows.get(0).createdAt()).isEqualTo(ts);
     }
 
     @Test
