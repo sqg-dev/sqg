@@ -1,6 +1,7 @@
 import { exit } from "node:process";
 import { Command } from "commander";
 import consola, { LogLevels } from "consola";
+import updateNotifier from "update-notifier";
 import { formatGeneratorsHelp, SHORT_GENERATOR_NAMES, SQL_SYNTAX_REFERENCE } from "./constants.js";
 import { formatErrorForOutput, SqgError } from "./errors.js";
 import { initProject } from "./init.js";
@@ -20,6 +21,10 @@ declare const __SQG_DESCRIPTION__: string;
 const version =
   process.env.npm_package_version ??
   (typeof __SQG_VERSION__ !== "undefined" ? __SQG_VERSION__ : "0.0.0");
+
+updateNotifier({ pkg: { name: "@sqg/sqg", version } }).notify({
+  message: "Update available {currentVersion} → {latestVersion}",
+});
 
 const description =
   process.env.npm_package_description ??

@@ -59,6 +59,8 @@
     "@lezer/common": "catalog:",
     "@lezer/generator": "catalog:",
     "@lezer/lr": "catalog:",
+    "@modelcontextprotocol/sdk": "catalog:",
+    "@testcontainers/postgresql": "^10.21.0",
     "better-sqlite3": "catalog:",
     "commander": "catalog:",
     "consola": "catalog:",
@@ -67,12 +69,11 @@
     "handlebars": "catalog:",
     "pg": "catalog:",
     "pg-types": "catalog:",
-    "@testcontainers/postgresql": "^10.21.0",
     "prettier": "catalog:",
     "prettier-plugin-java": "catalog:",
+    "update-notifier": "^7.3.1",
     "yaml": "catalog:",
-    "zod": "catalog:",
-    "@modelcontextprotocol/sdk": "catalog:"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@libsql/client": "^0.17.0",
@@ -80,6 +81,7 @@
     "@types/better-sqlite3": "catalog:",
     "@types/node": "catalog:",
     "@types/pg": "catalog:",
+    "@types/update-notifier": "^6.0.8",
     "@vitest/ui": "catalog:",
     "tsdown": "catalog:",
     "tsx": "catalog:",
