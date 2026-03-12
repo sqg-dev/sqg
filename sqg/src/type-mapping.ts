@@ -1,7 +1,7 @@
-import { camelCase, pascalCase } from "es-toolkit";
+import { camelCase, pascalCase } from "es-toolkit/string";
 import { TypeMappingError } from "./errors.js";
 import type { ColumnInfo } from "./sql-query";
-import { ListType, MapType, StructType } from "./sql-query";
+import { EnumType, ListType, MapType, StructType } from "./sql-query";
 
 /**
  * Abstract base class for mapping SQL column types to target language types.
@@ -232,6 +232,13 @@ export class JavaTypeMapper extends TypeMapper {
     "null",
   ]);
 
+  getTypeName(column: ColumnInfo, path = ""): string {
+    if (column.type instanceof EnumType && column.type.name) {
+      return path + pascalCase(column.type.name);
+    }
+    return super.getTypeName(column, path);
+  }
+
   // Language-specific implementations
   protected mapPrimitiveType(type: string, _nullable: boolean): string {
     const upperType = type.toString().toUpperCase();
@@ -318,6 +325,10 @@ export class JavaTypeMapper extends TypeMapper {
   }
 
   parseValue(column: ColumnInfo, value: string, path: string): string {
+    if (column.type instanceof EnumType && column.type.name) {
+      const enumClass = pascalCase(column.type.name);
+      return `${enumClass}.fromValue((String)${value})`;
+    }
     if (column.type instanceof ListType) {
       const elementType = this.getTypeName(
         {

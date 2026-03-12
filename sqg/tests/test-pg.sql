@@ -25,6 +25,18 @@ CREATE TABLE bigint_test (
     name TEXT NOT NULL
 );
 
+CREATE TABLE uuid_test (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    label TEXT NOT NULL
+);
+
+CREATE TYPE tricky_enum AS ENUM ('hello', 'HELLO', ' hello', ' hello ', 'hello_1');
+
+CREATE TABLE tricky_test (
+    id SERIAL PRIMARY KEY,
+    val tricky_enum NOT NULL
+);
+
 
 -- TESTDATA seed_tasks
 INSERT INTO tasks (title, status, tags, priority_scores) VALUES
@@ -107,3 +119,25 @@ SELECT amount FROM bigint_test WHERE id = ${id};
 
 -- QUERY count_bigint_test :one :pluck
 SELECT COUNT(*) FROM bigint_test;
+
+-- TESTDATA seed_tricky
+INSERT INTO tricky_test (val) VALUES ('hello'), ('HELLO'), (' hello'), (' hello '), ('hello_1');
+
+-- EXEC insert_tricky
+@set val = 'hello'
+INSERT INTO tricky_test (val) VALUES (${val}::tricky_enum);
+
+-- QUERY get_tricky_values
+SELECT id, val FROM tricky_test;
+
+-- TESTDATA seed_uuid
+INSERT INTO uuid_test (id, label) VALUES ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'test-uuid');
+
+-- EXEC insert_uuid
+@set id = 'b1ffcd00-1d1c-5ff9-cc7e-7ccaae491b22'
+@set label = 'test'
+INSERT INTO uuid_test (id, label) VALUES (${id}::uuid, ${label});
+
+-- QUERY get_uuid_by_id :one
+@set id = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
+SELECT id, label FROM uuid_test WHERE id = ${id}::uuid;

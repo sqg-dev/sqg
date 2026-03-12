@@ -44,7 +44,7 @@ export class MapType implements IsColumnType {
 }
 
 export class EnumType implements IsColumnType {
-  constructor(public values: readonly string[]) {}
+  constructor(public values: readonly string[], public name?: string) {}
 
   toString(): string {
     return `ENUM(${this.values.map((v) => `'${v}'`).join(", ")})`;

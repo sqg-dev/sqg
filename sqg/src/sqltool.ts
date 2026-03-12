@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import consola, { LogLevels } from "consola";
+import { pascalCase } from "es-toolkit/string";
 import Handlebars from "handlebars";
 import YAML from "yaml";
 import { z } from "zod";
@@ -25,7 +26,7 @@ import {
 } from "./errors.js";
 import { type Generator, getGenerator } from "./generators/index.js";
 import type { ColumnInfo, SQLQuery, TableInfo } from "./sql-query.js";
-import { ListType, parseSQLQueries, StructType } from "./sql-query.js";
+import { EnumType, ListType, parseSQLQueries, StructType } from "./sql-query.js";
 import type { TypeMapper } from "./type-mapping.js";
 
 export const GENERATED_FILE_COMMENT =
@@ -161,13 +162,20 @@ export class SqlQueryHelper {
     type: string;
     isArray: boolean;
     arrayBaseType: string | null;
+    isEnum: boolean;
+    enumClassName: string | null;
   }[] {
     const vars = new Map(this.variables.map((param) => [param.name, param.type]));
     return this.statement.parameters.map((param) => {
       const rawType = this.query.parameterTypes?.get(param.name);
       let isArray = false;
       let arrayBaseType: string | null = null;
-      if (rawType instanceof ListType) {
+      let isEnum = false;
+      let enumClassName: string | null = null;
+      if (rawType instanceof EnumType && rawType.name) {
+        isEnum = true;
+        enumClassName = pascalCase(rawType.name);
+      } else if (rawType instanceof ListType) {
         // DuckDB: parameterTypes are ColumnType instances
         isArray = true;
         arrayBaseType = rawType.baseType.toString();
@@ -181,6 +189,8 @@ export class SqlQueryHelper {
         type: vars.get(param.name)!,
         isArray,
         arrayBaseType,
+        isEnum,
+        enumClassName,
       };
     });
   }

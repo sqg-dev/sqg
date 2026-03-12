@@ -274,6 +274,7 @@ public class Queries {
 
     public Stream<GetTopicsResult> getTopicsStream() throws SQLException {
         var stmt = connection.prepareStatement("SELECT * from topics;");
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<GetTopicsResult>() {
             private Boolean hasNext = null;
@@ -325,6 +326,7 @@ public class Queries {
         ) {
             stmt.setObject(1, name);
             stmt.setObject(2, email);
+
             return stmt.executeUpdate();
         }
     }
@@ -365,6 +367,7 @@ public class Queries {
         var stmt = connection.prepareStatement(
             "SELECT id, name, email, created_at FROM users;"
         );
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<GetUsersResult>() {
             private Boolean hasNext = null;
@@ -422,6 +425,7 @@ public class Queries {
             )
         ) {
             stmt.setObject(1, id);
+
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
                     ? new GetUserByIdResult(
@@ -464,6 +468,7 @@ public class Queries {
             stmt.setObject(2, title);
             stmt.setObject(3, content);
             stmt.setObject(4, published);
+
             return stmt.executeUpdate();
         }
     }
@@ -488,6 +493,7 @@ public class Queries {
             )
         ) {
             stmt.setObject(1, userId);
+
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<GetPostsByUserResult>();
                 while (rs.next()) {
@@ -521,6 +527,7 @@ public class Queries {
             FROM posts WHERE user_id =?;"""
         );
         stmt.setObject(1, userId);
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<GetPostsByUserResult>() {
             private Boolean hasNext = null;
@@ -615,6 +622,7 @@ public class Queries {
             JOIN users u ON p.user_id = u.id
             WHERE p.published = true;"""
         );
+
         var rs = stmt.executeQuery();
         var iter = new Iterator<GetPublishedPostsResult>() {
             private Boolean hasNext = null;

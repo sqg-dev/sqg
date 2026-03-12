@@ -2,6 +2,7 @@ import consola from "consola";
 import { Client, type QueryResult } from "pg";
 import types from "pg-types";
 import { DatabaseError, SqlExecutionError } from "../errors.js";
+import { EnumType, type ColumnType } from "../sql-query.js";
 import type { SQLQuery, TableInfo } from "../sql-query.js";
 import { type DatabaseEngine, initializeDatabase } from "./types.js";
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
@@ -157,6 +158,7 @@ export const postgres = new (class implements DatabaseEngine {
   db!: Client;
   private mode!: ConnectionMode;
   private dynamicTypeCache = new Map<number, string>();
+  private enumTypeCache = new Map<number, EnumType>();
 
   private async startContainer(): Promise<{ connectionUri: string; container: StartedPostgreSqlContainer }> {
     consola.info("Starting PostgreSQL container via testcontainers...");
@@ -174,14 +176,20 @@ export const postgres = new (class implements DatabaseEngine {
 
   private async loadTypeCache(db: Client): Promise<void> {
     const result = await db.query(`
-      SELECT t.oid, t.typname, t.typtype, t.typelem, et.typname AS elemtype
+      SELECT t.oid, t.typname, t.typtype, t.typelem, et.typname AS elemtype,
+             e.enumlabel
       FROM pg_type t
       LEFT JOIN pg_type et ON t.typelem = et.oid
+      LEFT JOIN pg_enum e ON t.oid = e.enumtypid AND t.typtype = 'e'
       WHERE t.typtype IN ('b', 'e', 'r', 'c') -- base, enum, range, composite
          OR t.typelem != 0 -- array types
+      ORDER BY t.oid, e.enumsortorder
     `);
 
     this.dynamicTypeCache = new Map();
+    this.enumTypeCache = new Map();
+    const enumsByOid = new Map<number, { name: string; values: string[] }>();
+
     for (const row of result.rows) {
       const oid = row.oid;
       let typeName = row.typname;
@@ -193,6 +201,18 @@ export const postgres = new (class implements DatabaseEngine {
       }
 
       this.dynamicTypeCache.set(oid, typeName);
+
+      // Collect enum labels (rows with enumlabel are enum type entries)
+      if (row.enumlabel) {
+        if (!enumsByOid.has(oid)) {
+          enumsByOid.set(oid, { name: row.typname, values: [] });
+        }
+        enumsByOid.get(oid)!.values.push(row.enumlabel);
+      }
+    }
+
+    for (const [oid, { name, values }] of enumsByOid) {
+      this.enumTypeCache.set(oid, new EnumType(values, name));
     }
   }
 
@@ -204,9 +224,18 @@ export const postgres = new (class implements DatabaseEngine {
     return typeIdToName.get(dataTypeID) || `type_${dataTypeID}`;
   }
 
+  private getColumnType(dataTypeID: number): ColumnType {
+    const enumType = this.enumTypeCache.get(dataTypeID);
+    if (enumType) {
+      return enumType;
+    }
+    return this.getTypeName(dataTypeID);
+  }
+
   async initializeDatabase(queries: SQLQuery[]) {
     const externalUrl = process.env.SQG_POSTGRES_URL;
     this.dynamicTypeCache = new Map();
+    this.enumTypeCache = new Map();
 
     if (externalUrl) {
       this.mode = new ExternalDbMode(externalUrl);
@@ -284,11 +313,11 @@ export const postgres = new (class implements DatabaseEngine {
           await db.query("DEALLOCATE sqg_param_check");
 
           if (paramTypeResult.rows.length === statement.parameters.length) {
-            const paramTypes = new Map<string, string>();
+            const paramTypes = new Map<string, ColumnType>();
             for (let i = 0; i < statement.parameters.length; i++) {
               const oid = Number(paramTypeResult.rows[i].oid);
-              const typeName = this.getTypeName(oid);
-              paramTypes.set(statement.parameters[i].name, typeName);
+              const colType = this.getColumnType(oid);
+              paramTypes.set(statement.parameters[i].name, colType);
             }
             query.parameterTypes = paramTypes;
             consola.debug("Parameter types:", Object.fromEntries(paramTypes));
@@ -308,10 +337,10 @@ export const postgres = new (class implements DatabaseEngine {
       if (query.isQuery) {
         const columnNames = result.fields.map((field) => field.name);
         const columnTypes = result.fields.map((field) => {
-          return this.getTypeName(field.dataTypeID);
+          return this.getColumnType(field.dataTypeID);
         });
         consola.debug("Columns:", columnNames);
-        consola.debug("Types:", columnTypes);
+        consola.debug("Types:", columnTypes.map(t => t.toString()));
         query.columns = columnNames.map((name, index) => ({
           name,
           type: columnTypes[index],
@@ -368,5 +397,6 @@ export const postgres = new (class implements DatabaseEngine {
   async close() {
     await this.mode.close(this.db);
     this.dynamicTypeCache = new Map();
+    this.enumTypeCache = new Map();
   }
 })();

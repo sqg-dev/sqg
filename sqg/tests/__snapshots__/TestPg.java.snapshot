@@ -166,6 +166,18 @@ public class TestPg {
             regular_id INTEGER,
             amount BIGINT NOT NULL,
             name TEXT NOT NULL
+        );
+
+        CREATE TABLE uuid_test (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            label TEXT NOT NULL
+        );
+
+        CREATE TYPE tricky_enum AS ENUM ('hello', 'HELLO', ' hello', ' hello ', 'hello_1');
+
+        CREATE TABLE tricky_test (
+            id SERIAL PRIMARY KEY,
+            val tricky_enum NOT NULL
         );"""
     );
 
@@ -234,6 +246,69 @@ public class TestPg {
             throw e;
         } finally {
             connection.setAutoCommit(wasAutoCommit);
+        }
+    }
+
+    public enum TaskStatus {
+        PENDING("pending"),
+        ACTIVE("active"),
+        COMPLETED("completed"),
+        CANCELLED("cancelled");
+
+        private final String value;
+        private static final java.util.Map<String, TaskStatus> BY_VALUE =
+            java.util.Map.ofEntries(
+                java.util.Arrays.stream(values())
+                    .map(v -> java.util.Map.entry(v.value, v))
+                    .toArray(java.util.Map.Entry[]::new)
+            );
+
+        TaskStatus(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public static TaskStatus fromValue(String value) {
+            TaskStatus result = BY_VALUE.get(value);
+            if (result == null) throw new IllegalArgumentException(
+                "Unknown value: " + value
+            );
+            return result;
+        }
+    }
+
+    public enum TrickyEnum {
+        HELLO("hello"),
+        HELLO_2("HELLO"),
+        _HELLO(" hello"),
+        _HELLO_(" hello "),
+        HELLO_1("hello_1");
+
+        private final String value;
+        private static final java.util.Map<String, TrickyEnum> BY_VALUE =
+            java.util.Map.ofEntries(
+                java.util.Arrays.stream(values())
+                    .map(v -> java.util.Map.entry(v.value, v))
+                    .toArray(java.util.Map.Entry[]::new)
+            );
+
+        TrickyEnum(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public static TrickyEnum fromValue(String value) {
+            TrickyEnum result = BY_VALUE.get(value);
+            if (result == null) throw new IllegalArgumentException(
+                "Unknown value: " + value
+            );
+            return result;
         }
     }
 
@@ -513,19 +588,19 @@ public class TestPg {
     public record GetTasksByStatusResult(
         Integer id,
         String title,
-        String status,
+        TaskStatus status,
         List<String> tags,
         List<Integer> priorityScores
     ) {}
 
-    public List<GetTasksByStatusResult> getTasksByStatus(String status)
+    public List<GetTasksByStatusResult> getTasksByStatus(TaskStatus status)
         throws SQLException {
         try (
             var stmt = connection.prepareStatement(
                 "SELECT id, title, status, tags, priority_scores FROM tasks WHERE status =?::task_status;"
             )
         ) {
-            stmt.setObject(1, status);
+            stmt.setObject(1, status.getValue());
 
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<GetTasksByStatusResult>();
@@ -534,7 +609,7 @@ public class TestPg {
                         new GetTasksByStatusResult(
                             (Integer) rs.getObject(1),
                             (String) rs.getObject(2),
-                            (String) rs.getObject(3),
+                            TaskStatus.fromValue((String) rs.getObject(3)),
                             arrayToList(
                                 (Array) rs.getObject(4),
                                 String[].class
@@ -551,12 +626,13 @@ public class TestPg {
         }
     }
 
-    public Stream<GetTasksByStatusResult> getTasksByStatusStream(String status)
-        throws SQLException {
+    public Stream<GetTasksByStatusResult> getTasksByStatusStream(
+        TaskStatus status
+    ) throws SQLException {
         var stmt = connection.prepareStatement(
             "SELECT id, title, status, tags, priority_scores FROM tasks WHERE status =?::task_status;"
         );
-        stmt.setObject(1, status);
+        stmt.setObject(1, status.getValue());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<GetTasksByStatusResult>() {
@@ -580,7 +656,7 @@ public class TestPg {
                     return new GetTasksByStatusResult(
                         (Integer) rs.getObject(1),
                         (String) rs.getObject(2),
-                        (String) rs.getObject(3),
+                        TaskStatus.fromValue((String) rs.getObject(3)),
                         arrayToList((Array) rs.getObject(4), String[].class),
                         arrayToList((Array) rs.getObject(5), Integer[].class)
                     );
@@ -605,7 +681,7 @@ public class TestPg {
     public record GetAllTasksResult(
         Integer id,
         String title,
-        String status,
+        TaskStatus status,
         List<String> tags,
         List<Integer> priorityScores
     ) {}
@@ -623,7 +699,7 @@ public class TestPg {
                         new GetAllTasksResult(
                             (Integer) rs.getObject(1),
                             (String) rs.getObject(2),
-                            (String) rs.getObject(3),
+                            TaskStatus.fromValue((String) rs.getObject(3)),
                             arrayToList(
                                 (Array) rs.getObject(4),
                                 String[].class
@@ -667,7 +743,7 @@ public class TestPg {
                     return new GetAllTasksResult(
                         (Integer) rs.getObject(1),
                         (String) rs.getObject(2),
-                        (String) rs.getObject(3),
+                        TaskStatus.fromValue((String) rs.getObject(3)),
                         arrayToList((Array) rs.getObject(4), String[].class),
                         arrayToList((Array) rs.getObject(5), Integer[].class)
                     );
@@ -719,7 +795,7 @@ public class TestPg {
 
     public int insertTask(
         String title,
-        String status,
+        TaskStatus status,
         List<String> tags,
         List<Integer> priority_scores
     ) throws SQLException {
@@ -729,7 +805,7 @@ public class TestPg {
             )
         ) {
             stmt.setObject(1, title);
-            stmt.setObject(2, status);
+            stmt.setObject(2, status.getValue());
             stmt.setArray(3, connection.createArrayOf("TEXT", tags.toArray()));
             stmt.setArray(
                 4,
@@ -794,6 +870,122 @@ public class TestPg {
         ) {
             try (var rs = stmt.executeQuery()) {
                 return rs.next() ? (Long) rs.getObject(1) : null;
+            }
+        }
+    }
+
+    public int insertTricky(TrickyEnum val) throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "INSERT INTO tricky_test (val) VALUES (?::tricky_enum);"
+            )
+        ) {
+            stmt.setObject(1, val.getValue());
+
+            return stmt.executeUpdate();
+        }
+    }
+
+    public record GetTrickyValuesResult(Integer id, TrickyEnum val) {}
+
+    public List<GetTrickyValuesResult> getTrickyValues() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "SELECT id, val FROM tricky_test;"
+            )
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<GetTrickyValuesResult>();
+                while (rs.next()) {
+                    results.add(
+                        new GetTrickyValuesResult(
+                            (Integer) rs.getObject(1),
+                            TrickyEnum.fromValue((String) rs.getObject(2))
+                        )
+                    );
+                }
+                return results;
+            }
+        }
+    }
+
+    public Stream<GetTrickyValuesResult> getTrickyValuesStream()
+        throws SQLException {
+        var stmt = connection.prepareStatement(
+            "SELECT id, val FROM tricky_test;"
+        );
+
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<GetTrickyValuesResult>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public GetTrickyValuesResult next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new GetTrickyValuesResult(
+                        (Integer) rs.getObject(1),
+                        TrickyEnum.fromValue((String) rs.getObject(2))
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    public int insertUuid(UUID id, String label) throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "INSERT INTO uuid_test (id, label) VALUES (?::uuid,?);"
+            )
+        ) {
+            stmt.setObject(1, id);
+            stmt.setObject(2, label);
+
+            return stmt.executeUpdate();
+        }
+    }
+
+    public record GetUuidByIdResult(UUID id, String label) {}
+
+    public GetUuidByIdResult getUuidById(UUID id) throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "SELECT id, label FROM uuid_test WHERE id =?::uuid;"
+            )
+        ) {
+            stmt.setObject(1, id);
+
+            try (var rs = stmt.executeQuery()) {
+                return rs.next()
+                    ? new GetUuidByIdResult(
+                          (UUID) rs.getObject(1),
+                          (String) rs.getObject(2)
+                      )
+                    : null;
             }
         }
     }

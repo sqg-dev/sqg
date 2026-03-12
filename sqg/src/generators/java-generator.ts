@@ -5,6 +5,7 @@ import Handlebars from "handlebars";
 import prettier from "prettier/standalone";
 import prettierPluginJava from "prettier-plugin-java";
 import type { DbEngine } from "../constants.js";
+import { EnumType } from "../sql-query.js";
 import type { ColumnInfo, SQLQuery, TableInfo } from "../sql-query.js";
 import type { GeneratorConfig, SqlQueryHelper, SqlQueryPart } from "../sqltool.js";
 import { JavaTypeMapper } from "../type-mapping.js";
@@ -88,6 +89,77 @@ export class JavaGenerator extends BaseGenerator {
     });
     Handlebars.registerHelper("appenderType", (column: ColumnInfo) => {
       return this.mapType(column);
+    });
+    Handlebars.registerHelper("declareEnums", (queryHelpers: SqlQueryHelper[]) => {
+      const enumTypes = new Map<string, EnumType>();
+
+      for (const qh of queryHelpers) {
+        // Collect from columns
+        for (const col of qh.query.columns) {
+          if (col.type instanceof EnumType && col.type.name) {
+            enumTypes.set(col.type.name, col.type);
+          }
+        }
+        // Collect from parameter types
+        if (qh.query.parameterTypes) {
+          for (const colType of qh.query.parameterTypes.values()) {
+            if (colType instanceof EnumType && colType.name) {
+              enumTypes.set(colType.name, colType);
+            }
+          }
+        }
+      }
+
+      if (enumTypes.size === 0) return "";
+
+      const parts: string[] = [];
+      for (const [, enumType] of enumTypes) {
+        const enumName = pascalCase(enumType.name!);
+        // Sanitize all values to Java identifiers first
+        const sanitized = enumType.values.map((v) => {
+          let ident = v.toUpperCase().replace(/[^A-Za-z0-9_]/g, "_");
+          if (ident.length > 0 && /^[0-9]/.test(ident)) {
+            ident = `_${ident}`;
+          }
+          if (ident.length === 0) {
+            ident = "_EMPTY";
+          }
+          return ident;
+        });
+        // Disambiguate: for each collision, try _2, _3, ... (skipping any that are already taken)
+        const usedIdents = new Set<string>();
+        const finalIdents = sanitized.map((base) => {
+          if (!usedIdents.has(base)) {
+            usedIdents.add(base);
+            return base;
+          }
+          let counter = 2;
+          let candidate = `${base}_${counter}`;
+          while (usedIdents.has(candidate)) {
+            counter++;
+            candidate = `${base}_${counter}`;
+          }
+          usedIdents.add(candidate);
+          return candidate;
+        });
+        const entries = enumType.values.map((v, i) => `${finalIdents[i]}("${v}")`);
+
+        parts.push(`public enum ${enumName} {
+    ${entries.join(", ")};
+    private final String value;
+    private static final java.util.Map<String, ${enumName}> BY_VALUE =
+        java.util.Map.ofEntries(java.util.Arrays.stream(values()).map(v -> java.util.Map.entry(v.value, v)).toArray(java.util.Map.Entry[]::new));
+    ${enumName}(String value) { this.value = value; }
+    public String getValue() { return value; }
+    public static ${enumName} fromValue(String value) {
+        ${enumName} result = BY_VALUE.get(value);
+        if (result == null) throw new IllegalArgumentException("Unknown value: " + value);
+        return result;
+    }
+}`);
+      }
+
+      return new Handlebars.SafeString(parts.join("\n\n    "));
     });
     Handlebars.registerHelper("readColumns", (queryHelper: SqlQueryHelper) => {
       const query = queryHelper.query;
