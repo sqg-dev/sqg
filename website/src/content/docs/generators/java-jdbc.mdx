@@ -183,7 +183,7 @@ The generator creates a single Java file with:
 | `DECIMAL`, `NUMERIC` | `BigDecimal` |
 | `UUID` | `UUID` |
 | `TEXT[]`, `INTEGER[]` | `List<String>`, `List<Integer>` |
-| `ENUM` | `String` |
+| `ENUM` | Generated Java enum (see [PostgreSQL ENUMs](#user-defined-types-enums)) |
 
 All types are nullable (using wrapper classes).
 
@@ -203,7 +203,7 @@ If `SQG_POSTGRES_URL` is not set, SQG will automatically start a PostgreSQL cont
 
 ### User-Defined Types (ENUMs)
 
-SQG introspects PostgreSQL's `pg_type` catalog to resolve user-defined types like ENUMs:
+SQG introspects PostgreSQL's `pg_type` catalog to resolve user-defined types like ENUMs and generates **type-safe Java enum classes** for each one:
 
 ```sql
 -- MIGRATE 1
@@ -218,9 +218,50 @@ CREATE TABLE tasks (
 -- QUERY get_tasks_by_status
 @set status = 'active'
 SELECT id, title, status FROM tasks WHERE status = ${status}::task_status;
+
+-- EXEC insert_task
+@set title = 'New Task'
+@set status = 'pending'
+INSERT INTO tasks (title, status) VALUES (${title}, ${status}::task_status);
 ```
 
-ENUM values are mapped to `String` in Java.
+SQG generates a Java enum with bidirectional conversion between enum values and database strings:
+
+```java
+// Generated enum
+public enum TaskStatus {
+    PENDING("pending"),
+    ACTIVE("active"),
+    COMPLETED("completed"),
+    CANCELLED("cancelled");
+
+    private final String value;
+    private static final java.util.Map<String, TaskStatus> BY_VALUE = ...;
+
+    public String getValue() { return value; }
+
+    public static TaskStatus fromValue(String value) {
+        TaskStatus result = BY_VALUE.get(value);
+        if (result == null) throw new IllegalArgumentException("Unknown value: " + value);
+        return result;
+    }
+}
+```
+
+The generated query methods use the enum type directly — no raw strings needed:
+
+```java
+// Parameters accept the enum type
+queries.insertTask("Deploy v2", TaskStatus.ACTIVE);
+
+// Results return the enum type
+for (var task : queries.getTasksByStatus(TaskStatus.ACTIVE)) {
+    TaskStatus status = task.status();  // TaskStatus enum, not String
+    System.out.println(status.getValue());  // "active"
+}
+```
+
+Under the hood, SQG uses `getValue()` when binding parameters and `fromValue()` when reading results, so the conversion is automatic and type-safe.
 
 ### Array Types
 

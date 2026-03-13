@@ -105,7 +105,7 @@ CREATE TABLE tasks (
 SELECT id, title, status FROM tasks WHERE status = ${status}::task_status;
 ```
 
-SQG resolves the ENUM OID from `pg_type` and maps it to `String` in the generated Java code.
+SQG resolves the ENUM OID from `pg_type` and generates a **type-safe Java enum class** with `getValue()` and `fromValue()` methods. Query parameters and results use the generated enum type directly instead of raw strings. See the [Java + JDBC PostgreSQL documentation](/generators/java-jdbc/#user-defined-types-enums) for details.
 
 ### Array Types
 

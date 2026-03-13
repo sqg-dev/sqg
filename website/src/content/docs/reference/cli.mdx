@@ -5,6 +5,38 @@ description: Complete reference for SQG command-line interface
 
 Complete reference for the SQG command-line interface.
 
+## Output Modes
+
+SQG has three output modes:
+
+| Mode | Flag | Behavior |
+|------|------|----------|
+| **Default** | *(none)* | Spinner progress, timing, and summary |
+| **Verbose** | `--verbose` | Per-query detail with debug information |
+| **JSON** | `--format json` | Machine-readable JSON, no visual output |
+
+**Default output:**
+
+```
+✔ Introspected 5 queries (0.4s)
+✔ Generated 2 files from queries.sql (1.2s)
+
+  -> generated/Queries.java    (5 queries, 2 enums)
+  -> generated/queries.ts      (5 queries)
+
+Done in 1.8s
+```
+
+**Verbose output (`--verbose`):**
+
+```
+  Executing query: list_users
+  + list_users
+  Executing query: get_user_by_id
+  + get_user_by_id
+  ...
+```
+
 ## Commands
 
 ### `sqg <config-file>`
@@ -22,7 +54,7 @@ sqg path/to/config.yaml
 |--------|-------------|
 | `--validate` | Validate configuration without generating code |
 | `--format <format>` | Output format: `text` (default) or `json` |
-| `--verbose` | Enable debug logging |
+| `--verbose` | Enable verbose logging (per-query detail) |
 
 **Examples:**
 
@@ -36,7 +68,7 @@ sqg --validate sqg.yaml
 # JSON output for tooling
 sqg --format json sqg.yaml
 
-# Debug mode
+# Verbose mode (per-query detail)
 sqg --verbose sqg.yaml
 
 # Combine options
@@ -53,21 +85,55 @@ Initialize a new SQG project with example files.
 sqg init [options]
 ```
 
+When run without `--generator` in an interactive terminal, `sqg init` launches an **interactive wizard** that walks you through project setup:
+
+```
+┌  Create a new SQG project
+│
+◆  Project name
+│  my-project
+│
+◆  Generator
+│  ● typescript/sqlite
+│  ○ typescript/duckdb
+│  ○ java/sqlite
+│  ○ java/duckdb
+│  ○ java/postgres
+│
+◆  Output directory
+│  ./generated
+│
+◇  Files to create:
+│    sqg.yaml      Project configuration
+│    queries.sql   Example SQL queries
+│    ./generated/  Output directory
+│
+◆  Create files?
+│  Yes
+│
+└  Done! Run: sqg sqg.yaml
+```
+
+When `--generator` is passed, the command runs non-interactively (useful for scripts and CI).
+
 **Options:**
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `-t, --generator <generator>` | `typescript/sqlite` | Code generation generator |
+| `-t, --generator <generator>` | *(interactive)* | Code generation generator. Omit for interactive mode |
 | `-o, --output <dir>` | `./generated` | Output directory for generated files |
 | `-f, --force` | `false` | Overwrite existing files |
 
 **Examples:**
 
 ```bash
-# TypeScript + SQLite (default)
+# Interactive wizard (recommended for first-time setup)
 sqg init
 
-# TypeScript + DuckDB project
+# Non-interactive: TypeScript + SQLite
+sqg init --generator typescript/sqlite
+
+# Non-interactive: TypeScript + DuckDB project
 sqg init --generator typescript/duckdb
 
 # Java + SQLite project
@@ -151,8 +217,8 @@ These options work with all commands:
 | Option | Description |
 |--------|-------------|
 | `-v, --version` | Display version number |
-| `-h, --help` | Display help for command |
-| `--verbose` | Enable debug logging |
+| `-h, --help` | Display help with ASCII branding |
+| `--verbose` | Enable verbose logging |
 | `--format <format>` | Output format: `text` or `json` |
 
 ---
@@ -164,6 +230,8 @@ Use `--format json` for machine-readable output, ideal for:
 - Editor integrations
 - AI assistants
 - Build tools
+
+All visual output (spinners, progress, summary) is suppressed in JSON mode.
 
 ### Successful Generation
 
@@ -194,7 +262,7 @@ sqg --validate --format json sqg.yaml
     "version": 1
   },
   "sqlFiles": ["queries.sql"],
-  "targets": ["typescript/sqlite"]
+  "generators": ["typescript/sqlite"]
 }
 ```
 
@@ -216,6 +284,14 @@ sqg --format json invalid.yaml
     }
   }
 }
+```
+
+**Text mode errors** are displayed with formatting:
+
+```
+ ERROR  SQL file not found: queries.sql
+
+   Suggestion: Check that queries.sql exists relative to /path/to/project
 ```
 
 ---
@@ -245,9 +321,9 @@ All errors include actionable suggestions:
 ```json
 {
   "error": {
-    "code": "INVALID_TARGET",
+    "code": "INVALID_GENERATOR",
     "message": "Invalid generator 'typescript/mysql'",
-    "suggestion": "Valid targets: typescript/sqlite, typescript/duckdb, java/sqlite, java/duckdb, java/postgres"
+    "suggestion": "Valid generators: typescript/sqlite, typescript/duckdb, java/sqlite, java/duckdb, java/postgres"
   }
 }
 ```
@@ -323,17 +399,17 @@ See individual generator pages for detailed documentation:
 
 ## Troubleshooting
 
-### Debug Mode
+### Verbose Mode
 
 ```bash
 sqg --verbose sqg.yaml
 ```
 
 Shows:
-- SQL file parsing details
-- Database initialization
-- Query execution
+- Per-query execution detail
+- Database initialization status
 - Type introspection results
+- SQL parsing details
 
 ### Validate Before Generate
 

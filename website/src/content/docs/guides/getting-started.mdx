@@ -58,19 +58,37 @@ pnpm link --global
 
 ### Option A: Initialize a New Project (Recommended)
 
-The fastest way to get started is using the `sqg init` command:
+The fastest way to get started is using the `sqg init` command, which launches an **interactive wizard**:
 
 ```bash
-# Create a new project with TypeScript + SQLite (default)
 sqg init
+```
 
-# Or specify a different generator
+The wizard walks you through choosing a generator, project name, and output directory:
+
+```
+┌  Create a new SQG project
+│
+◆  Project name
+│  my-project
+│
+◆  Generator
+│  ● typescript/sqlite
+│  ○ typescript/duckdb
+│  ○ java/sqlite
+│  ○ java/duckdb
+│  ○ java/postgres
+│
+◆  Output directory
+│  ./generated
+│
+└  Done! Run: sqg sqg.yaml
+```
+
+You can also run non-interactively by specifying `--generator`:
+
+```bash
 sqg init --generator typescript/duckdb
-
-# Java targets
-sqg init --generator java/sqlite
-sqg init --generator java/duckdb
-sqg init --generator java/duckdb/arrow
 sqg init --generator java/postgres
 ```
 
