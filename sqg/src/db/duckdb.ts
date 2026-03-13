@@ -11,6 +11,7 @@ import consola from "consola";
 import { DatabaseError, SqlExecutionError } from "../errors.js";
 import type { SQLQuery, TableInfo } from "../sql-query.js";
 import { type ColumnType, EnumType, ListType, MapType, StructType } from "../sql-query.js";
+import type { ProgressReporter } from "../ui.js";
 import { type DatabaseEngine, initializeDatabase } from "./types.js";
 
 function convertType(type: DuckDBType): ColumnType {
@@ -51,26 +52,30 @@ export const duckdb = new (class implements DatabaseEngine {
   db!: DuckDBInstance;
   connection!: DuckDBConnection;
 
-  async initializeDatabase(queries: SQLQuery[]) {
+  async initializeDatabase(queries: SQLQuery[], reporter?: ProgressReporter) {
     this.db = await DuckDBInstance.create(":memory:");
     this.connection = await this.db.connect();
 
-    await initializeDatabase(queries, async (query) => {
-      try {
-        await this.connection.run(query.rawQuery);
-      } catch (e) {
-        throw new SqlExecutionError(
-          (e as Error).message,
-          query.id,
-          query.filename,
-          query.rawQuery,
-          e as Error,
-        );
-      }
-    });
+    await initializeDatabase(
+      queries,
+      async (query) => {
+        try {
+          await this.connection.run(query.rawQuery);
+        } catch (e) {
+          throw new SqlExecutionError(
+            (e as Error).message,
+            query.id,
+            query.filename,
+            query.rawQuery,
+            e as Error,
+          );
+        }
+      },
+      reporter,
+    );
   }
 
-  async executeQueries(queries: SQLQuery[]) {
+  async executeQueries(queries: SQLQuery[], reporter?: ProgressReporter) {
     const connection = this.connection;
     if (!connection) {
       throw new DatabaseError(
@@ -84,15 +89,11 @@ export const duckdb = new (class implements DatabaseEngine {
       const executableQueries = queries.filter((q) => !q.skipGenerateFunction);
 
       for (const query of executableQueries) {
-        consola.info(`Executing query: ${query.id}`);
-        //consola.info("Variables:", Object.fromEntries(query.variables));
+        reporter?.onQueryStart?.(query.id);
 
         await this.executeQuery(connection, query);
 
-        if (query.isQuery) {
-          //consola.info("Query results:", result);
-        }
-        consola.success(`Query ${query.id} executed successfully`);
+        reporter?.onQueryComplete?.(query.id);
       }
     } catch (error) {
       consola.error("Error executing queries:", (error as Error).message);
@@ -105,8 +106,6 @@ export const duckdb = new (class implements DatabaseEngine {
     const statement = query.queryAnonymous;
     try {
       consola.debug("Query:", statement.sql, statement.sqlParts);
-      //consola.info("Parameters:", query.parameters);
-      //consola.info("Parameter names:", query.parameterNames);
 
       const sql = statement.sqlParts
         .map((part) => {
@@ -165,7 +164,7 @@ export const duckdb = new (class implements DatabaseEngine {
     }
   }
 
-  async introspectTables(tables: TableInfo[]) {
+  async introspectTables(tables: TableInfo[], reporter?: ProgressReporter) {
     const connection = this.connection;
     if (!connection) {
       throw new DatabaseError(
@@ -176,7 +175,7 @@ export const duckdb = new (class implements DatabaseEngine {
     }
 
     for (const table of tables) {
-      consola.info(`Introspecting table schema: ${table.tableName}`);
+      reporter?.onTableStart?.(table.tableName);
 
       try {
         // Use DESCRIBE to get nullability information
@@ -200,7 +199,7 @@ export const duckdb = new (class implements DatabaseEngine {
         }));
 
         consola.debug(`Table ${table.tableName} columns:`, table.columns);
-        consola.success(`Introspected table: ${table.tableName} (${table.columns.length} columns)`);
+        reporter?.onTableComplete?.(table.tableName, table.columns.length);
       } catch (error) {
         consola.error(`Failed to introspect table '${table.tableName}':`, error);
         throw error;

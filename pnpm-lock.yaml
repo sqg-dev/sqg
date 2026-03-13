@@ -243,6 +243,9 @@ importers:
       '@biomejs/biome':
         specifier: 'catalog:'
         version: 2.3.3
+      '@clack/prompts':
+        specifier: ^1.1.0
+        version: 1.1.0
       '@duckdb/node-api':
         specifier: 'catalog:'
         version: 1.4.3-r.2
@@ -291,6 +294,9 @@ importers:
       pg-types:
         specifier: 'catalog:'
         version: 4.1.0
+      picocolors:
+        specifier: ^1.1.1
+        version: 1.1.1
       prettier:
         specifier: 'catalog:'
         version: 3.7.4
@@ -303,6 +309,9 @@ importers:
       yaml:
         specifier: 'catalog:'
         version: 2.8.2
+      yocto-spinner:
+        specifier: ^1.1.0
+        version: 1.1.0
       zod:
         specifier: 'catalog:'
         version: 4.3.5
@@ -608,6 +617,12 @@ packages:
 
   '@chevrotain/utils@11.0.3':
     resolution: {integrity: sha512-YslZMgtJUyuMbZ+aKvfF3x1f5liK4mWNxghFRv7jqRR9C3R3fAOGTTKvxXDa2Y1s9zSbcpuO0cAxDYsc9SrXoQ==}
+
+  '@clack/core@1.1.0':
+    resolution: {integrity: sha512-SVcm4Dqm2ukn64/8Gub2wnlA5nS2iWJyCkdNHcvNHPIeBTGojpdJ+9cZKwLfmqy7irD4N5qLteSilJlE0WLAtA==}
+
+  '@clack/prompts@1.1.0':
+    resolution: {integrity: sha512-pkqbPGtohJAvm4Dphs2M8xE29ggupihHdy1x84HNojZuMtFsHiUlRvqD24tM2+XmI+61LlfNceM3Wr7U5QES5g==}
 
   '@codemirror/autocomplete@6.20.0':
     resolution: {integrity: sha512-bOwvTOIJcG5FVo5gUUupiwYh8MioPLQ4UcqbcRf7UQ98X90tCa9E1kZ3Z7tqwpZxYyOvh1YTYbmZE9RTfTp5hg==}
@@ -5289,6 +5304,10 @@ packages:
     resolution: {integrity: sha512-sqBChb33loEnkoXte1bLg45bEBsOP9N1kzQh5JZNKj/0rik4zAPTNSAVPj3uQAdc6slYJ0Ksc403G2XgxsJQFQ==}
     engines: {node: '>=18.19'}
 
+  yocto-spinner@1.1.0:
+    resolution: {integrity: sha512-/BY0AUXnS7IKO354uLLA2eRcWiqDifEbd6unXCsOxkFDAkhgUL3PH9X2bFoaU0YchnDXsF+iKleeTLJGckbXfA==}
+    engines: {node: '>=18.19'}
+
   yoctocolors@2.1.2:
     resolution: {integrity: sha512-CzhO+pFNo8ajLM2d2IW/R93ipy99LWjtwblvC1RsoSUMZgyLbYFr221TnSNT7GjGdYui6P459mw9JH/g/zW2ug==}
     engines: {node: '>=18'}
@@ -5607,6 +5626,15 @@ snapshots:
   '@chevrotain/types@11.0.3': {}
 
   '@chevrotain/utils@11.0.3': {}
+
+  '@clack/core@1.1.0':
+    dependencies:
+      sisteransi: 1.0.5
+
+  '@clack/prompts@1.1.0':
+    dependencies:
+      '@clack/core': 1.1.0
+      sisteransi: 1.0.5
 
   '@codemirror/autocomplete@6.20.0':
     dependencies:
@@ -10771,6 +10799,10 @@ snapshots:
   yocto-queue@1.2.2: {}
 
   yocto-spinner@0.2.3:
+    dependencies:
+      yoctocolors: 2.1.2
+
+  yocto-spinner@1.1.0:
     dependencies:
       yoctocolors: 2.1.2
 

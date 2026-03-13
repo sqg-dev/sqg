@@ -3,13 +3,13 @@
  */
 
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import consola from "consola";
+import * as clack from "@clack/prompts";
+import pc from "picocolors";
 import {
   type DbEngine,
   findSimilarGenerators,
   GENERATOR_NAMES,
-  getGeneratorEngine,
+  GENERATORS,
   isValidGenerator,
   parseGenerator,
   SHORT_GENERATOR_NAMES,
@@ -20,13 +20,6 @@ export interface InitOptions {
   generator?: string;
   output?: string;
   force?: boolean;
-}
-
-/**
- * Get the default generator for a language preference
- */
-function getDefaultGenerator(): string {
-  return "typescript/sqlite";
 }
 
 /**
@@ -238,7 +231,7 @@ DELETE FROM posts WHERE id = \${id};
 /**
  * Generate sqg.yaml configuration
  */
-function getConfigYaml(generator: string, output: string): string {
+function getConfigYaml(generator: string, output: string, projectName: string): string {
   const generatorInfo = parseGenerator(generator);
   const isJava = generatorInfo.language === "java";
 
@@ -248,7 +241,7 @@ function getConfigYaml(generator: string, output: string): string {
 # Documentation: https://sqg.dev
 
 version: 1
-name: my-project
+name: ${projectName}
 
 sql:
   - files:
@@ -266,11 +259,99 @@ sql:
 }
 
 /**
- * Initialize a new SQG project
+ * Run interactive wizard when no --generator flag is provided
  */
-export async function initProject(options: InitOptions): Promise<void> {
-  const generator = options.generator || getDefaultGenerator();
-  const output = options.output || "./generated";
+async function runInteractiveInit(options: InitOptions): Promise<void> {
+  clack.intro(pc.bold("Create a new SQG project"));
+
+  const projectName = await clack.text({
+    message: "Project name",
+    placeholder: "my-project",
+    defaultValue: "my-project",
+    validate: (value) => {
+      if (!value?.trim()) return "Project name is required";
+    },
+  });
+
+  if (clack.isCancel(projectName)) {
+    clack.cancel("Operation cancelled");
+    process.exit(0);
+  }
+
+  // Build generator options grouped by language
+  const generatorOptions: { value: string; label: string; hint?: string }[] = [];
+
+  for (const shortName of SHORT_GENERATOR_NAMES) {
+    const fullName = `${shortName}/${Object.entries(GENERATORS).find(([k]) => k.startsWith(`${shortName}/`))?.[1]?.driver}`;
+    const info = GENERATORS[fullName];
+    if (info) {
+      generatorOptions.push({
+        value: shortName,
+        label: shortName,
+        hint: info.description,
+      });
+    }
+  }
+
+  const generator = await clack.select({
+    message: "Generator",
+    options: generatorOptions,
+  });
+
+  if (clack.isCancel(generator)) {
+    clack.cancel("Operation cancelled");
+    process.exit(0);
+  }
+
+  const output = await clack.text({
+    message: "Output directory",
+    placeholder: "./generated",
+    defaultValue: options.output || "./generated",
+  });
+
+  if (clack.isCancel(output)) {
+    clack.cancel("Operation cancelled");
+    process.exit(0);
+  }
+
+  // Show file preview
+  clack.log.step("Files to create:");
+  clack.log.message(`  ${pc.dim("sqg.yaml")}      Project configuration`);
+  clack.log.message(`  ${pc.dim("queries.sql")}    Example SQL queries`);
+  clack.log.message(`  ${pc.dim(`${output}/`)}      Output directory`);
+
+  const confirm = await clack.confirm({
+    message: "Create files?",
+  });
+
+  if (clack.isCancel(confirm) || !confirm) {
+    clack.cancel("Operation cancelled");
+    process.exit(0);
+  }
+
+  // Perform initialization
+  await createProjectFiles({
+    generator: generator as string,
+    output: output as string,
+    force: options.force,
+    projectName: projectName as string,
+  });
+
+  clack.outro(`Done! Run: ${pc.bold("sqg sqg.yaml")}`);
+}
+
+interface CreateFilesOptions {
+  generator: string;
+  output: string;
+  force?: boolean;
+  projectName: string;
+}
+
+/**
+ * Create project files (shared between interactive and non-interactive modes)
+ */
+async function createProjectFiles(options: CreateFilesOptions): Promise<void> {
+  const { generator, output, force, projectName } = options;
 
   // Validate generator
   if (!isValidGenerator(generator)) {
@@ -290,7 +371,7 @@ export async function initProject(options: InitOptions): Promise<void> {
   const configPath = "sqg.yaml";
   const sqlPath = "queries.sql";
 
-  if (!options.force) {
+  if (!force) {
     if (existsSync(configPath)) {
       throw new SqgError(
         `File already exists: ${configPath}`,
@@ -310,32 +391,47 @@ export async function initProject(options: InitOptions): Promise<void> {
   // Create output directory if needed
   if (!existsSync(output)) {
     mkdirSync(output, { recursive: true });
-    consola.success(`Created output directory: ${output}`);
   }
 
   // Write configuration file
-  const configContent = getConfigYaml(generator, output);
+  const configContent = getConfigYaml(generator, output, projectName);
   writeFileSync(configPath, configContent);
-  consola.success(`Created ${configPath}`);
 
   // Write example SQL file
   const sqlContent = getExampleSql(engine);
   writeFileSync(sqlPath, sqlContent);
-  consola.success(`Created ${sqlPath}`);
+}
 
-  // Print next steps
-  consola.box(`
-SQG project initialized!
+/**
+ * Initialize a new SQG project
+ */
+export async function initProject(options: InitOptions): Promise<void> {
+  // If no generator specified and running in interactive TTY, run wizard
+  if (!options.generator && process.stdin.isTTY) {
+    await runInteractiveInit(options);
+    return;
+  }
 
-Generator: ${generator}
-Engine: ${engine}
-Output: ${output}
+  // Non-interactive mode
+  const generator = options.generator || "typescript/sqlite";
+  const output = options.output || "./generated";
 
-Next steps:
-  1. Edit queries.sql to add your SQL queries
-  2. Run: sqg sqg.yaml
-  3. Import the generated code from ${output}
+  await createProjectFiles({
+    generator,
+    output,
+    force: options.force,
+    projectName: "my-project",
+  });
 
-Documentation: https://sqg.dev
-  `);
+  const generatorInfo = parseGenerator(generator);
+
+  clack.intro(pc.bold("SQG project initialized!"));
+  clack.log.info(`Generator: ${generator}`);
+  clack.log.info(`Engine: ${generatorInfo.engine}`);
+  clack.log.info(`Output: ${output}`);
+  clack.log.step("Next steps:");
+  clack.log.message("  1. Edit queries.sql to add your SQL queries");
+  clack.log.message("  2. Run: sqg sqg.yaml");
+  clack.log.message(`  3. Import the generated code from ${output}`);
+  clack.outro("Documentation: https://sqg.dev");
 }

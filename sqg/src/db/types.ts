@@ -1,12 +1,13 @@
 import consola from "consola";
 import { sortBy } from "es-toolkit";
 import type { SQLQuery, TableInfo } from "../sql-query.js";
+import type { ProgressReporter } from "../ui.js";
 
 export interface DatabaseEngine {
-  executeQueries(queries: SQLQuery[]): Promise<void> | void;
-  initializeDatabase(queries: SQLQuery[]): Promise<void> | void;
+  executeQueries(queries: SQLQuery[], reporter?: ProgressReporter): Promise<void> | void;
+  initializeDatabase(queries: SQLQuery[], reporter?: ProgressReporter): Promise<void> | void;
   /** Introspect table schemas for appender generation */
-  introspectTables(tables: TableInfo[]): Promise<void> | void;
+  introspectTables(tables: TableInfo[], reporter?: ProgressReporter): Promise<void> | void;
 
   close(): Promise<void> | void;
 }
@@ -14,6 +15,7 @@ export interface DatabaseEngine {
 export async function initializeDatabase(
   queries: SQLQuery[],
   execQueries: (query: SQLQuery) => Promise<void>,
+  reporter?: ProgressReporter,
 ) {
   // Find and run the setup query
   const migrationQueries = queries.filter((q) => q.isMigrate);
@@ -53,5 +55,5 @@ export async function initializeDatabase(
     consola.warn("No migration or testdata queries found");
   }
 
-  consola.success("Database initialized successfully");
+  reporter?.onDatabaseInitialized?.();
 }

@@ -53,6 +53,7 @@
   "packageManager": "pnpm@10.26.0",
   "dependencies": {
     "@biomejs/biome": "catalog:",
+    "@clack/prompts": "^1.1.0",
     "@duckdb/node-api": "catalog:",
     "@duckdb/node-bindings-linux-x64": "catalog:",
     "@lezer-unofficial/printer": "catalog:",
@@ -69,10 +70,12 @@
     "handlebars": "catalog:",
     "pg": "catalog:",
     "pg-types": "catalog:",
+    "picocolors": "^1.1.1",
     "prettier": "catalog:",
     "prettier-plugin-java": "catalog:",
     "update-notifier": "^7.3.1",
     "yaml": "catalog:",
+    "yocto-spinner": "^1.1.0",
     "zod": "catalog:"
   },
   "devDependencies": {

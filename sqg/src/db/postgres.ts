@@ -1,11 +1,12 @@
+import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 import consola from "consola";
 import { Client, type QueryResult } from "pg";
 import types from "pg-types";
 import { DatabaseError, SqlExecutionError } from "../errors.js";
-import { EnumType, type ColumnType } from "../sql-query.js";
 import type { SQLQuery, TableInfo } from "../sql-query.js";
+import { type ColumnType, EnumType } from "../sql-query.js";
+import type { ProgressReporter } from "../ui.js";
 import { type DatabaseEngine, initializeDatabase } from "./types.js";
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 
 const tempDatabaseName = "sqg-db-temp";
 
@@ -115,10 +116,7 @@ class TempDbMode implements ConnectionMode {
       );
     }
 
-    const tempConnectionString = this.connectionString.replace(
-      /\/[^/]+$/,
-      `/${tempDatabaseName}`,
-    );
+    const tempConnectionString = this.connectionString.replace(/\/[^/]+$/, `/${tempDatabaseName}`);
     const db = new Client({ connectionString: tempConnectionString });
     try {
       await db.connect();
@@ -147,7 +145,6 @@ class TempDbMode implements ConnectionMode {
     await this.dbInitial.end();
 
     if (this.container) {
-      consola.info("Stopping PostgreSQL container...");
       await this.container.stop();
       this.container = null;
     }
@@ -160,8 +157,10 @@ export const postgres = new (class implements DatabaseEngine {
   private dynamicTypeCache = new Map<number, string>();
   private enumTypeCache = new Map<number, EnumType>();
 
-  private async startContainer(): Promise<{ connectionUri: string; container: StartedPostgreSqlContainer }> {
-    consola.info("Starting PostgreSQL container via testcontainers...");
+  private async startContainer(
+    reporter?: ProgressReporter,
+  ): Promise<{ connectionUri: string; container: StartedPostgreSqlContainer }> {
+    reporter?.onContainerStarting?.();
 
     const container = await new PostgreSqlContainer("postgres:16-alpine")
       .withDatabase("sqg-db")
@@ -170,7 +169,7 @@ export const postgres = new (class implements DatabaseEngine {
       .start();
 
     const connectionUri = container.getConnectionUri();
-    consola.success(`PostgreSQL container started at: ${connectionUri}`);
+    reporter?.onContainerStarted?.(connectionUri);
     return { connectionUri, container };
   }
 
@@ -232,7 +231,7 @@ export const postgres = new (class implements DatabaseEngine {
     return this.getTypeName(dataTypeID);
   }
 
-  async initializeDatabase(queries: SQLQuery[]) {
+  async initializeDatabase(queries: SQLQuery[], reporter?: ProgressReporter) {
     const externalUrl = process.env.SQG_POSTGRES_URL;
     this.dynamicTypeCache = new Map();
     this.enumTypeCache = new Map();
@@ -240,31 +239,35 @@ export const postgres = new (class implements DatabaseEngine {
     if (externalUrl) {
       this.mode = new ExternalDbMode(externalUrl);
     } else {
-      const { connectionUri, container } = await this.startContainer();
+      const { connectionUri, container } = await this.startContainer(reporter);
       this.mode = new TempDbMode(connectionUri, container);
     }
 
     this.db = await this.mode.connect();
 
-    await initializeDatabase(queries, async (query) => {
-      try {
-        await this.db.query(query.rawQuery);
-      } catch (e) {
-        throw new SqlExecutionError(
-          (e as Error).message,
-          query.id,
-          query.filename,
-          query.rawQuery,
-          e as Error,
-        );
-      }
-    });
+    await initializeDatabase(
+      queries,
+      async (query) => {
+        try {
+          await this.db.query(query.rawQuery);
+        } catch (e) {
+          throw new SqlExecutionError(
+            (e as Error).message,
+            query.id,
+            query.filename,
+            query.rawQuery,
+            e as Error,
+          );
+        }
+      },
+      reporter,
+    );
 
     // Load type cache (so user-defined types like ENUMs are available)
     await this.loadTypeCache(this.db);
   }
 
-  async executeQueries(queries: SQLQuery[]) {
+  async executeQueries(queries: SQLQuery[], reporter?: ProgressReporter) {
     const db = this.db;
     if (!db) {
       throw new DatabaseError(
@@ -277,9 +280,9 @@ export const postgres = new (class implements DatabaseEngine {
       const executableQueries = queries.filter((q) => !q.skipGenerateFunction);
 
       for (const query of executableQueries) {
-        consola.debug(`Executing query: ${query.id}`);
+        reporter?.onQueryStart?.(query.id);
         await this.executeQuery(db, query);
-        consola.success(`Query ${query.id} executed successfully`);
+        reporter?.onQueryComplete?.(query.id);
       }
     } catch (error) {
       consola.error("Error executing queries:", (error as Error).message);
@@ -330,9 +333,7 @@ export const postgres = new (class implements DatabaseEngine {
         }
       }
 
-      const result = await this.mode.wrapQuery(db, () =>
-        db.query(statement.sql, parameterValues),
-      );
+      const result = await this.mode.wrapQuery(db, () => db.query(statement.sql, parameterValues));
 
       if (query.isQuery) {
         const columnNames = result.fields.map((field) => field.name);
@@ -340,7 +341,10 @@ export const postgres = new (class implements DatabaseEngine {
           return this.getColumnType(field.dataTypeID);
         });
         consola.debug("Columns:", columnNames);
-        consola.debug("Types:", columnTypes.map(t => t.toString()));
+        consola.debug(
+          "Types:",
+          columnTypes.map((t) => t.toString()),
+        );
         query.columns = columnNames.map((name, index) => ({
           name,
           type: columnTypes[index],
@@ -361,7 +365,7 @@ export const postgres = new (class implements DatabaseEngine {
     }
   }
 
-  async introspectTables(tables: TableInfo[]) {
+  async introspectTables(tables: TableInfo[], reporter?: ProgressReporter) {
     const db = this.db;
     if (!db) {
       throw new DatabaseError(
@@ -372,7 +376,7 @@ export const postgres = new (class implements DatabaseEngine {
     }
 
     for (const table of tables) {
-      consola.info(`Introspecting table schema: ${table.tableName}`);
+      reporter?.onTableStart?.(table.tableName);
       try {
         const result = await db.query(
           `SELECT column_name, data_type, is_nullable
@@ -386,7 +390,7 @@ export const postgres = new (class implements DatabaseEngine {
           type: row.data_type.toUpperCase(),
           nullable: row.is_nullable === "YES",
         }));
-        consola.success(`Introspected table: ${table.tableName} (${table.columns.length} columns)`);
+        reporter?.onTableComplete?.(table.tableName, table.columns.length);
       } catch (error) {
         consola.error(`Failed to introspect table '${table.tableName}':`, error);
         throw error;

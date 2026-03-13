@@ -2,18 +2,19 @@ import { exit } from "node:process";
 import { Command } from "commander";
 import consola, { LogLevels } from "consola";
 import updateNotifier from "update-notifier";
+import pc from "picocolors";
 import { formatGeneratorsHelp, SHORT_GENERATOR_NAMES, SQL_SYNTAX_REFERENCE } from "./constants.js";
 import { formatErrorForOutput, SqgError } from "./errors.js";
 import { initProject } from "./init.js";
 import { startMcpServer } from "./mcp-server.js";
 import {
   buildProjectFromCliOptions,
-  type Project,
   processProject,
   processProjectFromConfig,
   validateProject,
   validateProjectFromConfig,
 } from "./sqltool.js";
+import { UI } from "./ui.js";
 
 declare const __SQG_VERSION__: string;
 declare const __SQG_DESCRIPTION__: string;
@@ -30,8 +31,8 @@ const description =
   process.env.npm_package_description ??
   (typeof __SQG_DESCRIPTION__ !== "undefined" ? __SQG_DESCRIPTION__ : "SQG - SQL Query Generator");
 
-// Default: show info/warn/error/fatal/log; hide success/debug/trace.
-consola.level = LogLevels.info;
+// Default: quiet — only warnings and errors from consola (UI module handles user-facing output)
+consola.level = LogLevels.warn;
 
 /** Output format for CLI */
 export type OutputFormat = "text" | "json";
@@ -46,6 +47,8 @@ export interface CliOptions {
   output?: string;
   name?: string;
 }
+
+const BRANDING = `\n ${pc.bold(pc.blue("SQG"))} ${pc.dim(`v${version}`)}\n`;
 
 const program = new Command()
   .name("sqg")
@@ -74,6 +77,7 @@ ${formatGeneratorsHelp()}`,
     "Output file or directory path (optional, if omitted writes to stdout)",
   )
   .option("--name <name>", "Project name (optional, defaults to 'generated')")
+  .addHelpText("before", BRANDING)
   .showHelpAfterError()
   .showSuggestionAfterError();
 
@@ -91,6 +95,15 @@ program
     }
   })
   .action(async (projectPath: string | undefined, options: CliOptions) => {
+    const writeToStdout = !projectPath && !options.output;
+    const ui = new UI({
+      format: options.format,
+      verbose: options.verbose,
+      isStdout: writeToStdout,
+      version,
+    });
+    ui.header();
+
     try {
       // Determine if using YAML config or CLI options
       const useCliOptions = !projectPath;
@@ -120,7 +133,6 @@ program
           name: options.name,
         });
         const projectDir = process.cwd();
-        const writeToStdout = !options.output;
 
         if (options.validate) {
           const result = await validateProjectFromConfig(project, projectDir);
@@ -145,7 +157,7 @@ program
           exit(result.valid ? 0 : 1);
         }
 
-        const files = await processProjectFromConfig(project, projectDir, writeToStdout);
+        const files = await processProjectFromConfig(project, projectDir, writeToStdout, ui);
         // When writing to stdout, don't output JSON status - the generated code is the output
         if (options.format === "json" && !writeToStdout) {
           console.log(
@@ -180,7 +192,7 @@ program
           exit(result.valid ? 0 : 1);
         }
 
-        const files = await processProject(projectPath);
+        const files = await processProject(projectPath, ui);
         if (options.format === "json") {
           console.log(
             JSON.stringify({
@@ -195,13 +207,9 @@ program
         console.log(JSON.stringify(formatErrorForOutput(err)));
       } else {
         if (err instanceof SqgError) {
-          consola.error(err.message);
-          if (err.suggestion) {
-            consola.info(`Suggestion: ${err.suggestion}`);
-          }
-          if (err.context && options.verbose) {
-            consola.debug("Context:", err.context);
-          }
+          ui.error(err);
+        } else if (err instanceof Error) {
+          ui.error(err);
         } else {
           consola.error(err);
         }
@@ -216,8 +224,7 @@ program
   .description("Initialize a new SQG project with example configuration")
   .option(
     "-t, --generator <generator>",
-    `Code generation generator (${SHORT_GENERATOR_NAMES.join(", ")})`,
-    "typescript/sqlite",
+    `Code generation generator (${SHORT_GENERATOR_NAMES.join(", ")}). Omit for interactive mode`,
   )
   .option("-o, --output <dir>", "Output directory for generated files", "./generated")
   .option("-f, --force", "Overwrite existing files")
@@ -232,11 +239,11 @@ program
       if (parentOpts.format === "json") {
         console.log(JSON.stringify(formatErrorForOutput(err)));
       } else {
+        const ui = new UI({ format: parentOpts.format, verbose: parentOpts.verbose });
         if (err instanceof SqgError) {
-          consola.error(err.message);
-          if (err.suggestion) {
-            consola.info(`Suggestion: ${err.suggestion}`);
-          }
+          ui.error(err);
+        } else if (err instanceof Error) {
+          ui.error(err);
         } else {
           consola.error(err);
         }

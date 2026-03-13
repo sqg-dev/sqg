@@ -44,7 +44,10 @@ export class MapType implements IsColumnType {
 }
 
 export class EnumType implements IsColumnType {
-  constructor(public values: readonly string[], public name?: string) {}
+  constructor(
+    public values: readonly string[],
+    public name?: string,
+  ) {}
 
   toString(): string {
     return `ENUM(${this.values.map((v) => `'${v}'`).join(", ")})`;
@@ -162,7 +165,7 @@ export interface ParseResult {
 
 export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[]): ParseResult {
   const content = readFileSync(filePath, "utf-8");
-  consola.info(`Parsing SQL file: ${filePath}`);
+  consola.debug(`Parsing SQL file: ${filePath}`);
   consola.debug(`File start: ${content.slice(0, 200)}`);
   const queries: SQLQuery[] = [];
   const tables: TableInfo[] = [];
@@ -493,10 +496,10 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
     }
   } while (cursor.next());
 
-  consola.info(`Total queries parsed: ${queries.length}, tables: ${tables.length}`);
-  consola.info(`Query names: ${queries.map((q) => q.id).join(", ")}`);
+  consola.debug(`Total queries parsed: ${queries.length}, tables: ${tables.length}`);
+  consola.debug(`Query names: ${queries.map((q) => q.id).join(", ")}`);
   if (tables.length > 0) {
-    consola.info(`Table names: ${tables.map((t) => t.id).join(", ")}`);
+    consola.debug(`Table names: ${tables.map((t) => t.id).join(", ")}`);
   }
 
   return { queries, tables };
