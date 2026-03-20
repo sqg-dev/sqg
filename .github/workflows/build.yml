@@ -39,7 +39,7 @@ jobs:
 
       - name: generate code
         working-directory: sqg
-        run: just install all-ci
+        run: just install generate-ci
 
       - name: Test
         working-directory: sqg
