@@ -12,8 +12,8 @@ queries with it and then generate the code from the same file.
 ## Features
 
 - **Type-safe by design** - Generates fully-typed code with accurate column types inferred from your database
-- **Multiple database engines** - Supports SQLite, DuckDB, and (soon) PostgreSQL
-- **Multiple language targets** - Generate TypeScript or Java code from the same SQL files
+- **Multiple database engines** - Supports SQLite, DuckDB, and PostgreSQL
+- **Multiple language targets** - Generate TypeScript, Java, or Python code from the same SQL files
 - **Arrow API support** - Can generate Apache Arrow API bindings for DuckDB (Java)
 - **DBeaver compatible** - Works seamlessly with DBeaver for database development and testing
 - **Complex type support** - DuckDB: Handles structs, lists, and maps
@@ -129,11 +129,13 @@ console.log(user?.name);
 
 | Language | Database | API | Generator | Status |
 |----------|----------|-----|-----------|--------|
-| TypeScript | SQLite   | better-sqlite3 | `typescript/better-sqlite3` | Tested |
+| TypeScript | SQLite   | better-sqlite3 | `typescript/sqlite` | Tested |
 | TypeScript | DuckDB   | @duckdb/node-api | `typescript/duckdb` | Tested |
-| Java | Any (JDBC) | JDBC | `java/jdbc` | Tested |
-| Java | DuckDB   | Apache Arrow | `java/duckdb-arrow` | Tested |
-| TypeScript | PostgreSQL | pg (node-postgres) | `typescript/pg` | under development |
+| Java | SQLite/DuckDB/PostgreSQL | JDBC | `java/sqlite`, `java/duckdb`, `java/postgres` | Tested |
+| Java | DuckDB   | Apache Arrow | `java/duckdb/arrow` | Tested |
+| Python | SQLite | sqlite3 | `python/sqlite` | Tested |
+| Python | DuckDB | duckdb | `python/duckdb` | Tested |
+| Python | PostgreSQL | psycopg3 | `python/postgres` | Tested |
 
 ## CLI Commands
 

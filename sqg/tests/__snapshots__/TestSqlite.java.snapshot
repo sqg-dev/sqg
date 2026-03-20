@@ -490,4 +490,23 @@ public class TestSqlite {
             }
         });
     }
+
+    public record ReservedWordTestResult(String class_, String type) {}
+
+    public ReservedWordTestResult reservedWordTest() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "SELECT name as class, email as type FROM users WHERE id = '1'"
+            )
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                return rs.next()
+                    ? new ReservedWordTestResult(
+                          (String) rs.getObject(1),
+                          (String) rs.getObject(2)
+                      )
+                    : null;
+            }
+        }
+    }
 }

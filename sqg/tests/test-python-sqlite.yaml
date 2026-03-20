@@ -1,0 +1,12 @@
+version: 1
+
+name: test-python-sqlite
+
+sql:
+  - files:
+      - test-sqlite.sql
+    gen:
+        - generator: python/sqlite
+          output: /tmp/python/
+          config:
+            migrations: true

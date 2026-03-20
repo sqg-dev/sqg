@@ -1,4 +1,4 @@
-import { camelCase, pascalCase } from "es-toolkit/string";
+import { camelCase, pascalCase, snakeCase } from "es-toolkit/string";
 import { TypeMappingError } from "./errors.js";
 import type { ColumnInfo } from "./sql-query";
 import { EnumType, ListType, MapType, StructType } from "./sql-query";
@@ -584,6 +584,209 @@ export class TypeScriptTypeMapper extends TypeMapper {
     }
 
     // Primitives are passed through directly
+    return value;
+  }
+}
+
+/**
+ * Type mapper for generating Python types from SQL column types.
+ * Maps SQL types to Python types (e.g., INTEGER -> int, VARCHAR -> str).
+ * Generates frozen dataclasses for struct types and handles Python reserved keywords.
+ */
+export class PythonTypeMapper extends TypeMapper {
+  constructor() {
+    super();
+  }
+
+  private typeMap: { [key: string]: string } = {
+    INTEGER: "int",
+    INT: "int",
+    INT2: "int",
+    INT4: "int",
+    TINYINT: "int",
+    SMALLINT: "int",
+    BIGINT: "int",
+    INT8: "int",
+    HUGEINT: "int",
+    UHUGEINT: "int",
+    UTINYINT: "int",
+    USMALLINT: "int",
+    UINTEGER: "int",
+    UBIGINT: "int",
+    SERIAL: "int",
+    BIGSERIAL: "int",
+
+    REAL: "float",
+    DOUBLE: "float",
+    FLOAT: "float",
+    FLOAT4: "float",
+    FLOAT8: "float",
+
+    TEXT: "str",
+    VARCHAR: "str",
+    INTERVAL: "str",
+    BIT: "str",
+    UUID: "str",
+
+    BOOLEAN: "bool",
+    BOOL: "bool",
+
+    BLOB: "bytes",
+    BYTEA: "bytes",
+
+    DATE: "datetime.date",
+    TIMESTAMP: "datetime.datetime",
+    DATETIME: "datetime.datetime",
+    TIMESTAMPTZ: "datetime.datetime",
+    "TIMESTAMP WITH TIME ZONE": "datetime.datetime",
+    TIMESTAMP_S: "datetime.datetime",
+    TIMESTAMP_MS: "datetime.datetime",
+    TIMESTAMP_NS: "datetime.datetime",
+
+    TIME: "datetime.time",
+    "TIME WITH TIME ZONE": "datetime.time",
+
+    NUMERIC: "Decimal",
+    DECIMAL: "Decimal",
+    BIGNUM: "Decimal",
+
+    JSON: "Any",
+    JSONB: "Any",
+
+    NULL: "None",
+    UNKNOWN: "Any",
+  };
+
+  // Python reserved keywords that cannot be used as identifiers
+  private static pythonReservedKeywords = new Set([
+    "False",
+    "None",
+    "True",
+    "and",
+    "as",
+    "assert",
+    "async",
+    "await",
+    "break",
+    "class",
+    "continue",
+    "def",
+    "del",
+    "elif",
+    "else",
+    "except",
+    "finally",
+    "for",
+    "from",
+    "global",
+    "if",
+    "import",
+    "in",
+    "is",
+    "lambda",
+    "nonlocal",
+    "not",
+    "or",
+    "pass",
+    "raise",
+    "return",
+    "try",
+    "while",
+    "with",
+    "yield",
+  ]);
+
+  protected mapPrimitiveType(type: string, nullable: boolean): string {
+    const upperType = type.toString().toUpperCase();
+    const mappedType = this.typeMap[upperType];
+    if (mappedType) {
+      return nullable ? `${mappedType} | None` : mappedType;
+    }
+
+    // Handle parameterized types
+    if (upperType.startsWith("DECIMAL(") || upperType.startsWith("NUMERIC(")) {
+      return nullable ? "Decimal | None" : "Decimal";
+    }
+    if (upperType.startsWith("ENUM(")) {
+      return nullable ? "str | None" : "str";
+    }
+    if (upperType.startsWith("UNION(")) {
+      return nullable ? "Any | None" : "Any";
+    }
+
+    // Unknown types default to Any
+    return nullable ? "Any | None" : "Any";
+  }
+
+  formatListType(elementType: string): string {
+    return `list[${elementType}]`;
+  }
+
+  protected formatStructTypeName(fieldName: string): string {
+    return `${pascalCase(fieldName)}Struct`;
+  }
+
+  protected formatMapTypeName(_fieldName: string): string {
+    return "dict";
+  }
+
+  protected generateStructDeclaration(column: ColumnInfo, path = ""): string {
+    if (!(column.type instanceof StructType)) {
+      throw new Error(`Expected StructType ${column}`);
+    }
+    const structName = this.formatStructTypeName(column.name);
+    const newPath = `${path}${structName}.`;
+    const children = column.type.fields
+      .map((field) => {
+        return this.getDeclarations(
+          { name: field.name, type: field.type, nullable: true },
+          newPath,
+        );
+      })
+      .filter(Boolean)
+      .join("\n\n");
+
+    const fields = column.type.fields
+      .map((field) => {
+        const fieldType = this.getTypeName(field);
+        return `    ${this.varName(field.name)}: ${fieldType}`;
+      })
+      .join("\n");
+
+    let result = "";
+    if (children) {
+      result += `${children}\n\n`;
+    }
+    result += `@dataclass(frozen=True)\nclass ${structName}:\n${fields}`;
+    return result;
+  }
+
+  varName(str: string): string {
+    const name = snakeCase(str);
+    if (PythonTypeMapper.pythonReservedKeywords.has(name)) {
+      return `${name}_`;
+    }
+    return name;
+  }
+
+  parseValue(column: ColumnInfo, value: string, _path: string): string {
+    // DuckDB Python driver returns native Python types for most things
+    // Structs come back as dicts and need conversion to dataclasses
+    if (column.type instanceof StructType) {
+      const structName = this.formatStructTypeName(column.name);
+      const fieldAssignments = column.type.fields
+        .map((field) => {
+          const pyName = this.varName(field.name);
+          const dictAccess = `${value}["${field.name}"]`;
+          if (field.type instanceof StructType) {
+            return `${pyName}=${this.parseValue(field, dictAccess, _path)}`;
+          }
+          return `${pyName}=${dictAccess}`;
+        })
+        .join(", ");
+      return `${structName}(${fieldAssignments})`;
+    }
+
     return value;
   }
 }

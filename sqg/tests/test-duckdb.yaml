@@ -12,5 +12,7 @@ sql:
             package: sqg.generated
         - generator: typescript/duckdb
           output: ./__generated__/
+        - generator: python/duckdb
+          output: ../python/generated/
 
 

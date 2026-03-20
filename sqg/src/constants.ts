@@ -10,7 +10,7 @@ export const DB_ENGINES = ["sqlite", "duckdb", "postgres"] as const;
 export type DbEngine = (typeof DB_ENGINES)[number];
 
 /** Supported languages */
-export const LANGUAGES = ["typescript", "java"] as const;
+export const LANGUAGES = ["typescript", "java", "python"] as const;
 export type Language = (typeof LANGUAGES)[number];
 
 /** Generator information */
@@ -19,7 +19,7 @@ export interface GeneratorInfo {
   engine: DbEngine;
   driver: string;
   description: string;
-  extension: ".ts" | ".java";
+  extension: ".ts" | ".java" | ".py";
   template: string;
 }
 
@@ -97,6 +97,30 @@ export const GENERATORS: Record<string, GeneratorInfo> = {
     extension: ".java",
     template: "java-jdbc.hbs",
   },
+  "python/sqlite/sqlite3": {
+    language: "python",
+    engine: "sqlite",
+    driver: "sqlite3",
+    description: "Python with sqlite3 standard library",
+    extension: ".py",
+    template: "python.hbs",
+  },
+  "python/duckdb/duckdb": {
+    language: "python",
+    engine: "duckdb",
+    driver: "duckdb",
+    description: "Python with duckdb driver",
+    extension: ".py",
+    template: "python.hbs",
+  },
+  "python/postgres/psycopg": {
+    language: "python",
+    engine: "postgres",
+    driver: "psycopg",
+    description: "Python with psycopg3 driver",
+    extension: ".py",
+    template: "python.hbs",
+  },
 } as const;
 
 /** Default drivers for language/engine combinations */
@@ -106,6 +130,9 @@ export const DEFAULT_DRIVERS: Record<string, string> = {
   "java/sqlite": "jdbc",
   "java/duckdb": "jdbc",
   "java/postgres": "jdbc",
+  "python/sqlite": "sqlite3",
+  "python/duckdb": "duckdb",
+  "python/postgres": "psycopg",
 };
 
 /** List of all full generator names */

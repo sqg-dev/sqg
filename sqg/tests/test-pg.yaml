@@ -14,3 +14,7 @@ sql:
           output: ../java/src/main/java/sqg/generated/
           config:
             package: sqg.generated
+        - generator: python/postgres
+          output: ../python/generated/
+          config:
+            migrations: true

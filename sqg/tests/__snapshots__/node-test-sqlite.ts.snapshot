@@ -77,6 +77,7 @@ export class TestSqlite {
       ["users5", "users5"],
       ["users6", "users6"],
       ["users7", "users7"],
+      ["reserved_word_test", "reservedWordTest"],
     ]);
   }
 
@@ -126,5 +127,12 @@ export class TestSqlite {
       name: string;
       email: string | null;
     }[];
+  }
+  reservedWordTest(): { class: string; type: string } | undefined {
+    const stmt = this.prepare(
+      "reserved_word_test",
+      `SELECT name as class, email as type FROM users WHERE id = '1'`,
+    );
+    return stmt.get() as { class: string; type: string } | undefined;
   }
 }

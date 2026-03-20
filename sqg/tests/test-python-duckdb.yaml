@@ -1,0 +1,10 @@
+version: 1
+
+name: test-python-duckdb
+
+sql:
+  - files:
+      - test-duckdb.sql
+    gen:
+        - generator: python/duckdb
+          output: /tmp/python/

@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-SQG (SQL Query Generator) is a **type-safe SQL code generator** that reads SQL queries from `.sql` files with special annotations and generates type-safe database access code in multiple target languages (TypeScript and Java). It introspects SQL queries at build time against real database engines to determine column types and generates strongly-typed wrapper functions.
+SQG (SQL Query Generator) is a **type-safe SQL code generator** that reads SQL queries from `.sql` files with special annotations and generates type-safe database access code in multiple target languages (TypeScript, Java, and Python). It introspects SQL queries at build time against real database engines to determine column types and generates strongly-typed wrapper functions.
 
 **Repository:** https://github.com/sqg-dev/sqg
 **Website:** https://sqg.dev
@@ -10,7 +10,7 @@ SQG (SQL Query Generator) is a **type-safe SQL code generator** that reads SQL q
 **Key capabilities:**
 - Parse SQL files with metadata annotations
 - Execute queries against SQLite, DuckDB, or PostgreSQL to introspect types
-- Generate type-safe TypeScript or Java code
+- Generate type-safe TypeScript, Java, or Python code
 - Support complex types: structs, lists, maps (especially for DuckDB)
 
 ## Project Structure
@@ -34,7 +34,8 @@ sqg/
 │   │   │   └── duckdb.ts        # DuckDB adapter
 │   │   ├── generators/          # Language-specific generators
 │   │   │   ├── typescript-generator.ts
-│   │   │   └── java-generator.ts
+│   │   │   ├── java-generator.ts
+│   │   │   └── python-generator.ts
 │   │   ├── parser/
 │   │   │   ├── sql.grammar      # Lezer grammar definition
 │   │   │   └── sql-parser.ts    # Generated parser (do not edit)
@@ -42,7 +43,8 @@ sqg/
 │   │       ├── typescript-duckdb.hbs
 │   │       ├── better-sqlite3.hbs
 │   │       ├── java-jdbc.hbs
-│   │       └── java-duckdb-arrow.hbs
+│   │       ├── java-duckdb-arrow.hbs
+│   │       └── python.hbs
 │   ├── tests/                   # Test files and fixtures
 │   │   ├── sqltool.test.ts      # Integration tests
 │   │   ├── generator.test.ts    # Unit tests
@@ -50,6 +52,7 @@ sqg/
 │   │   ├── test-duckdb.sql      # Test SQL files
 │   │   └── __snapshots__/       # Snapshot test files
 │   ├── java/                    # Java test project (Gradle)
+│   ├── python/                  # Python test project (uv + pytest)
 │   └── justfile                 # Task runner recipes
 ├── website/                     # Astro + Starlight documentation site
 ├── examples/
@@ -127,10 +130,13 @@ pnpm sqg init --generator typescript/duckdb
 **Using justfile (from `sqg/sqg/`):**
 
 ```bash
-just all          # Build all test targets
-just build-duckdb # Generate from test-duckdb.yaml
-just build-sqlite # Generate from test-sqlite.yaml
-just start-pg     # Start PostgreSQL Docker container
+just                # List all available recipes
+just generate       # Generate all code from test SQL files
+just test-all       # Generate + run vitest + Java + Python tests
+just test-vitest    # Run vitest snapshot tests
+just test-java      # Run Java integration tests
+just test-python    # Run Python integration tests
+just start-pg       # Start PostgreSQL Docker container
 ```
 
 ## SQL File Format
@@ -211,6 +217,9 @@ Generators follow the pattern `<language>/<engine>[/<driver>]`:
 | `java/duckdb` | `java/duckdb/jdbc` | Java with JDBC for DuckDB |
 | `java/duckdb/arrow` | `java/duckdb/arrow` | Java with DuckDB Arrow API |
 | `java/postgres` | `java/postgres/jdbc` | Java with JDBC for PostgreSQL |
+| `python/sqlite` | `python/sqlite/sqlite3` | Python with sqlite3 standard library |
+| `python/duckdb` | `python/duckdb/duckdb` | Python with duckdb driver |
+| `python/postgres` | `python/postgres/psycopg` | Python with psycopg3 driver |
 
 The driver can be omitted to use the default driver for that language/engine combination.
 
@@ -242,6 +251,8 @@ The driver can be omitted to use the default driver for that language/engine com
 - **Unit tests:** Individual functions in `generator.test.ts`
 - **In-memory databases:** SQLite and DuckDB for fast tests
 - **PostgreSQL tests:** Require Docker, may be skipped in CI
+- **Java integration tests:** `java/` Gradle project with JUnit 5 (DuckDB, DuckDB Arrow, PostgreSQL)
+- **Python integration tests:** `python/` uv project with pytest (SQLite, DuckDB, PostgreSQL)
 
 **Update snapshots:** When generation changes are intentional, run `pnpm test:run -u`
 
@@ -348,3 +359,7 @@ Defined in `sqg/src/constants.ts`:
 | `java/duckdb` | DuckDB | Java with JDBC (default) |
 | `java/duckdb/arrow` | DuckDB | Java with DuckDB Arrow API |
 | `java/postgres` | PostgreSQL | Java with JDBC (default) |
+| `python/sqlite` | SQLite | Python with sqlite3 standard library (default) |
+| `python/duckdb` | DuckDB | Python with duckdb driver (default) |
+| `python/postgres` | PostgreSQL | Python with psycopg3 driver (default) |
+

@@ -33,7 +33,7 @@ describe("sqg", () => {
 
   describe("processProject", () => {
     it("handle duckdb correctly", async () => {
-      await handleProject("tests/test-duckdb.yaml", ["TestDuckdb.java", "test-duckdb.ts"]);
+      await handleProject("tests/test-duckdb.yaml", ["TestDuckdb.java", "test-duckdb.ts", "test_duckdb.py"]);
     });
     it("handle duckdb-arrow correctly", async () => {
       await handleProject("tests/test-duckdb-arrow.yaml", ["TestDuckDbArrow.java"]);
@@ -46,7 +46,7 @@ describe("sqg", () => {
 
   describe("processProjectSqlite", () => {
     it("handle sqlite correctly", async () => {
-      await handleProject("tests/test-sqlite.yaml", ["test-sqlite.ts", "TestSqlite.java"]);
+      await handleProject("tests/test-sqlite.yaml", ["test-sqlite.ts", "TestSqlite.java", "test_sqlite.py"]);
     });
   });
 
@@ -67,4 +67,14 @@ describe("sqg", () => {
       await handleProject("tests/test-turso.yaml", ["test-sqlite.ts"]);
     });
   });
+
+  describe("processProjectPython", () => {
+    it("handle python-sqlite correctly", async () => {
+      await handleProject("tests/test-python-sqlite.yaml", ["test_sqlite.py"]);
+    });
+    it("handle python-duckdb correctly", async () => {
+      await handleProject("tests/test-python-duckdb.yaml", ["test_duckdb.py"]);
+    });
+  });
+
 });

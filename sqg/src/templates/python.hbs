@@ -1,0 +1,256 @@
+# {{generatedComment}}
+from __future__ import annotations
+
+{{#if (isDuckDB)}}
+import duckdb
+{{else if (isPostgres)}}
+import psycopg
+{{else}}
+import sqlite3
+{{/if}}
+from dataclasses import dataclass
+from typing import Any
+{{#if (needsDatetime queries)}}
+import datetime
+{{/if}}
+{{#if (needsDecimal queries)}}
+from decimal import Decimal
+{{/if}}
+
+{{#each queries}}
+{{#unless skipGenerateFunction}}
+{{#if isQuery}}
+{{#unless isPluck}}
+{{{declareTypes this}}}
+
+{{/unless}}
+{{/if}}
+{{/unless}}
+{{/each}}
+
+class {{className}}:
+    def __init__(self, conn: {{{connType}}}) -> None:
+        self._conn = conn
+
+    @staticmethod
+    def get_migrations() -> list[str]:
+        return [
+{{#each migrations}}
+            {{{quote sqlQuery}}},
+{{/each}}
+        ]
+
+{{#if config.migrations}}
+    @staticmethod
+    def apply_migrations(conn: {{{connType}}}, project_name: str = "{{projectName}}") -> None:
+{{#if (isDuckDB)}}
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS _sqg_migrations (
+                project TEXT NOT NULL,
+                migration_id TEXT NOT NULL,
+                applied_at TIMESTAMP NOT NULL DEFAULT now(),
+                PRIMARY KEY (project, migration_id)
+            )""")
+        conn.begin()
+        try:
+            applied = set(
+                row[0]
+                for row in conn.execute(
+                    "SELECT migration_id FROM _sqg_migrations WHERE project = $1",
+                    [project_name],
+                ).fetchall()
+            )
+            migrations: list[tuple[str, str]] = [
+{{#each migrations}}
+                ("{{{id}}}", {{{quote sqlQuery}}}),
+{{/each}}
+            ]
+            for mid, sql in migrations:
+                if mid not in applied:
+                    conn.execute(sql)
+                    conn.execute(
+                        "INSERT INTO _sqg_migrations (project, migration_id) VALUES ($1, $2)",
+                        [project_name, mid],
+                    )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+{{else if (isPostgres)}}
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS _sqg_migrations (
+                    project TEXT NOT NULL,
+                    migration_id TEXT NOT NULL,
+                    applied_at TIMESTAMP NOT NULL DEFAULT now(),
+                    PRIMARY KEY (project, migration_id)
+                )""")
+            conn.commit()
+            cur.execute(
+                "SELECT migration_id FROM _sqg_migrations WHERE project = %s",
+                (project_name,),
+            )
+            applied = set(row[0] for row in cur.fetchall())
+            migrations: list[tuple[str, str]] = [
+{{#each migrations}}
+                ("{{{id}}}", {{{quote sqlQuery}}}),
+{{/each}}
+            ]
+            for mid, sql in migrations:
+                if mid not in applied:
+                    cur.execute(sql)
+                    cur.execute(
+                        "INSERT INTO _sqg_migrations (project, migration_id) VALUES (%s, %s)",
+                        (project_name, mid),
+                    )
+            conn.commit()
+{{else}}
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS _sqg_migrations (
+                project TEXT NOT NULL,
+                migration_id TEXT NOT NULL,
+                applied_at TEXT NOT NULL DEFAULT (datetime('now')),
+                PRIMARY KEY (project, migration_id)
+            )""")
+        applied = set(
+            row[0]
+            for row in conn.execute(
+                "SELECT migration_id FROM _sqg_migrations WHERE project = ?",
+                (project_name,),
+            ).fetchall()
+        )
+        migrations: list[tuple[str, str]] = [
+{{#each migrations}}
+            ("{{{id}}}", {{{quote sqlQuery}}}),
+{{/each}}
+        ]
+        for mid, sql in migrations:
+            if mid not in applied:
+                conn.executescript(sql)
+                conn.execute(
+                    "INSERT INTO _sqg_migrations (project, migration_id) VALUES (?, ?)",
+                    (project_name, mid),
+                )
+        conn.commit()
+{{/if}}
+{{/if}}
+
+{{#each queries}}
+{{#unless skipGenerateFunction}}
+{{#if isQuery}}
+{{#if isPluck}}
+{{#if isOne}}
+    def {{functionName}}(self{{#each variables}}, {{name}}: {{{type}}}{{/each}}) -> {{{pyTypeOrNone (lookup columns 0)}}}:
+        row = self._conn.execute(
+            {{{quote sqlQuery}}}, {{> params}}
+        ).fetchone()
+        if row is None:
+            return None
+        return row[0]
+
+    def {{functionName}}_raw(self{{#each variables}}, {{name}}: {{{type}}}{{/each}}) -> tuple[Any, ...] | None:
+        return self._conn.execute(
+            {{{quote sqlQuery}}}, {{> params}}
+        ).fetchone()
+
+{{else}}
+    def {{functionName}}(self{{#each variables}}, {{name}}: {{{type}}}{{/each}}) -> list[{{{pyType (lookup columns 0)}}}]:
+        rows = self._conn.execute(
+            {{{quote sqlQuery}}}, {{> params}}
+        ).fetchall()
+        return [r[0] for r in rows]
+
+    def {{functionName}}_raw(self{{#each variables}}, {{name}}: {{{type}}}{{/each}}) -> list[tuple[Any, ...]]:
+        return self._conn.execute(
+            {{{quote sqlQuery}}}, {{> params}}
+        ).fetchall()
+
+{{/if}}
+{{else}}
+{{#if isOne}}
+    def {{functionName}}(self{{#each variables}}, {{name}}: {{{type}}}{{/each}}) -> {{{rowType}}} | None:
+        row = self._conn.execute(
+            {{{quote sqlQuery}}}, {{> params}}
+        ).fetchone()
+        if row is None:
+            return None
+        return {{{constructRow this}}}
+
+    def {{functionName}}_raw(self{{#each variables}}, {{name}}: {{{type}}}{{/each}}) -> tuple[Any, ...] | None:
+        return self._conn.execute(
+            {{{quote sqlQuery}}}, {{> params}}
+        ).fetchone()
+
+{{else}}
+    def {{functionName}}(self{{#each variables}}, {{name}}: {{{type}}}{{/each}}) -> list[{{{rowType}}}]:
+        rows = self._conn.execute(
+            {{{quote sqlQuery}}}, {{> params}}
+        ).fetchall()
+        return [{{{constructRow this}}} for row in rows]
+
+    def {{functionName}}_raw(self{{#each variables}}, {{name}}: {{{type}}}{{/each}}) -> list[tuple[Any, ...]]:
+        return self._conn.execute(
+            {{{quote sqlQuery}}}, {{> params}}
+        ).fetchall()
+
+{{/if}}
+{{/if}}
+{{else}}
+    def {{functionName}}(self{{#each variables}}, {{name}}: {{{type}}}{{/each}}) -> None:
+        self._conn.execute(
+            {{{quote sqlQuery}}}, {{> params}}
+        )
+
+{{/if}}
+{{/unless}}
+{{/each}}
+{{#if (isDuckDB)}}
+{{#if tables.length}}
+    # ==================== Appenders ====================
+{{#each tables}}
+
+    def {{functionName}}(self) -> {{className}}:
+        return {{className}}(self._conn.cursor())
+
+{{/each}}
+{{/if}}
+{{/if}}
+
+{{#if (isDuckDB)}}
+{{#each tables}}
+
+@dataclass(frozen=True)
+class {{rowTypeName}}:
+{{#each columns}}
+    {{pyVarName name}}: {{{pyType this}}}
+{{/each}}
+
+
+class {{className}}:
+    def __init__(self, cursor: duckdb.DuckDBPyConnection) -> None:
+        self._cursor = cursor
+
+    def append(self, row: {{rowTypeName}}) -> {{className}}:
+        self._cursor.execute(
+            "INSERT INTO {{tableName}} VALUES ({{> placeholders}})",
+            [{{#each columns}}row.{{pyVarName name}}{{#unless @last}}, {{/unless}}{{/each}}],
+        )
+        return self
+
+    def append_many(self, rows: list[{{rowTypeName}}]) -> {{className}}:
+        for row in rows:
+            self.append(row)
+        return self
+
+    def close(self) -> None:
+        self._cursor.close()
+
+{{/each}}
+{{/if}}
+
+{{!-- ==================== Inline partials ==================== --}}
+
+{{#*inline "params"}}{{#if (isDuckDB)}}[{{#each parameterNames}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}]{{else}}({{#each parameterNames}}{{this}}, {{/each}}){{/if}}{{/inline}}
+
+
+{{#*inline "placeholders"}}{{#each columns}}${{plusOne @index}}{{#unless @last}}, {{/unless}}{{/each}}{{/inline}}

@@ -7,3 +7,7 @@ dist
 .idea
 build/
 .gradle
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/

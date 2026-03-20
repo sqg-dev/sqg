@@ -18,7 +18,7 @@ describe("sqg-pg", () => {
   describe("processProjectPostgres", () => {
     it("handle postgres correctly", async () => {
       const files = await processProject("tests/test-pg.yaml");
-      expect(files.map((file) => basename(file))).toEqual(["TestPg.java", "TestPg.java"]);
+      expect(files.map((file) => basename(file))).toEqual(["TestPg.java", "TestPg.java", "test_pg.py"]);
 
       // Only snapshot the first file (/tmp/TestPg.java with com.test package)
       // The second file (java/src/main/java/sqg/generated/TestPg.java) is for Java tests

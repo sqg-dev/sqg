@@ -46,3 +46,6 @@ SELECT * FROM users WHERE name = ${name}
 
 @set name = 'name'
 SELECT * FROM users WHERE name = ${name}
+
+-- QUERY reserved_word_test :one
+SELECT name as class, email as type FROM users WHERE id = '1'

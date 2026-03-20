@@ -15,5 +15,9 @@ sql:
           config:
             package: com.test.db
             migrations: true
+        - generator: python/sqlite
+          output: ../python/generated/
+          config:
+            migrations: true
 
 

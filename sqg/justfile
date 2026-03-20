@@ -1,42 +1,101 @@
-all: build-duckdb build-duckdb-arrow build-pg build-sqlite build-sources
-  echo "All done"
+# List available recipes
+[private]
+default:
+  @just --list --unsorted
 
-all-ci: build-duckdb build-duckdb-arrow build-pg build-sqlite build-sources
-  echo "All done"
+# ─── Test ────────────────────────────────────────────────────────
 
-test-all: all
+# Generate all targets and run full test suite (vitest + Java + Python)
+[group("test")]
+test-all: generate
   pnpm test:run
   cd java && ./gradlew test --rerun
+  cd python && uv run pytest tests/ -v
 
+# Run vitest snapshot tests
+[group("test")]
+test-vitest:
+  pnpm test:run
+
+# Run Java integration tests (requires generated code)
+[group("test")]
+test-java:
+  cd java && ./gradlew test --rerun
+
+# Run Python integration tests (requires generated code)
+[group("test")]
+test-python:
+  cd python && uv run pytest tests/ -v
+
+# ─── Code Generation ────────────────────────────────────────────
+
+# Generate all code from test SQL files
+[group("generate")]
+generate: build-duckdb build-duckdb-arrow build-pg build-sqlite build-sources
+
+# Generate all code (CI alias)
+[group("generate")]
+generate-ci: generate
+
+# Generate DuckDB JDBC test code
+[group("generate")]
 build-duckdb:
   pnpm sqg tests/test-duckdb.yaml
 
+# Generate DuckDB Arrow test code
+[group("generate")]
 build-duckdb-arrow:
   pnpm sqg tests/test-duckdb-arrow.yaml
 
+# Generate PostgreSQL test code
+[group("generate")]
 build-pg:
   pnpm sqg tests/test-pg.yaml
 
+# Generate SQLite test code
+[group("generate")]
 build-sqlite:
   pnpm sqg tests/test-sqlite.yaml
 
+# Generate source-file test code
+[group("generate")]
 build-sources: create-users-sqlite
   pnpm sqg tests/test-sources.yaml
 
-start-pg:
-  docker run --name sqg-postgres -p 15432:5432 -e POSTGRES_PASSWORD=secret -e POSTGRES_USER=sqg -e POSTGRES_DB=sqg-db -d postgres:16-alpine
+# ─── Services ───────────────────────────────────────────────────
 
+# Start a local PostgreSQL container for testing
+[group("services")]
+start-pg:
+  docker run --name sqg-postgres -p 15432:5432 \
+    -e POSTGRES_PASSWORD=secret \
+    -e POSTGRES_USER=sqg \
+    -e POSTGRES_DB=sqg-db \
+    -d postgres:16-alpine
+
+# Stop and remove the PostgreSQL container
+[group("services")]
 stop-pg:
   docker stop sqg-postgres
   docker rm sqg-postgres
 
+# ─── Utilities ──────────────────────────────────────────────────
+
+# Create test SQLite database for source tests
+[group("util")]
 create-users-sqlite:
   cd tests && rm -f users.sqlite && duckdb < users.sql
 
+# Build and install sqg globally
+[group("util")]
 install:
   pnpm build
   pnpm add --global $(pwd)
 
+# ─── Release ────────────────────────────────────────────────────
+
+# Bump version, commit, tag, and push
+[group("release")]
 release:
   #!/bin/bash
   pnpm version minor

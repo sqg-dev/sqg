@@ -8,6 +8,7 @@ import {
 import { InvalidGeneratorError } from "../errors.js";
 import { JavaDuckDBArrowGenerator } from "./java-duckdb-arrow-generator.js";
 import { JavaGenerator } from "./java-generator.js";
+import { PythonGenerator } from "./python-generator.js";
 import type { Generator } from "./types.js";
 import { TsDuckDBGenerator } from "./typescript-duckdb-generator.js";
 import { TsGenerator } from "./typescript-generator.js";
@@ -15,6 +16,7 @@ import { TsGenerator } from "./typescript-generator.js";
 export { BaseGenerator } from "./base-generator.js";
 export { JavaDuckDBArrowGenerator } from "./java-duckdb-arrow-generator.js";
 export { JavaGenerator } from "./java-generator.js";
+export { PythonGenerator } from "./python-generator.js";
 export type { Generator } from "./types.js";
 export { TsDuckDBGenerator } from "./typescript-duckdb-generator.js";
 export { TsGenerator } from "./typescript-generator.js";
@@ -43,6 +45,12 @@ export function getGenerator(generator: string): Generator {
         return new JavaGenerator(`templates/${info.template}`);
       case "java/arrow":
         return new JavaDuckDBArrowGenerator(`templates/${info.template}`);
+      case "python/sqlite3":
+        return new PythonGenerator(`templates/${info.template}`, "sqlite");
+      case "python/duckdb":
+        return new PythonGenerator(`templates/${info.template}`, "duckdb");
+      case "python/psycopg":
+        return new PythonGenerator(`templates/${info.template}`, "postgres");
       default:
         // This shouldn't happen if GENERATORS is properly configured
         throw new Error(`No generator class for ${key}`);
