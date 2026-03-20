@@ -172,10 +172,18 @@ public class TestDuckdb {
             id integer primary key not null,
             message text not null,
             created_at timestamptz not null
+        );""",
+        """
+        CREATE TYPE task_priority AS ENUM ('low', 'medium', 'high', 'critical');
+
+        CREATE TABLE tasks (
+            id integer primary key not null,
+            title text not null,
+            priority task_priority not null
         );"""
     );
 
-    private static final List<String> migrationIds = List.of("1", "2");
+    private static final List<String> migrationIds = List.of("1", "2", "3");
 
     public static List<String> getMigrations() {
         return migrations;
@@ -240,6 +248,37 @@ public class TestDuckdb {
             throw e;
         } finally {
             connection.setAutoCommit(wasAutoCommit);
+        }
+    }
+
+    public enum TaskPriority {
+        LOW("low"),
+        MEDIUM("medium"),
+        HIGH("high"),
+        CRITICAL("critical");
+
+        private final String value;
+        private static final java.util.Map<String, TaskPriority> BY_VALUE =
+            java.util.Map.ofEntries(
+                java.util.Arrays.stream(values())
+                    .map(v -> java.util.Map.entry(v.value, v))
+                    .toArray(java.util.Map.Entry[]::new)
+            );
+
+        TaskPriority(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public static TaskPriority fromValue(String value) {
+            TaskPriority result = BY_VALUE.get(value);
+            if (result == null) throw new IllegalArgumentException(
+                "Unknown value: " + value
+            );
+            return result;
         }
     }
 
@@ -2289,6 +2328,178 @@ public class TestDuckdb {
                         (Integer) rs.getObject(1),
                         (String) rs.getObject(2),
                         (OffsetDateTime) rs.getObject(3)
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    public int insertTask(Integer id, String title, TaskPriority priority)
+        throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "INSERT INTO tasks (id, title, priority) VALUES (?,?,?);"
+            )
+        ) {
+            stmt.setObject(1, id);
+            stmt.setObject(2, title);
+            stmt.setObject(3, priority.getValue());
+
+            return stmt.executeUpdate();
+        }
+    }
+
+    public record GetTasksByPriorityResult(
+        Integer id,
+        String title,
+        TaskPriority priority
+    ) {}
+
+    public List<GetTasksByPriorityResult> getTasksByPriority(
+        TaskPriority priority
+    ) throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "SELECT id, title, priority FROM tasks WHERE priority =?;"
+            )
+        ) {
+            stmt.setObject(1, priority.getValue());
+
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<GetTasksByPriorityResult>();
+                while (rs.next()) {
+                    results.add(
+                        new GetTasksByPriorityResult(
+                            (Integer) rs.getObject(1),
+                            (String) rs.getObject(2),
+                            TaskPriority.fromValue((String) rs.getObject(3))
+                        )
+                    );
+                }
+                return results;
+            }
+        }
+    }
+
+    public Stream<GetTasksByPriorityResult> getTasksByPriorityStream(
+        TaskPriority priority
+    ) throws SQLException {
+        var stmt = connection.prepareStatement(
+            "SELECT id, title, priority FROM tasks WHERE priority =?;"
+        );
+        stmt.setObject(1, priority.getValue());
+
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<GetTasksByPriorityResult>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public GetTasksByPriorityResult next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new GetTasksByPriorityResult(
+                        (Integer) rs.getObject(1),
+                        (String) rs.getObject(2),
+                        TaskPriority.fromValue((String) rs.getObject(3))
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    public record GetAllTasksResult(
+        Integer id,
+        String title,
+        TaskPriority priority
+    ) {}
+
+    public List<GetAllTasksResult> getAllTasks() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "SELECT id, title, priority FROM tasks;"
+            )
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<GetAllTasksResult>();
+                while (rs.next()) {
+                    results.add(
+                        new GetAllTasksResult(
+                            (Integer) rs.getObject(1),
+                            (String) rs.getObject(2),
+                            TaskPriority.fromValue((String) rs.getObject(3))
+                        )
+                    );
+                }
+                return results;
+            }
+        }
+    }
+
+    public Stream<GetAllTasksResult> getAllTasksStream() throws SQLException {
+        var stmt = connection.prepareStatement(
+            "SELECT id, title, priority FROM tasks;"
+        );
+
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<GetAllTasksResult>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public GetAllTasksResult next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new GetAllTasksResult(
+                        (Integer) rs.getObject(1),
+                        (String) rs.getObject(2),
+                        TaskPriority.fromValue((String) rs.getObject(3))
                     );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);

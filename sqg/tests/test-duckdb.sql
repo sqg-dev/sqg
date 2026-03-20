@@ -213,3 +213,26 @@ select * from log_entries;
 -- TABLE events :appender
 
 -- TABLE log_entries :appender
+
+-- MIGRATE 3
+
+CREATE TYPE task_priority AS ENUM ('low', 'medium', 'high', 'critical');
+
+CREATE TABLE tasks (
+    id integer primary key not null,
+    title text not null,
+    priority task_priority not null
+);
+
+-- EXEC insert_task
+@set id = 1
+@set title = 'Test Task'
+@set priority = 'high'
+INSERT INTO tasks (id, title, priority) VALUES (${id}, ${title}, ${priority});
+
+-- QUERY get_tasks_by_priority
+@set priority = 'high'
+SELECT id, title, priority FROM tasks WHERE priority = ${priority};
+
+-- QUERY get_all_tasks
+SELECT id, title, priority FROM tasks;

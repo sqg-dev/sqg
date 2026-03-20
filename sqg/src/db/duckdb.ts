@@ -14,6 +14,13 @@ import { type ColumnType, EnumType, ListType, MapType, StructType } from "../sql
 import type { ProgressReporter } from "../ui.js";
 import { type DatabaseEngine, initializeDatabase } from "./types.js";
 
+/** Cache of enum type names, keyed by stringified sorted values for lookup */
+let enumNameCache = new Map<string, string>();
+
+function enumCacheKey(values: readonly string[]): string {
+  return values.join("\0");
+}
+
 function convertType(type: DuckDBType): ColumnType {
   if (type instanceof DuckDBListType) {
     return new ListType(convertType(type.valueType));
@@ -42,7 +49,8 @@ function convertType(type: DuckDBType): ColumnType {
     );
   }
   if (type instanceof DuckDBEnumType) {
-    return new EnumType(type.values);
+    const name = type.alias ?? enumNameCache.get(enumCacheKey(type.values));
+    return new EnumType(type.values, name);
   }
 
   return type.toString();
@@ -73,6 +81,28 @@ export const duckdb = new (class implements DatabaseEngine {
       },
       reporter,
     );
+
+    // Load enum type cache (so user-defined ENUMs get proper names)
+    await this.loadEnumCache();
+  }
+
+  private async loadEnumCache() {
+    enumNameCache = new Map();
+    try {
+      const result = await this.connection.runAndReadAll(
+        "SELECT type_name, labels FROM duckdb_types() WHERE logical_type = 'ENUM' AND internal = false",
+      );
+      for (const row of result.getRows()) {
+        const typeName = row[0] as string;
+        const labels = row[1] as { items: string[] };
+        if (typeName && labels?.items) {
+          enumNameCache.set(enumCacheKey(labels.items), typeName);
+        }
+      }
+      consola.debug("DuckDB enum types:", Object.fromEntries(enumNameCache));
+    } catch (e) {
+      consola.debug("Failed to load DuckDB enum types:", (e as Error).message);
+    }
   }
 
   async executeQueries(queries: SQLQuery[], reporter?: ProgressReporter) {
@@ -130,7 +160,15 @@ export const duckdb = new (class implements DatabaseEngine {
       }
 
       for (let i = 0; i < stmt.parameterCount; i++) {
-        stmt.bindValue(i + 1, statement.parameters[i].value);
+        let value: string | number = statement.parameters[i].value;
+        // Strip surrounding quotes from string values (same as PostgreSQL adapter)
+        if (
+          (value.startsWith("'") && value.endsWith("'")) ||
+          (value.startsWith('"') && value.endsWith('"'))
+        ) {
+          value = value.slice(1, -1);
+        }
+        stmt.bindValue(i + 1, value);
       }
 
       // Get column information for queries
@@ -209,5 +247,6 @@ export const duckdb = new (class implements DatabaseEngine {
 
   close() {
     this.connection.closeSync();
+    enumNameCache = new Map();
   }
 })();

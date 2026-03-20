@@ -147,6 +147,52 @@ class DuckDbTest {
     }
 
     @Test
+    void enumInsertAndRoundTrip() throws SQLException {
+        Connection conn = DriverManager.getConnection("jdbc:duckdb:");
+        TestDuckdb duckdb = new TestDuckdb(conn);
+        TestDuckdb.applyMigrations(conn);
+
+        // Insert with enum parameter
+        duckdb.insertTask(1, "Important Task", TestDuckdb.TaskPriority.HIGH);
+        duckdb.insertTask(2, "Minor Task", TestDuckdb.TaskPriority.LOW);
+
+        // Read back all tasks
+        var allTasks = duckdb.getAllTasks();
+        assertThat(allTasks).hasSize(2);
+        assertThat(allTasks.get(0).priority()).isEqualTo(TestDuckdb.TaskPriority.HIGH);
+        assertThat(allTasks.get(1).priority()).isEqualTo(TestDuckdb.TaskPriority.LOW);
+
+        // Query by enum parameter
+        var highTasks = duckdb.getTasksByPriority(TestDuckdb.TaskPriority.HIGH);
+        assertThat(highTasks).hasSize(1);
+        assertThat(highTasks.getFirst().title()).isEqualTo("Important Task");
+        assertThat(highTasks.getFirst().priority()).isEqualTo(TestDuckdb.TaskPriority.HIGH);
+    }
+
+    @Test
+    void enumAllValues() {
+        // Verify all enum values exist and map correctly
+        assertThat(TestDuckdb.TaskPriority.values()).hasSize(4);
+        assertThat(TestDuckdb.TaskPriority.fromValue("low")).isEqualTo(TestDuckdb.TaskPriority.LOW);
+        assertThat(TestDuckdb.TaskPriority.fromValue("medium")).isEqualTo(TestDuckdb.TaskPriority.MEDIUM);
+        assertThat(TestDuckdb.TaskPriority.fromValue("high")).isEqualTo(TestDuckdb.TaskPriority.HIGH);
+        assertThat(TestDuckdb.TaskPriority.fromValue("critical")).isEqualTo(TestDuckdb.TaskPriority.CRITICAL);
+
+        // getValue round-trips
+        for (var v : TestDuckdb.TaskPriority.values()) {
+            assertThat(TestDuckdb.TaskPriority.fromValue(v.getValue())).isEqualTo(v);
+        }
+    }
+
+    @Test
+    void enumFromValueThrowsOnUnknown() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                () -> TestDuckdb.TaskPriority.fromValue("nonexistent"))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unknown value: nonexistent");
+    }
+
+    @Test
     void streamClosesResources() throws SQLException {
         Connection conn = DriverManager.getConnection("jdbc:duckdb:");
         TestDuckdb duckdb = new TestDuckdb(conn);

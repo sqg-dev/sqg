@@ -259,6 +259,18 @@ class AllLogEntriesRow:
     message: str | None
     created_at: datetime.datetime | None
 
+@dataclass(frozen=True)
+class GetTasksByPriorityRow:
+    id: int | None
+    title: str | None
+    priority: str | None
+
+@dataclass(frozen=True)
+class GetAllTasksRow:
+    id: int | None
+    title: str | None
+    priority: str | None
+
 
 class TestDuckdb:
     def __init__(self, conn: duckdb.DuckDBPyConnection) -> None:
@@ -295,6 +307,14 @@ create table if not exists log_entries (
     id integer primary key not null,
     message text not null,
     created_at timestamptz not null
+);""",
+            """\
+CREATE TYPE task_priority AS ENUM ('low', 'medium', 'high', 'critical');
+
+CREATE TABLE tasks (
+    id integer primary key not null,
+    title text not null,
+    priority task_priority not null
 );""",
         ]
 
@@ -345,6 +365,14 @@ create table if not exists log_entries (
     id integer primary key not null,
     message text not null,
     created_at timestamptz not null
+);"""),
+                ("3", """\
+CREATE TYPE task_priority AS ENUM ('low', 'medium', 'high', 'critical');
+
+CREATE TABLE tasks (
+    id integer primary key not null,
+    title text not null,
+    priority task_priority not null
 );"""),
             ]
             for mid, sql in migrations:
@@ -763,6 +791,33 @@ select a:[1,2,3] ,b:2, c: {'x' : [{'a' : 1}], 'y' : {'z' : 3}}""", []
     def all_log_entries_raw(self) -> list[tuple[Any, ...]]:
         return self._conn.execute(
             "select * from log_entries;", []
+        ).fetchall()
+
+    def insert_task(self, id: int, title: str, priority: str) -> None:
+        self._conn.execute(
+            "INSERT INTO tasks (id, title, priority) VALUES ($1,$2,$3);", [id, title, priority]
+        )
+
+    def get_tasks_by_priority(self, priority: str) -> list[GetTasksByPriorityRow]:
+        rows = self._conn.execute(
+            "SELECT id, title, priority FROM tasks WHERE priority =$1;", [priority]
+        ).fetchall()
+        return [GetTasksByPriorityRow(id=row[0], title=row[1], priority=row[2]) for row in rows]
+
+    def get_tasks_by_priority_raw(self, priority: str) -> list[tuple[Any, ...]]:
+        return self._conn.execute(
+            "SELECT id, title, priority FROM tasks WHERE priority =$1;", [priority]
+        ).fetchall()
+
+    def get_all_tasks(self) -> list[GetAllTasksRow]:
+        rows = self._conn.execute(
+            "SELECT id, title, priority FROM tasks;", []
+        ).fetchall()
+        return [GetAllTasksRow(id=row[0], title=row[1], priority=row[2]) for row in rows]
+
+    def get_all_tasks_raw(self) -> list[tuple[Any, ...]]:
+        return self._conn.execute(
+            "SELECT id, title, priority FROM tasks;", []
         ).fetchall()
 
     # ==================== Appenders ====================

@@ -52,6 +52,13 @@ create table if not exists events (
     message text not null,
     created_at timestamptz not null
 );`,
+      `CREATE TYPE task_priority AS ENUM ('low', 'medium', 'high', 'critical');
+
+CREATE TABLE tasks (
+    id integer primary key not null,
+    title text not null,
+    priority task_priority not null
+);`,
     ];
   }
 
@@ -104,6 +111,16 @@ create table if not exists events (
     id integer primary key not null,
     message text not null,
     created_at timestamptz not null
+);`,
+        ],
+        [
+          "3",
+          `CREATE TYPE task_priority AS ENUM ('low', 'medium', 'high', 'critical');
+
+CREATE TABLE tasks (
+    id integer primary key not null,
+    title text not null,
+    priority task_priority not null
 );`,
         ],
       ];
@@ -159,6 +176,9 @@ create table if not exists events (
       ["insert_event", "insertEvent"],
       ["all_events", "allEvents"],
       ["all_log_entries", "allLogEntries"],
+      ["insert_task", "insertTask"],
+      ["get_tasks_by_priority", "getTasksByPriority"],
+      ["get_all_tasks", "getAllTasks"],
     ]);
   }
 
@@ -1413,6 +1433,49 @@ select * from test_all_types();`;
       id: number | null;
       message: string | null;
       created_at: { micros: bigint } | null;
+    }[];
+  }
+
+  async insertTask(
+    id: number,
+    title: string,
+    priority: string,
+  ): Promise<DuckDBMaterializedResult> {
+    const sql = "INSERT INTO tasks (id, title, priority) VALUES ( ?, ?, ?);";
+    return await this.conn.run(sql, [id, title, priority]);
+  }
+
+  async getTasksByPriority(
+    priority: string,
+  ): Promise<
+    {
+      id: number | null;
+      title: string | null;
+      priority: "low" | "medium" | "high" | "critical" | null;
+    }[]
+  > {
+    const sql = "SELECT id, title, priority FROM tasks WHERE priority =?;";
+    const reader = await this.conn.runAndReadAll(sql, [priority]);
+    return reader.getRowObjects() as {
+      id: number | null;
+      title: string | null;
+      priority: "low" | "medium" | "high" | "critical" | null;
+    }[];
+  }
+
+  async getAllTasks(): Promise<
+    {
+      id: number | null;
+      title: string | null;
+      priority: "low" | "medium" | "high" | "critical" | null;
+    }[]
+  > {
+    const sql = "SELECT id, title, priority FROM tasks;";
+    const reader = await this.conn.runAndReadAll(sql, []);
+    return reader.getRowObjects() as {
+      id: number | null;
+      title: string | null;
+      priority: "low" | "medium" | "high" | "critical" | null;
     }[];
   }
 
