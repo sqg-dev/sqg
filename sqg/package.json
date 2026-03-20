@@ -4,7 +4,7 @@
   "description": "SQG - SQL Query Generator - Type-safe code generation from SQL (https://sqg.dev)",
   "type": "module",
   "bin": {
-    "sqg": "./dist/sqg.mjs"
+    "sqg": "dist/sqg.mjs"
   },
   "files": [
     "dist"
