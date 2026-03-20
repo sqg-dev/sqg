@@ -41,7 +41,7 @@ jobs:
 
       - name: Publish to npm
         working-directory: sqg
-        run: pnpm publish --no-git-checks --provenance --access public
+        run: npm publish --provenance --access public
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
