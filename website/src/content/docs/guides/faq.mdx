@@ -7,7 +7,7 @@ description: Frequently asked questions about SQG
 
 ### What is SQG?
 
-SQG (SQL Query Generator) is a build-time tool that generates type-safe database access code from annotated SQL files. You write SQL queries with simple comment annotations, and SQG generates TypeScript or Java code with full type safety.
+SQG (SQL Query Generator) is a build-time tool that generates type-safe database access code from annotated SQL files. You write SQL queries with simple comment annotations, and SQG generates TypeScript, Java, or Python code with full type safety.
 
 ### How is this different from an ORM?
 
@@ -42,6 +42,7 @@ Currently supported:
 Currently supported:
 - **TypeScript** - for SQLite (better-sqlite3) and DuckDB
 - **Java** - via JDBC (any database) or DuckDB Arrow API
+- **Python** - for SQLite (sqlite3), DuckDB, and PostgreSQL (psycopg3) with frozen dataclasses
 
 Adding new languages is straightforward with custom Handlebars templates.
 

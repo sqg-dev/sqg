@@ -1,0 +1,306 @@
+---
+title: Python
+description: Generate type-safe Python code for SQLite, DuckDB, and PostgreSQL
+---
+
+import { Steps } from '@astrojs/starlight/components';
+
+Generate type-safe Python code with frozen dataclasses for SQLite, DuckDB, and PostgreSQL. Zero external dependencies beyond your database driver.
+
+## Overview
+
+| Property | SQLite | DuckDB | PostgreSQL |
+|----------|--------|--------|------------|
+| Generator | `python/sqlite` | `python/duckdb` | `python/postgres` |
+| Driver | `sqlite3` (stdlib) | `duckdb` | `psycopg` (psycopg3) |
+| Param Style | `?` | `$1, $2` | `%s` |
+| API Style | Synchronous | Synchronous | Synchronous |
+
+## When to Use
+
+Choose the Python generators when:
+
+- Building **Python applications** with SQLite, DuckDB, or PostgreSQL
+- Want **frozen dataclasses** for immutable, hashable result types
+- Need both **typed methods** (returning dataclasses) and **raw methods** (returning tuples) for flexibility
+- Want **zero runtime dependencies** beyond your database driver
+
+## Installation
+
+SQG itself is a Node.js tool. Your Python project only needs the database driver:
+
+```bash
+# Install SQG (Node.js)
+pnpm add -g @sqg/sqg
+
+# Install Python driver (pick one)
+pip install duckdb       # for python/duckdb
+pip install psycopg      # for python/postgres
+# sqlite3 is included in Python's standard library
+```
+
+## Example Configuration
+
+```yaml
+# sqg.yaml
+version: 1
+name: my-app
+
+sql:
+  - files:
+      - queries.sql
+    gen:
+      # SQLite
+      - generator: python/sqlite
+        output: ./src/generated/
+        config:
+          migrations: true
+
+      # DuckDB
+      - generator: python/duckdb
+        output: ./src/generated/
+
+      # PostgreSQL
+      - generator: python/postgres
+        output: ./src/generated/
+        config:
+          migrations: true
+```
+
+## Quick Start (SQLite)
+
+<Steps>
+
+1. **Initialize a project**
+
+   ```bash
+   sqg init --generator python/sqlite
+   ```
+
+2. **Write your SQL**
+
+   ```sql
+   -- MIGRATE 1
+   CREATE TABLE users (
+       id INTEGER PRIMARY KEY,
+       name TEXT NOT NULL,
+       email TEXT UNIQUE
+   );
+
+   -- QUERY get_user :one
+   @set id = 1
+   SELECT * FROM users WHERE id = ${id};
+
+   -- QUERY all_users
+   SELECT * FROM users;
+
+   -- EXEC create_user
+   @set name = 'Alice'
+   @set email = 'alice@example.com'
+   INSERT INTO users (name, email) VALUES (${name}, ${email});
+   ```
+
+3. **Generate code**
+
+   ```bash
+   sqg sqg.yaml
+   ```
+
+4. **Use the generated code**
+
+   ```python
+   import sqlite3
+   from generated.my_app import MyApp
+
+   # Create database connection
+   conn = sqlite3.connect("app.db")
+
+   # Apply migrations (with built-in tracking)
+   MyApp.apply_migrations(conn)
+
+   # Create query instance
+   db = MyApp(conn)
+
+   # Insert data
+   db.create_user(name="Alice", email="alice@example.com")
+   db.create_user(name="Bob", email="bob@example.com")
+
+   # Query data — returns frozen dataclasses
+   users = db.all_users()
+   print(users[0].name)  # "Alice"
+
+   user = db.get_user(id=1)
+   print(user.email)  # "alice@example.com"
+
+   # Raw variant — returns plain tuples
+   rows = db.all_users_raw()
+   print(rows[0])  # (1, "Alice", "alice@example.com")
+   ```
+
+</Steps>
+
+## Generated Code Structure
+
+The generator creates a single `.py` file with:
+
+- **`from __future__ import annotations`** for `X | None` union syntax
+- **Frozen dataclass** for each query result type (immutable, hashable)
+- **A class** with typed methods for each query/exec
+- **`_raw` methods** for each query returning plain tuples
+- **Static `get_migrations()`** returning migration SQL strings
+- **Static `apply_migrations()`** (when `config.migrations: true`)
+- **Appender classes** for DuckDB bulk inserts
+
+### Example Generated Code
+
+For this SQL:
+
+```sql
+-- QUERY get_user :one
+@set id = 1
+SELECT id, name, email FROM users WHERE id = ${id};
+```
+
+SQG generates:
+
+```python
+from __future__ import annotations
+import sqlite3
+from dataclasses import dataclass
+from typing import Any
+
+@dataclass(frozen=True)
+class GetUserRow:
+    id: int
+    name: str
+    email: str | None
+
+class MyApp:
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._conn = conn
+
+    def get_user(self, id: int) -> GetUserRow | None:
+        row = self._conn.execute(
+            "SELECT id, name, email FROM users WHERE id = ?", (id, )
+        ).fetchone()
+        if row is None:
+            return None
+        return GetUserRow(id=row[0], name=row[1], email=row[2])
+
+    def get_user_raw(self, id: int) -> tuple[Any, ...] | None:
+        return self._conn.execute(
+            "SELECT id, name, email FROM users WHERE id = ?", (id, )
+        ).fetchone()
+```
+
+## Typed vs Raw Methods
+
+Every `QUERY` generates two methods:
+
+| Method | Returns | Use when |
+|--------|---------|----------|
+| `get_user()` | `GetUserRow \| None` | You want named fields and type safety |
+| `get_user_raw()` | `tuple[Any, ...] \| None` | You want maximum performance or need to pass data directly |
+
+`EXEC` queries only generate a single method (they return nothing).
+
+## Python Reserved Words
+
+Column names that are Python keywords (like `class`, `import`, `from`) are automatically suffixed with `_`:
+
+```python
+@dataclass(frozen=True)
+class MyRow:
+    class_: str    # SQL column named "class"
+    import_: str   # SQL column named "import"
+    name: str      # not a keyword, used as-is
+```
+
+## Type Mapping
+
+| SQL Type | Python Type |
+|----------|-------------|
+| `INTEGER`, `INT`, `BIGINT`, `SMALLINT`, `SERIAL` | `int` |
+| `REAL`, `DOUBLE`, `FLOAT` | `float` |
+| `TEXT`, `VARCHAR`, `UUID` | `str` |
+| `BOOLEAN`, `BOOL` | `bool` |
+| `BLOB`, `BYTEA` | `bytes` |
+| `DATE` | `datetime.date` |
+| `TIMESTAMP`, `DATETIME`, `TIMESTAMPTZ` | `datetime.datetime` |
+| `TIME` | `datetime.time` |
+| `NUMERIC`, `DECIMAL` | `Decimal` |
+| `JSON`, `JSONB` | `Any` |
+
+Nullable columns use union syntax: `str | None`
+
+DuckDB complex types:
+- `LIST` → `list[T]`
+- `MAP` → `dict[K, V]`
+- `STRUCT` → nested frozen dataclass
+
+## DuckDB Appenders
+
+For DuckDB, the `TABLE :appender` annotation generates bulk insert classes:
+
+```sql
+-- TABLE users :appender
+```
+
+```python
+from generated.my_app import MyApp, UsersAppender, UsersRow
+
+db = MyApp(conn)
+appender = db.create_users_appender()
+appender.append(UsersRow(id=1, name="Alice", email="alice@example.com"))
+appender.append_many([
+    UsersRow(id=2, name="Bob", email="bob@example.com"),
+    UsersRow(id=3, name="Charlie", email="charlie@example.com"),
+])
+appender.close()
+```
+
+## PostgreSQL Usage
+
+The PostgreSQL generator uses psycopg3 with `%s` parameter placeholders:
+
+```python
+import psycopg
+from generated.my_app import MyApp
+
+conn = psycopg.connect("host=localhost dbname=mydb user=myuser", autocommit=True)
+MyApp.apply_migrations(conn)
+
+db = MyApp(conn)
+db.create_user(name="Alice", email="alice@example.com")
+user = db.get_user(id=1)
+```
+
+## Migrations
+
+With `config.migrations: true`, SQG generates `apply_migrations()` which tracks applied migrations in a `_sqg_migrations` table:
+
+```python
+# SQLite
+MyApp.apply_migrations(conn)
+
+# DuckDB
+MyApp.apply_migrations(conn)
+
+# PostgreSQL
+MyApp.apply_migrations(conn)
+```
+
+Multiple SQG projects can share the same database — migrations are tracked per project name.
+
+## Best Practices
+
+1. **Use frozen dataclasses** — they're immutable and hashable, safe to use as dict keys or in sets
+2. **Use `_raw` methods** when you need maximum performance and don't need named fields
+3. **Run migrations on startup** before creating the query instance
+4. **Use `autocommit=True`** with psycopg3 for simpler connection management
+
+## See Also
+
+- [sqlite3 documentation](https://docs.python.org/3/library/sqlite3.html)
+- [DuckDB Python API](https://duckdb.org/docs/api/python/overview)
+- [psycopg3 documentation](https://www.psycopg.org/psycopg3/docs/)

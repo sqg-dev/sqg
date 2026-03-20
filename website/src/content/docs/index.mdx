@@ -1,6 +1,6 @@
 ---
 title: SQG - Compile SQL to Type-Safe Code
-description: Generate type-safe database code from SQL queries for TypeScript and Java
+description: Generate type-safe database code from SQL queries for TypeScript, Java, and Python
 template: splash
 hero:
   tagline: Write SQL. Get type-safe code. Ship faster.
@@ -38,6 +38,11 @@ findUser(email: string): User | undefined
 public UserRow findUser(String email) throws SQLException
 ```
 
+```python
+# Python
+def find_user(self, email: str) -> FindUserRow | None
+```
+
 No ORMs. No query builders. Just SQL and types.
 
 <CardGrid stagger>
@@ -50,7 +55,7 @@ No ORMs. No query builders. Just SQL and types.
   <Card title="Multiple Databases" icon="server">
     SQLite, DuckDB, and PostgreSQL. Same annotations work across all engines.
   </Card>
-  <Card title="TypeScript & Java" icon="setting">
+  <Card title="TypeScript, Java & Python" icon="setting">
     Generate code for multiple languages from the same SQL definitions.
   </Card>
 </CardGrid>
@@ -86,6 +91,7 @@ SQG is for developers who want the safety of typed code without giving up contro
 | [`typescript/duckdb`](/generators/typescript-duckdb/) | DuckDB | TypeScript (async) |
 | [`java/sqlite`](/generators/java-jdbc/), [`java/duckdb`](/generators/java-jdbc/), [`java/postgres`](/generators/java-jdbc/) | SQLite, DuckDB, PostgreSQL | Java (JDBC) |
 | [`java/duckdb/arrow`](/generators/java-duckdb-arrow/) | DuckDB | Java (Arrow API) |
+| [`python/sqlite`](/generators/python/), [`python/duckdb`](/generators/python/), [`python/postgres`](/generators/python/) | SQLite, DuckDB, PostgreSQL | Python |
 
 ## Get Started
 

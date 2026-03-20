@@ -50,6 +50,7 @@ export default defineConfig({
             { label: "TypeScript + DuckDB", slug: "generators/typescript-duckdb" },
             { label: "Java + JDBC", slug: "generators/java-jdbc" },
             { label: "Java + DuckDB Arrow", slug: "generators/java-duckdb-arrow" },
+            { label: "Python", slug: "generators/python" },
           ],
         },
         {

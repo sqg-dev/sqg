@@ -78,6 +78,9 @@ The wizard walks you through choosing a generator, project name, and output dire
 │  ○ java/sqlite
 │  ○ java/duckdb
 │  ○ java/postgres
+│  ○ python/sqlite
+│  ○ python/duckdb
+│  ○ python/postgres
 │
 ◆  Output directory
 │  ./generated
@@ -201,16 +204,19 @@ Generators follow the format `<language>/<engine>[/<driver>]`:
 | `java/duckdb` | Java with JDBC for DuckDB | [Java + JDBC](/generators/java-jdbc/) |
 | `java/duckdb/arrow` | Java with Arrow API (high-performance) | [Java + DuckDB Arrow](/generators/java-duckdb-arrow/) |
 | `java/postgres` | Java with JDBC for PostgreSQL | [Java + JDBC](/generators/java-jdbc/) |
+| `python/sqlite` | Python for SQLite (sqlite3) | [Python](/generators/python/) |
+| `python/duckdb` | Python for DuckDB | [Python](/generators/python/) |
+| `python/postgres` | Python for PostgreSQL (psycopg3) | [Python](/generators/python/) |
 
 See individual generator documentation for configuration options, type mappings, and usage examples.
 
 ## Database Engines
 
-| Engine | Description | TypeScript | Java |
-|--------|-------------|------------|------|
-| `sqlite` | Embedded, no server required | [typescript/sqlite](/generators/typescript-sqlite/) | [java/sqlite](/generators/java-jdbc/) |
-| `duckdb` | Analytics, complex types | [typescript/duckdb](/generators/typescript-duckdb/) | [java/duckdb](/generators/java-jdbc/), [java/duckdb/arrow](/generators/java-duckdb-arrow/) |
-| `postgres` | Full-featured SQL server | — | [java/postgres](/generators/java-jdbc/) |
+| Engine | Description | TypeScript | Java | Python |
+|--------|-------------|------------|------|--------|
+| `sqlite` | Embedded, no server required | [typescript/sqlite](/generators/typescript-sqlite/) | [java/sqlite](/generators/java-jdbc/) | [python/sqlite](/generators/python/) |
+| `duckdb` | Analytics, complex types | [typescript/duckdb](/generators/typescript-duckdb/) | [java/duckdb](/generators/java-jdbc/), [java/duckdb/arrow](/generators/java-duckdb-arrow/) | [python/duckdb](/generators/python/) |
+| `postgres` | Full-featured SQL server | — | [java/postgres](/generators/java-jdbc/) | [python/postgres](/generators/python/) |
 
 **Notes:**
 - SQLite and DuckDB use in-memory databases for type introspection (no server needed)
@@ -302,6 +308,7 @@ See the [CLI Reference](/reference/cli/) for complete documentation including al
   - [TypeScript + DuckDB](/generators/typescript-duckdb/) - Async API with complex types
   - [Java + JDBC](/generators/java-jdbc/) - Standard JDBC for any database
   - [Java + DuckDB Arrow](/generators/java-duckdb-arrow/) - High-performance Arrow API
+  - [Python](/generators/python/) - SQLite, DuckDB, and PostgreSQL with frozen dataclasses
 - [SQL Syntax Reference](/guides/sql-syntax/) - Complete annotation reference
 - [CLI Reference](/reference/cli/) - Full command-line documentation
 - [Playground](/playground/) - Try SQG in your browser
