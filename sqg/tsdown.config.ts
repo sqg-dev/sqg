@@ -9,14 +9,23 @@ const pkg = JSON.parse(readFileSync(join(here, "package.json"), "utf-8")) as {
 	description?: string;
 };
 
-export default defineConfig({
-	entry: ["src/sqg.ts"],
-	format: "esm",
-	define: {
-		__SQG_VERSION__: JSON.stringify(pkg.version),
-		__SQG_DESCRIPTION__: JSON.stringify(pkg.description ?? "SQG - SQL Query Generator"),
+const sharedDefine = {
+	__SQG_VERSION__: JSON.stringify(pkg.version),
+	__SQG_DESCRIPTION__: JSON.stringify(pkg.description ?? "SQG - SQL Query Generator"),
+};
+
+export default defineConfig([
+	{
+		entry: ["src/sqg.ts"],
+		format: "esm",
+		define: sharedDefine,
+		banner: {
+			js: "#!/usr/bin/env node",
+		},
 	},
-	banner: {
-		js: "#!/usr/bin/env node",
+	{
+		entry: ["src/index.ts"],
+		format: "esm",
+		define: sharedDefine,
 	},
-});
+]);
