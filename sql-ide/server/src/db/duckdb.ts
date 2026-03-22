@@ -51,7 +51,12 @@ export function createDuckDBAdapter(): DatabaseAdapter {
         ? `SELECT * FROM (${sql.trim().replace(/;$/, '')}) AS _limited_query LIMIT ${MAX_ROWS}`
         : sql;
 
-      const result = await conn.runAndReadAll(limitedSql);
+      const result = await Promise.race([
+        conn.runAndReadAll(limitedSql),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Query timed out after 30 seconds')), 30_000)
+        ),
+      ]);
       const columnNames = result.columnNames();
       const columnTypes = result.columnTypes();
 

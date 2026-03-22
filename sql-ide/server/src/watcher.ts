@@ -2,7 +2,7 @@ import { watch, type FSWatcher } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { parseProject } from './sqg/parser';
 
-let watcher: FSWatcher | null = null;
+let watchers: FSWatcher[] = [];
 let watchedFiles: string[] = [];
 let lastChangeFile: string | null = null;
 let lastChangeTime: string | null = null;
@@ -42,9 +42,7 @@ export function startWatching(configPath: string): WatchStatus {
             console.log(`[watcher] File changed: ${fileName} (change #${changeCounter})`);
           }
         });
-
-        // Store the first watcher reference for cleanup
-        if (!watcher) watcher = w;
+        watchers.push(w);
       } catch (err) {
         console.error(`[watcher] Failed to watch ${file}:`, err);
       }
@@ -60,10 +58,10 @@ export function startWatching(configPath: string): WatchStatus {
 
 /** Stop watching all files */
 export function stopWatching() {
-  if (watcher) {
-    watcher.close();
-    watcher = null;
+  for (const w of watchers) {
+    w.close();
   }
+  watchers = [];
   watchedFiles = [];
 }
 
