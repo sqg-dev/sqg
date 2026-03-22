@@ -26,7 +26,8 @@
   },
   "scripts": {
     "prepublishOnly": "pnpm run build",
-    "build": "tsc --noEmit && tsdown && cp -r src/templates dist",
+    "build": "tsc --noEmit && tsdown && cp -r src/templates dist && pnpm run build:ide",
+    "build:ide": "cd ../sql-ide/frontend && npx vite build && cd ../server && npx tsdown && cd ../../sqg && cp ../sql-ide/server/dist/index.mjs dist/ide-server.mjs && cp -r ../sql-ide/frontend/dist dist/ide-public",
     "lezer-gen": "lezer-generator src/parser/sql.grammar -o src/parser/sql-parser.ts",
     "test-grammar": "tsx src/test-grammar.ts",
     "check": "biome check --write src/",

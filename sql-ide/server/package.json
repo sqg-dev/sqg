@@ -8,8 +8,8 @@
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js",
+    "build": "tsdown",
+    "start": "node dist/index.mjs",
     "test": "vitest",
     "test:run": "vitest run"
   },
@@ -30,6 +30,7 @@
     "@types/better-sqlite3": "^7.6.13",
     "pino-pretty": "^13.1.3",
     "tsx": "^4.19.1",
+    "tsdown": "^0.18.0",
     "typescript": "^5.3.3",
     "vitest": "^4.0.16"
   }

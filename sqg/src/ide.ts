@@ -5,52 +5,40 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-/**
- * Find the sql-ide directory relative to the sqg package.
- * Works both in development (source) and when installed.
- */
-function findIdeDir(): string | null {
-	// Development: sqg/src/ide.ts → sqg/ → repo root → sql-ide/
-	const devPath = join(__dirname, "../../sql-ide");
-	if (existsSync(join(devPath, "server/src/index.ts"))) {
-		return devPath;
-	}
-
-	// Installed: check sibling directory
-	const installedPath = join(__dirname, "../sql-ide");
-	if (existsSync(join(installedPath, "server/src/index.ts"))) {
-		return installedPath;
-	}
-
-	return null;
-}
-
 export interface IdeOptions {
 	project?: string;
 	port?: number;
 }
 
 export async function startIde(options: IdeOptions): Promise<void> {
-	const ideDir = findIdeDir();
-	if (!ideDir) {
-		console.error(
-			"SQL IDE not found. The IDE requires the sql-ide directory in the SQG repository.",
-		);
-		console.error("Clone the full repo: git clone https://github.com/sqg-dev/sqg.git");
+	const port = options.port ?? 3000;
+
+	// Find the IDE server — try bundled first, then dev source
+	const bundledServer = join(__dirname, "ide-server.mjs");
+	const devServer = join(__dirname, "../../sql-ide/server/src/index.ts");
+
+	let serverPath: string;
+	let args: string[];
+
+	if (existsSync(bundledServer)) {
+		// Production: use bundled server (no tsx needed)
+		serverPath = bundledServer;
+		args = [serverPath];
+	} else if (existsSync(devServer)) {
+		// Development: use tsx to run TypeScript source
+		serverPath = devServer;
+		args = ["--import", "tsx/esm", serverPath];
+	} else {
+		console.error("SQL IDE server not found.");
+		console.error("Expected bundled server at:", bundledServer);
+		console.error("Or dev server at:", devServer);
 		process.exit(1);
 	}
 
-	const serverEntry = join(ideDir, "server/src/index.ts");
-	const port = options.port ?? 3000;
-
-	// Build args for the server process
-	const args = ["--import", "tsx/esm", serverEntry];
 	if (options.project) {
-		const projectPath = resolve(options.project);
-		args.push(`--project=${projectPath}`);
+		args.push(`--project=${resolve(options.project)}`);
 	}
 
-	// Set environment
 	const env = { ...process.env, PORT: String(port) };
 
 	console.log(`Starting SQG IDE on http://localhost:${port}`);
@@ -61,7 +49,6 @@ export async function startIde(options: IdeOptions): Promise<void> {
 	const child = spawn("node", args, {
 		stdio: "inherit",
 		env,
-		cwd: ideDir,
 	});
 
 	// Open browser after server starts
@@ -91,7 +78,6 @@ export async function startIde(options: IdeOptions): Promise<void> {
 		process.exit(0);
 	});
 
-	// Wait for child to exit
 	await new Promise<void>((resolve, reject) => {
 		child.on("exit", (code) => {
 			if (code === 0 || code === null) resolve();
