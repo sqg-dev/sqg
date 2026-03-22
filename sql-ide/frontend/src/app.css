@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@theme {
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* CodeMirror theme overrides */
+.cm-editor {
+  height: 100%;
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+
+.cm-editor .cm-scroller {
+  overflow: auto;
+}
+
+.cm-editor.cm-focused {
+  outline: none;
+}
+
+/* Dark theme for CodeMirror */
+.cm-editor {
+  background-color: #1e1e2e;
+  color: #cdd6f4;
+}
+
+.cm-editor .cm-gutters {
+  background-color: #181825;
+  border-right: 1px solid #313244;
+  color: #6c7086;
+}
+
+.cm-editor .cm-activeLineGutter {
+  background-color: #313244;
+}
+
+.cm-editor .cm-activeLine {
+  background-color: rgba(69, 71, 90, 0.3);
+}
+
+.cm-editor .cm-selectionBackground {
+  background-color: #45475a !important;
+}
+
+.cm-editor .cm-cursor {
+  border-left-color: #f5e0dc;
+}
+
+/* Svelte Flow overrides */
+.svelte-flow {
+  background-color: #1e1e2e;
+}
+
+/* Results table */
+.results-table {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.results-table th {
+  background-color: #181825;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.results-table tr:hover td {
+  background-color: rgba(69, 71, 90, 0.3);
+}

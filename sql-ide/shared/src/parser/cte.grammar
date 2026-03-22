@@ -1,0 +1,73 @@
+// CTE Parser Grammar for Lezer
+// Run: pnpm lezer-gen
+//
+// This grammar extracts CTE structure from SQL queries.
+
+@top Query {
+  item*
+}
+
+item {
+  WithClause | Token
+}
+
+Token {
+  Comment | String | Paren | Word | Punct
+}
+
+WithClause {
+  With Recursive? Comment* CTEDef (Comma Comment* CTEDef)*
+}
+
+CTEDef {
+  CTEName As NotMaterialized? CTEBody
+}
+
+CTEName { Word }
+
+NotMaterialized {
+  Not Materialized | Materialized
+}
+
+// CTEBody is a paren expression - shares structure with Paren
+CTEBody {
+  "(" ParenContent ")"
+}
+
+Paren {
+  "(" ParenContent ")"
+}
+
+ParenContent {
+  parenItem*
+}
+
+parenItem {
+  Comment | String | Paren | Word | Punct | Comma
+}
+
+@skip { space }
+
+@tokens {
+  space { $[ \t\n\r]+ }
+
+  With { $[Ww] $[Ii] $[Tt] $[Hh] }
+  Recursive { $[Rr] $[Ee] $[Cc] $[Uu] $[Rr] $[Ss] $[Ii] $[Vv] $[Ee] }
+  As { $[Aa] $[Ss] }
+  Not { $[Nn] $[Oo] $[Tt] }
+  Materialized { $[Mm] $[Aa] $[Tt] $[Ee] $[Rr] $[Ii] $[Aa] $[Ll] $[Ii] $[Zz] $[Ee] $[Dd] }
+
+  Word { $[a-zA-Z_] $[a-zA-Z0-9_]* }
+  String { "'" (!['] | "''")* "'" }
+  Comment { "--" ![\n]* | "/*" (![*] | "*" ![/])* "*/" }
+  Comma { "," }
+  Punct { ![a-zA-Z_0-9() \t\n\r',] }
+
+  @precedence { With, Word }
+  @precedence { Recursive, Word }
+  @precedence { As, Word }
+  @precedence { Not, Word }
+  @precedence { Materialized, Word }
+  @precedence { Comment, Punct }
+  @precedence { String, Punct }
+}

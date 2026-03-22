@@ -5,9 +5,7 @@
   "type": "module",
   "main": "dist/index.mjs",
   "exports": {
-    ".": {
-      "import": "./dist/index.mjs"
-    }
+    ".": "./dist/index.mjs"
   },
   "bin": {
     "sqg": "dist/sqg.mjs"

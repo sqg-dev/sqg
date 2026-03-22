@@ -260,6 +260,17 @@ program
     console.log(SQL_SYNTAX_REFERENCE);
   });
 
+// IDE command
+program
+  .command("ide")
+  .description("Start the SQG IDE — interactive SQL development environment")
+  .argument("[project]", "Path to sqg.yaml project config")
+  .option("-p, --port <port>", "Server port", "3000")
+  .action(async (project: string | undefined, options: { port: string }) => {
+    const { startIde } = await import("./ide.js");
+    await startIde({ project, port: parseInt(options.port, 10) });
+  });
+
 // MCP server command
 program
   .command("mcp")
