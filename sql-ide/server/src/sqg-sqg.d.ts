@@ -38,6 +38,8 @@ declare module '@sqg/sqg' {
 
   export function getGeneratorEngine(generator: string): string;
 
+  export function initProject(options: { dir?: string; generator?: string }): Promise<void>;
+
   export interface ExtraVariable {
     name: string;
     path: string;

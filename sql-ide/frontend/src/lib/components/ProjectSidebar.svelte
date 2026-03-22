@@ -6,7 +6,7 @@
   function handleQueryClick(query: SqgQuery) {
     projectState.selectQuery(query.id);
     // Load the query SQL into the editor
-    queryState.setSQL(query.rawSql);
+    queryState.setSQL(query.sql);
   }
 
   function handleRunMigrations() {

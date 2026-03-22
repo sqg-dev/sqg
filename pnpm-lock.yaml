@@ -468,6 +468,9 @@ importers:
       '@types/node':
         specifier: ^25.0.10
         version: 25.5.0
+      '@types/pg':
+        specifier: ^8.16.0
+        version: 8.16.0
       pino-pretty:
         specifier: ^13.1.3
         version: 13.1.3
