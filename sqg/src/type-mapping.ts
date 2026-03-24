@@ -377,6 +377,14 @@ export class JavaTypeMapper extends TypeMapper {
       const elementType = this.typeMap[baseType] || "Object";
       return `arrayToList((Array)${value}, ${elementType}[].class)`;
     }
+    // JDBC drivers may return wider numeric types than expected (e.g., Integer for SMALLINT).
+    // Use Number conversion methods instead of direct casts for narrower integer types.
+    if (fieldType === "Short") {
+      return `${value} != null ? ((Number)${value}).shortValue() : null`;
+    }
+    if (fieldType === "Byte") {
+      return `${value} != null ? ((Number)${value}).byteValue() : null`;
+    }
     return `(${fieldType})${value}`;
   }
 

@@ -109,6 +109,17 @@ SELECT priority_scores FROM tasks WHERE id = 1;
 @set priority_scores = '{1,2}'
 INSERT INTO tasks (title, status, tags, priority_scores) VALUES (${title}, ${status}::task_status, ${tags}, ${priority_scores});
 
+-- TESTDATA seed_bigint
+INSERT INTO bigint_test (id, small_id, regular_id, amount, name) VALUES (1, 42, 100, 9999999999, 'test');
+
+-- EXEC insert_bigint_record
+@set id = 2
+@set small_id = 7
+@set regular_id = 200
+@set amount = 1234567890
+@set name = 'inserted'
+INSERT INTO bigint_test (id, small_id, regular_id, amount, name) VALUES (${id}, ${small_id}, ${regular_id}, ${amount}, ${name});
+
 -- QUERY get_bigint_record :one
 @set id = 1
 SELECT id, serial_id, small_id, regular_id, amount, name FROM bigint_test WHERE id = ${id};

@@ -1928,7 +1928,8 @@ public class TestDuckdb {
         Object fixedStructArray,
         StructOfFixedArrayResult structOfFixedArray,
         Object fixedArrayOfIntList,
-        List<Object> listOfFixedIntArray
+        List<Object> listOfFixedIntArray,
+        String timeNs
     ) {
         public record StructResult(Integer a, String b) {
             private static StructResult fromAttributes(Object[] v) {
@@ -1973,13 +1974,19 @@ public class TestDuckdb {
                     results.add(
                         new TestAllTypesResult(
                             (Boolean) rs.getObject(1),
-                            (Byte) rs.getObject(2),
-                            (Short) rs.getObject(3),
+                            rs.getObject(2) != null
+                                ? ((Number) rs.getObject(2)).byteValue()
+                                : null,
+                            rs.getObject(3) != null
+                                ? ((Number) rs.getObject(3)).shortValue()
+                                : null,
                             (Integer) rs.getObject(4),
                             (Long) rs.getObject(5),
                             (BigInteger) rs.getObject(6),
                             (BigInteger) rs.getObject(7),
-                            (Short) rs.getObject(8),
+                            rs.getObject(8) != null
+                                ? ((Number) rs.getObject(8)).shortValue()
+                                : null,
                             (Integer) rs.getObject(9),
                             (Long) rs.getObject(10),
                             (BigInteger) rs.getObject(11),
@@ -2061,7 +2068,8 @@ public class TestDuckdb {
                             arrayToList(
                                 (Array) rs.getObject(54),
                                 Object[].class
-                            )
+                            ),
+                            (String) rs.getObject(55)
                         )
                     );
                 }
@@ -2098,13 +2106,19 @@ public class TestDuckdb {
                 try {
                     return new TestAllTypesResult(
                         (Boolean) rs.getObject(1),
-                        (Byte) rs.getObject(2),
-                        (Short) rs.getObject(3),
+                        rs.getObject(2) != null
+                            ? ((Number) rs.getObject(2)).byteValue()
+                            : null,
+                        rs.getObject(3) != null
+                            ? ((Number) rs.getObject(3)).shortValue()
+                            : null,
                         (Integer) rs.getObject(4),
                         (Long) rs.getObject(5),
                         (BigInteger) rs.getObject(6),
                         (BigInteger) rs.getObject(7),
-                        (Short) rs.getObject(8),
+                        rs.getObject(8) != null
+                            ? ((Number) rs.getObject(8)).shortValue()
+                            : null,
                         (Integer) rs.getObject(9),
                         (Long) rs.getObject(10),
                         (BigInteger) rs.getObject(11),
@@ -2172,7 +2186,8 @@ public class TestDuckdb {
                             getAttr((Struct) rs.getObject(52))
                         ),
                         (Object) rs.getObject(53),
-                        arrayToList((Array) rs.getObject(54), Object[].class)
+                        arrayToList((Array) rs.getObject(54), Object[].class),
+                        (String) rs.getObject(55)
                     );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);

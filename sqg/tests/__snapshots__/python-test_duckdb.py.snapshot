@@ -246,6 +246,7 @@ class TestAllTypesRow:
     struct_of_fixed_array: StructOfFixedArrayStruct | None
     fixed_array_of_int_list: Any | None
     list_of_fixed_int_array: list[Any | None] | None
+    time_ns: Any | None
 
 @dataclass(frozen=True)
 class AllEventsRow:
@@ -759,7 +760,7 @@ select a:[1,2,3] ,b:2, c: {'x' : [{'a' : 1}], 'y' : {'z' : 3}}""", []
         rows = self._conn.execute(
             "select * from test_all_types();", []
         ).fetchall()
-        return [TestAllTypesRow(bool=row[0], tinyint=row[1], smallint=row[2], int=row[3], bigint=row[4], hugeint=row[5], uhugeint=row[6], utinyint=row[7], usmallint=row[8], uint=row[9], ubigint=row[10], bignum=row[11], date=row[12], time=row[13], timestamp=row[14], timestamp_s=row[15], timestamp_ms=row[16], timestamp_ns=row[17], time_tz=row[18], timestamp_tz=row[19], float=row[20], double=row[21], dec_4_1=row[22], dec_9_4=row[23], dec_18_6=row[24], dec_38_10=row[25], uuid=row[26], interval=row[27], varchar=row[28], blob=row[29], bit=row[30], small_enum=row[31], medium_enum=row[32], large_enum=row[33], int_array=row[34], double_array=row[35], date_array=row[36], timestamp_array=row[37], timestamptz_array=row[38], varchar_array=row[39], nested_int_array=row[40], struct=StructStruct(a=row[41]["a"], b=row[41]["b"]), struct_of_arrays=StructOfArraysStruct(a=row[42]["a"], b=row[42]["b"]), array_of_structs=row[43], map=row[44], union=row[45], fixed_int_array=row[46], fixed_varchar_array=row[47], fixed_nested_int_array=row[48], fixed_nested_varchar_array=row[49], fixed_struct_array=row[50], struct_of_fixed_array=StructOfFixedArrayStruct(a=row[51]["a"], b=row[51]["b"]), fixed_array_of_int_list=row[52], list_of_fixed_int_array=row[53]) for row in rows]
+        return [TestAllTypesRow(bool=row[0], tinyint=row[1], smallint=row[2], int=row[3], bigint=row[4], hugeint=row[5], uhugeint=row[6], utinyint=row[7], usmallint=row[8], uint=row[9], ubigint=row[10], bignum=row[11], date=row[12], time=row[13], timestamp=row[14], timestamp_s=row[15], timestamp_ms=row[16], timestamp_ns=row[17], time_tz=row[18], timestamp_tz=row[19], float=row[20], double=row[21], dec_4_1=row[22], dec_9_4=row[23], dec_18_6=row[24], dec_38_10=row[25], uuid=row[26], interval=row[27], varchar=row[28], blob=row[29], bit=row[30], small_enum=row[31], medium_enum=row[32], large_enum=row[33], int_array=row[34], double_array=row[35], date_array=row[36], timestamp_array=row[37], timestamptz_array=row[38], varchar_array=row[39], nested_int_array=row[40], struct=StructStruct(a=row[41]["a"], b=row[41]["b"]), struct_of_arrays=StructOfArraysStruct(a=row[42]["a"], b=row[42]["b"]), array_of_structs=row[43], map=row[44], union=row[45], fixed_int_array=row[46], fixed_varchar_array=row[47], fixed_nested_int_array=row[48], fixed_nested_varchar_array=row[49], fixed_struct_array=row[50], struct_of_fixed_array=StructOfFixedArrayStruct(a=row[51]["a"], b=row[51]["b"]), fixed_array_of_int_list=row[52], list_of_fixed_int_array=row[53], time_ns=row[54]) for row in rows]
 
     def test_all_types_raw(self) -> list[tuple[Any, ...]]:
         return self._conn.execute(

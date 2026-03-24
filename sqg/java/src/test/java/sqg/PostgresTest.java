@@ -213,6 +213,33 @@ class PostgresTest {
     }
 
     @Test
+    void testSmallintInsertAndSelect() throws SQLException {
+        try (Connection conn = postgres.createConnection("")) {
+            TestPg pg = new TestPg(conn);
+            TestPg.applyMigrations(conn);
+
+            // Insert a record with a smallint value
+            pg.insertBigintRecord(1L, (short) 42, 100, 9999999999L, "test");
+
+            // Select it back — this previously threw ClassCastException
+            // because PostgreSQL JDBC returns Integer for smallint columns
+            var result = pg.getBigintRecord(1L);
+            assertThat(result).isNotNull();
+            assertThat(result.smallId()).isEqualTo((short) 42);
+            assertThat(result.regularId()).isEqualTo(100);
+            assertThat(result.amount()).isEqualTo(9999999999L);
+            assertThat(result.name()).isEqualTo("test");
+
+            // Test null smallint
+            pg.insertBigintRecord(2L, null, null, 0L, "null-test");
+            var nullResult = pg.getBigintRecord(2L);
+            assertThat(nullResult).isNotNull();
+            assertThat(nullResult.smallId()).isNull();
+            assertThat(nullResult.regularId()).isNull();
+        }
+    }
+
+    @Test
     void testStreamReturnsAllRows() throws SQLException {
         try (Connection conn = postgres.createConnection("")) {
             TestPg pg = new TestPg(conn);

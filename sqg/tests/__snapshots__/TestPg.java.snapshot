@@ -816,6 +816,28 @@ public class TestPg {
         }
     }
 
+    public int insertBigintRecord(
+        Long id,
+        Short small_id,
+        Integer regular_id,
+        Long amount,
+        String name
+    ) throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "INSERT INTO bigint_test (id, small_id, regular_id, amount, name) VALUES (?,?,?,?,?);"
+            )
+        ) {
+            stmt.setObject(1, id);
+            stmt.setObject(2, small_id);
+            stmt.setObject(3, regular_id);
+            stmt.setObject(4, amount);
+            stmt.setObject(5, name);
+
+            return stmt.executeUpdate();
+        }
+    }
+
     public record GetBigintRecordResult(
         Long id,
         Long serialId,
@@ -838,7 +860,9 @@ public class TestPg {
                     ? new GetBigintRecordResult(
                           (Long) rs.getObject(1),
                           (Long) rs.getObject(2),
-                          (Short) rs.getObject(3),
+                          rs.getObject(3) != null
+                              ? ((Number) rs.getObject(3)).shortValue()
+                              : null,
                           (Integer) rs.getObject(4),
                           (Long) rs.getObject(5),
                           (String) rs.getObject(6)

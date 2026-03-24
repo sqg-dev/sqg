@@ -1009,6 +1009,7 @@ select props: MAP { [1] : 2 }`;
       list_of_fixed_int_array: {
         items: ({ items: (number | null)[] } | null)[];
       };
+      time_ns: string | null;
     }[]
   > {
     const sql = ` 
@@ -1388,6 +1389,7 @@ select * from test_all_types();`;
       list_of_fixed_int_array: {
         items: ({ items: (number | null)[] } | null)[];
       };
+      time_ns: string | null;
     }[];
   }
 
