@@ -9,6 +9,8 @@ export interface ColumnInfo {
   name: string;
   type: ColumnType;
   nullable: boolean;
+  /** Whether this column is auto-generated (SERIAL, IDENTITY, etc.) — excluded from bulk insert appenders */
+  generated?: boolean;
 }
 
 export type ColumnType = string | IsColumnType;
@@ -432,9 +434,10 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
       // Handle TABLE annotations specially - they declare tables for appender generation
       if (queryType === "TABLE") {
         const hasAppender = modifiers.includes(":appender");
-        // For TABLE, the SQL block contains the table name (optional)
-        // If empty, use the identifier as both the name and table name
-        const tableName = sqlContentStr.trim() || name;
+        // For TABLE, only the first non-empty line is used as the optional table name override.
+        // Everything else (subsequent comments, blank lines) is ignored.
+        const firstLine = sqlContentStr.split("\n").map((l) => l.trim()).find((l) => l.length > 0);
+        const tableName = firstLine || name;
 
         // Parse column list from modifiers like :appender(col1,col2)
         const includeColumns: string[] = [];

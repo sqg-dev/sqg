@@ -262,7 +262,7 @@ public class {{className}} {
         return new {{className}}(((DuckDBConnection) connection).createAppender(DuckDBConnection.DEFAULT_SCHEMA, "{{tableName}}"));
     }
 {{else if (isPostgres)}}
-    /** Bulk insert rows into {{tableName}} using PostgreSQL COPY BINARY (via PgBulkInsert) */
+    /** Bulk insert rows into {{tableName}} using PostgreSQL COPY BINARY (via PgBulkInsert). */
     public void bulkInsert{{rowTypeName}}(Iterable<{{rowTypeName}}> rows) throws SQLException, IOException {
         {{constantName}}_WRITER.saveAll(connection, "{{tableName}}", rows);
     }
@@ -276,7 +276,7 @@ public class {{className}} {
 {{#if (isPostgres)}}
 public record {{rowTypeName}}({{#each columns}}{{{appenderType this}}} {{javaVarName name}}{{#unless @last}}, {{/unless}}{{/each}}) {}
 {{else}}
-public record {{rowTypeName}}({{#each columns}}{{{appenderType this}}} {{name}}{{#unless @last}}, {{/unless}}{{/each}}) {}
+public record {{rowTypeName}}({{#each columns}}{{{appenderType this}}} {{javaVarName name}}{{#unless @last}}, {{/unless}}{{/each}}) {}
 {{/if}}
 
 {{#if (isDuckDB)}}
@@ -297,17 +297,17 @@ public static class {{className}} implements AutoCloseable {
     public {{className}} append({{rowTypeName}} row) throws SQLException {
         appender.beginRow();
         {{#each columns}}
-        appender.append(row.{{name}}());
+        appender.append(row.{{javaVarName name}}());
         {{/each}}
         appender.endRow();
         return this;
     }
 
     /** Append a single row with individual values */
-    public {{className}} append({{#each columns}}{{{appenderType this}}} {{name}}{{#unless @last}}, {{/unless}}{{/each}}) throws SQLException {
+    public {{className}} append({{#each columns}}{{{appenderType this}}} {{javaVarName name}}{{#unless @last}}, {{/unless}}{{/each}}) throws SQLException {
         appender.beginRow();
         {{#each columns}}
-        appender.append({{name}});
+        appender.append({{javaVarName name}});
         {{/each}}
         appender.endRow();
         return this;

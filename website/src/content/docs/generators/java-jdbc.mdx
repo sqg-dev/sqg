@@ -286,6 +286,81 @@ for (var task : queries.getAllTasks()) {
 }
 ```
 
+### Bulk Inserts (PostgreSQL)
+
+The `TABLE :appender` annotation generates high-performance bulk insert methods for PostgreSQL using [PgBulkInsert](https://github.com/bytefish/PgBulkInsert), which uses PostgreSQL's COPY BINARY protocol — the fastest way to insert data.
+
+**Additional dependency required:**
+
+```groovy
+// Gradle
+implementation 'de.bytefish:pgbulkinsert:9.0.0'
+```
+
+```xml
+<!-- Maven -->
+<dependency>
+    <groupId>de.bytefish</groupId>
+    <artifactId>pgbulkinsert</artifactId>
+    <version>9.0.0</version>
+</dependency>
+```
+
+The dependency is only needed when you use `-- TABLE ... :appender`. If you don't use appenders, there's no extra dependency.
+
+**SQL:**
+
+```sql
+-- MIGRATE 1
+CREATE TABLE events (
+    id BIGINT PRIMARY KEY,
+    name TEXT NOT NULL,
+    tags TEXT[],
+    scores INTEGER[],
+    created_at TIMESTAMPTZ
+);
+
+-- TABLE events :appender
+```
+
+**Generated code:**
+
+```java
+// Type-safe row record
+public record EventsRow(
+    Long id, String name, List<String> tags,
+    List<Integer> scores, OffsetDateTime createdAt
+) {}
+
+// Static mapper and writer (zero per-call allocation)
+private static final PgBulkInsert.PgMapper<EventsRow> EVENTS_MAPPER = ...;
+private static final PgBulkInsert.PgBulkWriter<EventsRow> EVENTS_WRITER = ...;
+
+// Generated bulk insert method
+public void bulkInsertEventsRow(Iterable<EventsRow> rows)
+    throws SQLException, IOException { ... }
+```
+
+**Usage:**
+
+```java
+var rows = List.of(
+    new MyApp.EventsRow(1L, "signup", List.of("web"), List.of(10), OffsetDateTime.now()),
+    new MyApp.EventsRow(2L, "login", null, null, OffsetDateTime.now()),
+    new MyApp.EventsRow(3L, "purchase", List.of("mobile", "premium"), List.of(5, 8), null)
+);
+
+queries.bulkInsertEventsRow(rows);
+```
+
+**Supported column types:** All standard PostgreSQL types including `BOOLEAN`, `SMALLINT`, `INTEGER`, `BIGINT`, `REAL`, `DOUBLE PRECISION`, `NUMERIC`, `TEXT`, `VARCHAR`, `DATE`, `TIMESTAMP`, `TIMESTAMPTZ`, `UUID`, `JSONB`, and array types (`TEXT[]`, `INTEGER[]`, `BIGINT[]`, etc.).
+
+:::note
+SERIAL and IDENTITY columns are automatically excluded from the generated row type. PostgreSQL auto-generates their values during COPY, keeping sequences in sync.
+:::
+
+DuckDB also supports appenders via the `TABLE :appender` annotation — see the [DuckDB-specific appender docs](/generators/typescript-duckdb/#bulk-inserts-with-appenders) for details.
+
 ### TIMESTAMPTZ Support
 
 PostgreSQL `TIMESTAMPTZ` columns are mapped to `OffsetDateTime` (with UTC offset):

@@ -176,7 +176,7 @@ export class JavaTypeMapper extends TypeMapper {
   };
 
   // Java reserved keywords that cannot be used as identifiers
-  private static javaReservedKeywords = new Set([
+  static javaReservedKeywords = new Set([
     "abstract",
     "assert",
     "boolean",

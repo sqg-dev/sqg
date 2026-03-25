@@ -51,6 +51,12 @@ CREATE TABLE all_types_test (
     big_arr BIGINT[]
 );
 
+CREATE TABLE identity_test (
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name TEXT NOT NULL,
+    value INTEGER
+);
+
 CREATE TYPE tricky_enum AS ENUM ('hello', 'HELLO', ' hello', ' hello ', 'hello_1');
 
 CREATE TABLE tricky_test (
@@ -179,6 +185,11 @@ SELECT id, label FROM uuid_test WHERE id = ${id}::uuid;
 -- TABLE tasks :appender
 
 -- TABLE all_types_test :appender
+
+-- TABLE identity_test :appender
+
+-- QUERY get_identity_records
+SELECT * FROM identity_test ORDER BY id;
 
 -- QUERY get_all_types_record :one
 @set id = 1

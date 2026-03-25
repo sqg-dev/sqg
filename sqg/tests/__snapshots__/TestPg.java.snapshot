@@ -197,6 +197,12 @@ public class TestPg {
             big_arr BIGINT[]
         );
 
+        CREATE TABLE identity_test (
+            id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+            name TEXT NOT NULL,
+            value INTEGER
+        );
+
         CREATE TYPE tricky_enum AS ENUM ('hello', 'HELLO', ' hello', ' hello ', 'hello_1');
 
         CREATE TABLE tricky_test (
@@ -1038,6 +1044,83 @@ public class TestPg {
         }
     }
 
+    public record GetIdentityRecordsResult(
+        Integer id,
+        String name,
+        Integer value
+    ) {}
+
+    public List<GetIdentityRecordsResult> getIdentityRecords()
+        throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "SELECT * FROM identity_test ORDER BY id;"
+            )
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<GetIdentityRecordsResult>();
+                while (rs.next()) {
+                    results.add(
+                        new GetIdentityRecordsResult(
+                            (Integer) rs.getObject(1),
+                            (String) rs.getObject(2),
+                            (Integer) rs.getObject(3)
+                        )
+                    );
+                }
+                return results;
+            }
+        }
+    }
+
+    public Stream<GetIdentityRecordsResult> getIdentityRecordsStream()
+        throws SQLException {
+        var stmt = connection.prepareStatement(
+            "SELECT * FROM identity_test ORDER BY id;"
+        );
+
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<GetIdentityRecordsResult>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public GetIdentityRecordsResult next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new GetIdentityRecordsResult(
+                        (Integer) rs.getObject(1),
+                        (String) rs.getObject(2),
+                        (Integer) rs.getObject(3)
+                    );
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     public record GetAllTypesRecordResult(
         Integer id,
         Boolean boolVal,
@@ -1108,28 +1191,33 @@ public class TestPg {
 
     // ==================== Appenders ====================
 
-    /** Bulk insert rows into bigint_test using PostgreSQL COPY BINARY (via PgBulkInsert) */
+    /** Bulk insert rows into bigint_test using PostgreSQL COPY BINARY (via PgBulkInsert). */
     public void bulkInsertBigintTestRow(Iterable<BigintTestRow> rows)
         throws SQLException, IOException {
         BIGINT_TEST_WRITER.saveAll(connection, "bigint_test", rows);
     }
 
-    /** Bulk insert rows into tasks using PostgreSQL COPY BINARY (via PgBulkInsert) */
+    /** Bulk insert rows into tasks using PostgreSQL COPY BINARY (via PgBulkInsert). */
     public void bulkInsertTasksRow(Iterable<TasksRow> rows)
         throws SQLException, IOException {
         TASKS_WRITER.saveAll(connection, "tasks", rows);
     }
 
-    /** Bulk insert rows into all_types_test using PostgreSQL COPY BINARY (via PgBulkInsert) */
+    /** Bulk insert rows into all_types_test using PostgreSQL COPY BINARY (via PgBulkInsert). */
     public void bulkInsertAllTypesTestRow(Iterable<AllTypesTestRow> rows)
         throws SQLException, IOException {
         ALL_TYPES_TEST_WRITER.saveAll(connection, "all_types_test", rows);
     }
 
+    /** Bulk insert rows into identity_test using PostgreSQL COPY BINARY (via PgBulkInsert). */
+    public void bulkInsertIdentityTestRow(Iterable<IdentityTestRow> rows)
+        throws SQLException, IOException {
+        IDENTITY_TEST_WRITER.saveAll(connection, "identity_test", rows);
+    }
+
     /** Row type for bigint_test appender */
     public record BigintTestRow(
         Long id,
-        Long serialId,
         Short smallId,
         Integer regularId,
         Long amount,
@@ -1140,10 +1228,6 @@ public class TestPg {
         BigintTestRow
     > BIGINT_TEST_MAPPER = PgBulkInsert.PgMapper.forClass(BigintTestRow.class)
         .map("id", PgBulkInsert.PostgresTypes.INT8.from(BigintTestRow::id))
-        .map(
-            "serial_id",
-            PgBulkInsert.PostgresTypes.INT8.from(BigintTestRow::serialId)
-        )
         .map(
             "small_id",
             PgBulkInsert.PostgresTypes.INT2.from(BigintTestRow::smallId)
@@ -1164,7 +1248,6 @@ public class TestPg {
 
     /** Row type for tasks appender */
     public record TasksRow(
-        Integer id,
         String title,
         String status,
         List<String> tags,
@@ -1173,7 +1256,6 @@ public class TestPg {
 
     private static final PgBulkInsert.PgMapper<TasksRow> TASKS_MAPPER =
         PgBulkInsert.PgMapper.forClass(TasksRow.class)
-            .map("id", PgBulkInsert.PostgresTypes.INT4.from(TasksRow::id))
             .map("title", PgBulkInsert.PostgresTypes.TEXT.from(TasksRow::title))
             .map(
                 "status",
@@ -1197,7 +1279,6 @@ public class TestPg {
 
     /** Row type for all_types_test appender */
     public record AllTypesTestRow(
-        Integer id,
         Boolean boolVal,
         Short smallVal,
         Integer intVal,
@@ -1222,7 +1303,6 @@ public class TestPg {
     > ALL_TYPES_TEST_MAPPER = PgBulkInsert.PgMapper.forClass(
         AllTypesTestRow.class
     )
-        .map("id", PgBulkInsert.PostgresTypes.INT4.from(AllTypesTestRow::id))
         .map(
             "bool_val",
             PgBulkInsert.PostgresTypes.BOOLEAN.from(AllTypesTestRow::boolVal)
@@ -1304,5 +1384,28 @@ public class TestPg {
         AllTypesTestRow
     > ALL_TYPES_TEST_WRITER = new PgBulkInsert.PgBulkWriter<>(
         ALL_TYPES_TEST_MAPPER
+    );
+
+    /** Row type for identity_test appender */
+    public record IdentityTestRow(String name, Integer value) {}
+
+    private static final PgBulkInsert.PgMapper<
+        IdentityTestRow
+    > IDENTITY_TEST_MAPPER = PgBulkInsert.PgMapper.forClass(
+        IdentityTestRow.class
+    )
+        .map(
+            "name",
+            PgBulkInsert.PostgresTypes.TEXT.from(IdentityTestRow::name)
+        )
+        .map(
+            "value",
+            PgBulkInsert.PostgresTypes.INT4.from(IdentityTestRow::value)
+        );
+
+    private static final PgBulkInsert.PgBulkWriter<
+        IdentityTestRow
+    > IDENTITY_TEST_WRITER = new PgBulkInsert.PgBulkWriter<>(
+        IDENTITY_TEST_MAPPER
     );
 }

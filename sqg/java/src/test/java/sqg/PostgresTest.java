@@ -44,6 +44,7 @@ class PostgresTest {
                 stmt.execute("DROP TABLE IF EXISTS uuid_test CASCADE");
                 stmt.execute("DROP TABLE IF EXISTS tricky_test CASCADE");
                 stmt.execute("DROP TABLE IF EXISTS all_types_test CASCADE");
+                stmt.execute("DROP TABLE IF EXISTS identity_test CASCADE");
                 stmt.execute("DROP TYPE IF EXISTS task_status CASCADE");
                 stmt.execute("DROP TYPE IF EXISTS tricky_enum CASCADE");
             }
@@ -226,10 +227,11 @@ class PostgresTest {
             TestPg.applyMigrations(conn);
 
             // Bulk insert using PgBulkInsert COPY BINARY
+            // serial_id (BIGSERIAL) is excluded — PostgreSQL auto-generates it
             var rows = List.of(
-                    new TestPg.BigintTestRow(1L, 1L, (short) 42, 100, 9999999999L, "alice"),
-                    new TestPg.BigintTestRow(2L, 2L, (short) -100, null, 0L, "bob"),
-                    new TestPg.BigintTestRow(3L, 3L, null, 300, 123L, "carol"));
+                    new TestPg.BigintTestRow(1L, (short) 42, 100, 9999999999L, "alice"),
+                    new TestPg.BigintTestRow(2L, (short) -100, null, 0L, "bob"),
+                    new TestPg.BigintTestRow(3L, null, 300, 123L, "carol"));
 
             pg.bulkInsertBigintTestRow(rows);
 
@@ -262,9 +264,9 @@ class PostgresTest {
 
             // PgBulkInsert uses COPY BINARY — special characters are handled natively
             var rows = List.of(
-                    new TestPg.BigintTestRow(1L, 1L, (short) 1, 1, 1L, "hello\tworld"),
-                    new TestPg.BigintTestRow(2L, 2L, (short) 2, 2, 2L, "line1\nline2"),
-                    new TestPg.BigintTestRow(3L, 3L, (short) 3, 3, 3L, "back\\slash"));
+                    new TestPg.BigintTestRow(1L, (short) 1, 1, 1L, "hello\tworld"),
+                    new TestPg.BigintTestRow(2L, (short) 2, 2, 2L, "line1\nline2"),
+                    new TestPg.BigintTestRow(3L, (short) 3, 3, 3L, "back\\slash"));
 
             pg.bulkInsertBigintTestRow(rows);
 
@@ -281,9 +283,9 @@ class PostgresTest {
             TestPg.applyMigrations(conn);
 
             var rows = List.of(
-                    new TestPg.BigintTestRow(1L, 1L, (short) 10, 100, 1000L, "row1"),
-                    new TestPg.BigintTestRow(2L, 2L, (short) 20, 200, 2000L, "row2"),
-                    new TestPg.BigintTestRow(3L, 3L, (short) 30, 300, 3000L, "row3"));
+                    new TestPg.BigintTestRow(1L, (short) 10, 100, 1000L, "row1"),
+                    new TestPg.BigintTestRow(2L, (short) 20, 200, 2000L, "row2"),
+                    new TestPg.BigintTestRow(3L, (short) 30, 300, 3000L, "row3"));
 
             pg.bulkInsertBigintTestRow(rows);
 
@@ -299,13 +301,13 @@ class PostgresTest {
             TestPg.applyMigrations(conn);
 
             // Bulk insert tasks with TEXT[] and INTEGER[] columns
-            // Note: COPY bypasses SERIAL sequences, so we must provide explicit IDs
+            // SERIAL id is excluded — PostgreSQL auto-generates it
             var rows = List.of(
-                    new TestPg.TasksRow(1, "Task A", "active",
+                    new TestPg.TasksRow("Task A", "active",
                             List.of("urgent", "backend"), List.of(10, 20, 30)),
-                    new TestPg.TasksRow(2, "Task B", "pending",
+                    new TestPg.TasksRow("Task B", "pending",
                             List.of("frontend"), List.of(5)),
-                    new TestPg.TasksRow(3, "Task C", "completed",
+                    new TestPg.TasksRow("Task C", "completed",
                             null, null));
 
             pg.bulkInsertTasksRow(rows);
@@ -321,6 +323,54 @@ class PostgresTest {
     }
 
     @Test
+    void testBulkInsertWithSerialColumn() throws SQLException, IOException {
+        try (Connection conn = postgres.createConnection("")) {
+            TestPg pg = new TestPg(conn);
+            TestPg.applyMigrations(conn);
+
+            // SERIAL column (id) is excluded from the row type — PostgreSQL auto-generates it
+            var rows = List.of(
+                    new TestPg.TasksRow("Task A", "active", null, null),
+                    new TestPg.TasksRow("Task B", "pending", null, null));
+
+            pg.bulkInsertTasksRow(rows);
+
+            // INSERT after COPY — sequence is in sync since COPY didn't touch it
+            pg.insertTask("Task C", TestPg.TaskStatus.COMPLETED, List.of("test"), List.of(1));
+
+            var allTasks = pg.getAllTasks();
+            assertThat(allTasks).hasSize(3);
+            assertThat(allTasks.get(0).title()).isEqualTo("Task A");
+            assertThat(allTasks.get(2).title()).isEqualTo("Task C");
+        }
+    }
+
+    @Test
+    void testBulkInsertWithIdentityColumn() throws SQLException, IOException {
+        try (Connection conn = postgres.createConnection("")) {
+            TestPg pg = new TestPg(conn);
+            TestPg.applyMigrations(conn);
+
+            // IDENTITY column (id) is excluded from the row type — PostgreSQL auto-generates it
+            var rows = List.of(
+                    new TestPg.IdentityTestRow("alice", 10),
+                    new TestPg.IdentityTestRow("bob", 20),
+                    new TestPg.IdentityTestRow("carol", null));
+
+            pg.bulkInsertIdentityTestRow(rows);
+
+            // Verify IDENTITY column was auto-generated
+            var results = pg.getIdentityRecords();
+            assertThat(results).hasSize(3);
+            assertThat(results.get(0).id()).isEqualTo(1);
+            assertThat(results.get(0).name()).isEqualTo("alice");
+            assertThat(results.get(1).id()).isEqualTo(2);
+            assertThat(results.get(2).id()).isEqualTo(3);
+            assertThat(results.get(2).value()).isNull();
+        }
+    }
+
+    @Test
     void testBulkInsertAllTypes() throws SQLException, IOException {
         try (Connection conn = postgres.createConnection("")) {
             TestPg pg = new TestPg(conn);
@@ -328,10 +378,9 @@ class PostgresTest {
 
             var uuid = UUID.fromString("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11");
             var now = OffsetDateTime.of(2025, 6, 15, 10, 30, 0, 0, ZoneOffset.UTC);
-            // Note: COPY bypasses SERIAL sequences, so we must provide explicit IDs
+            // SERIAL id is excluded — PostgreSQL auto-generates it
             var rows = List.of(
                     new TestPg.AllTypesTestRow(
-                            1,                             // id (explicit for COPY)
                             true,                          // bool_val
                             (short) 42,                    // small_val
                             12345,                         // int_val
@@ -351,7 +400,7 @@ class PostgresTest {
                             List.of(100L, 200L, 300L)      // big_arr
                     ),
                     new TestPg.AllTypesTestRow(
-                            2, null, null, null, null, null, null,
+                            null, null, null, null, null, null,
                             null, null, null, null, null, null, null,
                             null, null, null, null  // all nullable columns null
                     ));

@@ -88,7 +88,10 @@ export class JavaGenerator extends BaseGenerator {
     Handlebars.registerHelper("pgBulkAccessor", (column: ColumnInfo) => {
       return pgBulkInsertAccessor(column.type.toString().toUpperCase());
     });
-    Handlebars.registerHelper("javaVarName", (name: string) => camelCase(name));
+    Handlebars.registerHelper("javaVarName", (name: string) => {
+      const n = camelCase(name);
+      return JavaTypeMapper.javaReservedKeywords.has(n) ? `${n}_` : n;
+    });
     Handlebars.registerHelper("partsToString", (parts: SqlQueryPart[]) =>
       this.partsToString(parts),
     );

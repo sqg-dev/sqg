@@ -238,13 +238,15 @@ DuckDB complex types:
 - `MAP` → `dict[K, V]`
 - `STRUCT` → nested frozen dataclass
 
-## DuckDB Appenders
+## Bulk Inserts
 
-For DuckDB, the `TABLE :appender` annotation generates bulk insert classes:
+The `TABLE :appender` annotation generates high-performance bulk insert classes for both DuckDB and PostgreSQL.
 
 ```sql
 -- TABLE users :appender
 ```
+
+### DuckDB Appenders
 
 ```python
 from generated.my_app import MyApp, UsersAppender, UsersRow
@@ -258,6 +260,27 @@ appender.append_many([
 ])
 appender.close()
 ```
+
+### PostgreSQL COPY Appenders
+
+For PostgreSQL, appenders use psycopg3's `COPY FROM STDIN` protocol for fast bulk inserts. Use as a context manager:
+
+```python
+from generated.my_app import MyApp, UsersAppender, UsersRow
+
+db = MyApp(conn)
+appender = db.create_users_appender()
+with appender:
+    appender.append(UsersRow(id=1, name="Alice", email="alice@example.com"))
+    appender.append_many([
+        UsersRow(id=2, name="Bob", email="bob@example.com"),
+        UsersRow(id=3, name="Charlie", email="charlie@example.com"),
+    ])
+```
+
+:::note
+SERIAL and IDENTITY columns are automatically excluded from the generated row type. PostgreSQL auto-generates their values during COPY, keeping sequences in sync.
+:::
 
 ## PostgreSQL Usage
 

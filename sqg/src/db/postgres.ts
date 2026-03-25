@@ -379,7 +379,7 @@ export const postgres = new (class implements DatabaseEngine {
       reporter?.onTableStart?.(table.tableName);
       try {
         const result = await db.query(
-          `SELECT column_name, data_type, udt_name, is_nullable
+          `SELECT column_name, data_type, udt_name, is_nullable, column_default, is_identity
            FROM information_schema.columns
            WHERE table_name = $1
            ORDER BY ordinal_position`,
@@ -391,6 +391,10 @@ export const postgres = new (class implements DatabaseEngine {
           // type mapping — data_type uses verbose names like "double precision" that the mapper doesn't handle.
           type: row.udt_name.toUpperCase(),
           nullable: row.is_nullable === "YES",
+          // Mark SERIAL (nextval default) and IDENTITY columns as auto-generated
+          generated:
+            row.is_identity === "YES" ||
+            (row.column_default?.startsWith("nextval") ?? false),
         }));
         reporter?.onTableComplete?.(table.tableName, table.columns.length);
       } catch (error) {

@@ -257,11 +257,13 @@ export class TableHelper {
   }
 
   get columns(): ColumnInfo[] {
+    let cols = this.table.columns;
     // Filter columns if includeColumns is specified
     if (this.table.includeColumns.length > 0) {
-      return this.table.columns.filter((c) => this.table.includeColumns.includes(c.name));
+      cols = cols.filter((c) => this.table.includeColumns.includes(c.name));
     }
-    return this.table.columns;
+    // Exclude auto-generated columns (SERIAL/IDENTITY) from appender row types
+    return cols.filter((c) => !c.generated);
   }
 
   get skipGenerateFunction(): boolean {

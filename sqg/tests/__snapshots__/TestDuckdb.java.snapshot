@@ -2635,7 +2635,7 @@ public class TestDuckdb {
         Integer id,
         String action,
         Double value,
-        Integer user_id,
+        Integer userId,
         Integer timestamp
     ) {}
 
@@ -2659,7 +2659,7 @@ public class TestDuckdb {
             appender.append(row.id());
             appender.append(row.action());
             appender.append(row.value());
-            appender.append(row.user_id());
+            appender.append(row.userId());
             appender.append(row.timestamp());
             appender.endRow();
             return this;
@@ -2670,14 +2670,14 @@ public class TestDuckdb {
             Integer id,
             String action,
             Double value,
-            Integer user_id,
+            Integer userId,
             Integer timestamp
         ) throws SQLException {
             appender.beginRow();
             appender.append(id);
             appender.append(action);
             appender.append(value);
-            appender.append(user_id);
+            appender.append(userId);
             appender.append(timestamp);
             appender.endRow();
             return this;
@@ -2757,7 +2757,7 @@ public class TestDuckdb {
     public record LogEntriesRow(
         Integer id,
         String message,
-        OffsetDateTime created_at
+        OffsetDateTime createdAt
     ) {}
 
     /** Appender for bulk inserts into log_entries */
@@ -2780,7 +2780,7 @@ public class TestDuckdb {
             appender.beginRow();
             appender.append(row.id());
             appender.append(row.message());
-            appender.append(row.created_at());
+            appender.append(row.createdAt());
             appender.endRow();
             return this;
         }
@@ -2789,12 +2789,12 @@ public class TestDuckdb {
         public LogEntriesAppender append(
             Integer id,
             String message,
-            OffsetDateTime created_at
+            OffsetDateTime createdAt
         ) throws SQLException {
             appender.beginRow();
             appender.append(id);
             appender.append(message);
-            appender.append(created_at);
+            appender.append(createdAt);
             appender.endRow();
             return this;
         }

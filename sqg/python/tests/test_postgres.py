@@ -37,7 +37,7 @@ def conn():
 
     # Drop all tables/types before each test for a clean slate
     with c.cursor() as cur:
-        cur.execute("DROP TABLE IF EXISTS all_types_test, tricky_test, uuid_test, bigint_test, tasks, users, _sqg_migrations CASCADE")
+        cur.execute("DROP TABLE IF EXISTS identity_test, all_types_test, tricky_test, uuid_test, bigint_test, tasks, users, _sqg_migrations CASCADE")
         cur.execute("DROP TYPE IF EXISTS task_status, tricky_enum CASCADE")
 
     TestPg.apply_migrations(c)
