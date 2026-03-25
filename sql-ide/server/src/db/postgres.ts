@@ -63,6 +63,35 @@ export function createPostgresAdapter(connectionString: string): DatabaseAdapter
       return previewAllCTEsHelper(adapter, fullSql);
     },
 
+    async executeSQLReadOnly(sql: string, applyLimit = true): Promise<QueryResult> {
+      const p = getPool();
+      await p.query('SAVEPOINT sqg_readonly');
+      try {
+        const result = await adapter.executeSQL(sql, applyLimit);
+        return result;
+      } finally {
+        await p.query('ROLLBACK TO SAVEPOINT sqg_readonly');
+        await p.query('RELEASE SAVEPOINT sqg_readonly');
+      }
+    },
+
+    async initialize(migrations: string[], testdata: string[]): Promise<{ migrationsRun: number; testdataRun: number }> {
+      let migrationsRun = 0;
+      let testdataRun = 0;
+      const p = getPool();
+      for (const sql of migrations) {
+        const cleanSql = sql.replace(/@set\s+\w+\s*=\s*.+\n?/g, '').trim();
+        if (cleanSql) await p.query(cleanSql);
+        migrationsRun++;
+      }
+      for (const sql of testdata) {
+        const cleanSql = sql.replace(/@set\s+\w+\s*=\s*.+\n?/g, '').trim();
+        if (cleanSql) await p.query(cleanSql);
+        testdataRun++;
+      }
+      return { migrationsRun, testdataRun };
+    },
+
     async getSchema(): Promise<SchemaTable[]> {
       const p = getPool();
       const result = await p.query(

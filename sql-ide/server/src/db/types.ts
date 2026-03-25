@@ -27,8 +27,15 @@ export interface DatabaseAdapter {
   /** Preview all CTEs in a query (first few rows + full count) */
   previewAllCTEs(fullSql: string): Promise<Record<string, CTEPreviewResult>>;
 
+  /** Execute SQL inside a savepoint that is rolled back after reading results.
+   *  This keeps the database in its post-migration state. */
+  executeSQLReadOnly(sql: string, applyLimit?: boolean): Promise<QueryResult>;
+
   /** Introspect database schema — list all tables and their columns */
   getSchema(): Promise<SchemaTable[]>;
+
+  /** Initialize the database with migrations and testdata */
+  initialize(migrations: string[], testdata: string[]): Promise<{ migrationsRun: number; testdataRun: number }>;
 
   /** Close the database connection */
   close(): Promise<void>;

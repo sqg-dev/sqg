@@ -1,0 +1,19 @@
+# SQL IDE development commands
+
+# Test dev mode startup (checks for errors)
+test-dev:
+    kill $(lsof -t -i:5173 -i:5174 -i:3000) 2>/dev/null || true
+    timeout 15 pnpm dev 2>&1 | grep -i "error\|Invalid\|ready\|Local" | head -10
+
+# Kill all dev/test servers
+kill:
+    kill $(lsof -t -i:5173 -i:5174 -i:3000 -i:3333 -i:3399) 2>/dev/null || true
+
+# Build frontend
+build:
+    pnpm --filter @sql-ide/frontend build
+
+# Run all tests
+test:
+    pnpm --filter @sql-ide/server test:run
+    pnpm --filter sql-ide test:e2e

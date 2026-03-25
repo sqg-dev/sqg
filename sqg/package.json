@@ -27,7 +27,7 @@
   "scripts": {
     "prepublishOnly": "pnpm run build",
     "build": "tsc --noEmit && tsdown && cp -r src/templates dist && pnpm run build:ide",
-    "build:ide": "cd ../sql-ide/frontend && npx vite build && cd ../server && npx tsdown && cd ../../sqg && cp ../sql-ide/server/dist/index.mjs dist/ide-server.mjs && cp -r ../sql-ide/frontend/dist dist/ide-public",
+    "build:ide": "cd ../sql-ide/frontend && pnpx vite build && cd ../server && pnpx tsdown && cd ../../sqg && cp ../sql-ide/server/dist/index.mjs dist/ide-server.mjs && cp -r ../sql-ide/frontend/dist dist/ide-public",
     "lezer-gen": "lezer-generator src/parser/sql.grammar -o src/parser/sql-parser.ts",
     "test-grammar": "tsx src/test-grammar.ts",
     "check": "biome check --write src/",
@@ -66,7 +66,7 @@
     "@lezer/generator": "catalog:",
     "@lezer/lr": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",
-    "@testcontainers/postgresql": "^10.21.0",
+    "@testcontainers/postgresql": "^11.13.0",
     "better-sqlite3": "catalog:",
     "commander": "catalog:",
     "consola": "catalog:",
@@ -84,8 +84,8 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@libsql/client": "^0.17.0",
-    "@tursodatabase/database": "^0.4.3",
+    "@libsql/client": "^0.17.2",
+    "@tursodatabase/database": "^0.5.1",
     "@types/better-sqlite3": "catalog:",
     "@types/node": "catalog:",
     "@types/pg": "catalog:",

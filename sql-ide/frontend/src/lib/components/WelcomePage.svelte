@@ -1,9 +1,10 @@
 <script lang="ts">
   import { trpc } from '../trpc';
 
-  let mode: 'choose' | 'create' | 'open' = $state('choose');
+  let mode: 'choose' | 'create' | 'open' | 'example' = $state('choose');
   let isLoading = $state(false);
   let error = $state<string | null>(null);
+  let examples = $state<Array<{ name: string; path: string; engine: string }>>([]);
 
   // Create form
   let directory = $state('.');
@@ -25,6 +26,31 @@
     error = null;
     try {
       await trpc.initProject.mutate({ directory, name, engine, language });
+      onProjectLoaded();
+    } catch (e) {
+      error = (e as Error).message;
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  async function loadExamples() {
+    mode = 'example';
+    isLoading = true;
+    try {
+      examples = await trpc.listExamples.query();
+    } catch (e) {
+      error = (e as Error).message;
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  async function openExample(path: string) {
+    isLoading = true;
+    error = null;
+    try {
+      await trpc.openProject.mutate({ configPath: path });
       onProjectLoaded();
     } catch (e) {
       error = (e as Error).message;
@@ -91,6 +117,21 @@
             </div>
           </div>
         </button>
+
+        <button
+          onclick={loadExamples}
+          class="w-full p-4 rounded-lg bg-gray-800 border border-gray-700 hover:border-green-500 transition-colors text-left group"
+        >
+          <div class="flex items-center gap-3">
+            <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+            <div>
+              <div class="text-sm font-medium text-gray-200">Open Example Project</div>
+              <div class="text-xs text-gray-500">Explore a sample project to see SQG in action</div>
+            </div>
+          </div>
+        </button>
       </div>
 
     {:else if mode === 'create'}
@@ -103,8 +144,9 @@
 
         <div class="space-y-4">
           <div>
-            <label class="block text-xs font-medium text-gray-400 mb-1">Directory</label>
+            <label for="sqg-dir" class="block text-xs font-medium text-gray-400 mb-1">Directory</label>
             <input
+              id="sqg-dir"
               type="text"
               bind:value={directory}
               class="w-full px-3 py-2 text-sm font-mono bg-gray-900 border border-gray-700 rounded text-gray-300 focus:border-blue-500 focus:outline-none"
@@ -113,8 +155,8 @@
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-gray-400 mb-1">Database Engine</label>
-            <div class="grid grid-cols-3 gap-2">
+            <span id="sqg-engine-label" class="block text-xs font-medium text-gray-400 mb-1">Database Engine</span>
+            <div class="grid grid-cols-3 gap-2" role="group" aria-labelledby="sqg-engine-label">
               {#each [
                 { value: 'duckdb', label: 'DuckDB' },
                 { value: 'sqlite', label: 'SQLite' },
@@ -133,8 +175,8 @@
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-gray-400 mb-1">Language</label>
-            <div class="grid grid-cols-3 gap-2">
+            <span id="sqg-lang-label" class="block text-xs font-medium text-gray-400 mb-1">Language</span>
+            <div class="grid grid-cols-3 gap-2" role="group" aria-labelledby="sqg-lang-label">
               {#each [
                 { value: 'typescript', label: 'TypeScript' },
                 { value: 'java', label: 'Java' },
@@ -176,8 +218,9 @@
 
         <div class="space-y-4">
           <div>
-            <label class="block text-xs font-medium text-gray-400 mb-1">Path to sqg.yaml</label>
+            <label for="sqg-config-path" class="block text-xs font-medium text-gray-400 mb-1">Path to sqg.yaml</label>
             <input
+              id="sqg-config-path"
               type="text"
               bind:value={configPath}
               class="w-full px-3 py-2 text-sm font-mono bg-gray-900 border border-gray-700 rounded text-gray-300 focus:border-blue-500 focus:outline-none"
@@ -197,6 +240,45 @@
             {isLoading ? 'Loading...' : 'Open Project'}
           </button>
         </div>
+      </div>
+    {:else if mode === 'example'}
+      <!-- Example list -->
+      <div class="bg-gray-800 rounded-lg border border-gray-700 p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-sm font-medium text-gray-200">Example Projects</h2>
+          <button onclick={() => { mode = 'choose'; error = null; }} class="text-xs text-gray-500 hover:text-gray-300">Back</button>
+        </div>
+
+        {#if isLoading}
+          <div class="flex items-center justify-center py-4 text-gray-500 text-sm">
+            <svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" />
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            Loading examples...
+          </div>
+        {:else if examples.length === 0}
+          <p class="text-sm text-gray-500 text-center py-4">No example projects found.</p>
+        {:else}
+          <div class="space-y-2">
+            {#each examples as example}
+              <button
+                onclick={() => openExample(example.path)}
+                disabled={isLoading}
+                class="w-full p-3 rounded-lg bg-gray-900 border border-gray-700 hover:border-green-500 transition-colors text-left disabled:opacity-50"
+              >
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-gray-200">{example.name}</span>
+                  <span class="px-2 py-0.5 text-xs rounded bg-gray-700 text-gray-400 font-mono">{example.engine}</span>
+                </div>
+              </button>
+            {/each}
+          </div>
+        {/if}
+
+        {#if error}
+          <p class="text-sm text-red-400 mt-3">{error}</p>
+        {/if}
       </div>
     {/if}
   </div>

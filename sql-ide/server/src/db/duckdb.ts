@@ -110,6 +110,40 @@ export function createDuckDBAdapter(): DatabaseAdapter {
       return previewAllCTEsHelper(adapter, fullSql);
     },
 
+    async executeSQLReadOnly(sql: string, applyLimit = true): Promise<QueryResult> {
+      // Strip @set lines — they're SQG annotations, not valid SQL
+      const cleanSql = sql.replace(/@set\s+\w+\s*=\s*.+\n?/g, '').trim();
+      const conn = await getConnection();
+      await conn.run('BEGIN TRANSACTION');
+      try {
+        const result = await adapter.executeSQL(cleanSql, applyLimit);
+        return result;
+      } finally {
+        await conn.run('ROLLBACK');
+      }
+    },
+
+    async initialize(migrations: string[], testdata: string[]): Promise<{ migrationsRun: number; testdataRun: number }> {
+      let migrationsRun = 0;
+      let testdataRun = 0;
+      for (const sql of migrations) {
+        // Strip @set lines — they're SQG annotations, not valid SQL
+        const cleanSql = sql.replace(/@set\s+\w+\s*=\s*.+\n?/g, '').trim();
+        if (cleanSql) {
+          await adapter.executeSQL(cleanSql, false);
+        }
+        migrationsRun++;
+      }
+      for (const sql of testdata) {
+        const cleanSql = sql.replace(/@set\s+\w+\s*=\s*.+\n?/g, '').trim();
+        if (cleanSql) {
+          await adapter.executeSQL(cleanSql, false);
+        }
+        testdataRun++;
+      }
+      return { migrationsRun, testdataRun };
+    },
+
     async getSchema(): Promise<SchemaTable[]> {
       const result = await adapter.executeSQL(
         `SELECT table_name, column_name, data_type, is_nullable

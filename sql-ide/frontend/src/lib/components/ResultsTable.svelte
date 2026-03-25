@@ -140,14 +140,14 @@
           </div>
         </div>
       </div>
-    {:else if queryState.result && queryState.result.rows.length > 0}
+    {:else if queryState.result && queryState.result.columns.length > 0}
       <table class="results-table text-sm">
         <thead>
           {#each table.getHeaderGroups() as headerGroup}
             <tr>
               {#each headerGroup.headers as header}
                 <th
-                  class="px-4 py-2 text-left font-medium text-gray-400 border-b border-gray-700 cursor-pointer hover:bg-gray-700"
+                  class="px-4 py-1.5 text-left font-medium text-gray-400 cursor-pointer hover:bg-gray-700"
                   onclick={header.column.getToggleSortingHandler()}
                 >
                   <div class="flex items-center gap-1">
@@ -160,6 +160,15 @@
                       <span class="text-blue-400">↓</span>
                     {/if}
                   </div>
+                </th>
+              {/each}
+            </tr>
+            <!-- Type row -->
+            <tr class="border-b border-gray-700">
+              {#each headerGroup.headers as header}
+                {@const colType = queryState.result?.columns.find(c => c.name === header.column.id)?.type ?? ''}
+                <th class="px-4 py-0.5 text-left">
+                  <span class="text-[10px] font-mono text-blue-400/60 font-normal">{colType}</span>
                 </th>
               {/each}
             </tr>
@@ -181,11 +190,18 @@
               {/each}
             </tr>
           {/each}
+          {#if queryState.result && queryState.result.rows.length === 0}
+            <tr>
+              <td colspan={queryState.result.columns.length} class="px-4 py-3 text-center text-gray-500 text-sm">
+                Query returned 0 rows
+              </td>
+            </tr>
+          {/if}
         </tbody>
       </table>
     {:else if queryState.result}
-      <div class="h-full flex items-center justify-center text-gray-500">
-        Query returned no rows
+      <div class="h-full flex items-center justify-center text-gray-500 text-sm">
+        Statement executed successfully (no rows returned)
       </div>
     {:else}
       <div class="h-full flex items-center justify-center text-gray-500">

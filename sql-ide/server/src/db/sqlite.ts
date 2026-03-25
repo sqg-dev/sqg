@@ -69,6 +69,35 @@ export function createSQLiteAdapter(): DatabaseAdapter {
       return previewAllCTEsHelper(adapter, fullSql);
     },
 
+    async executeSQLReadOnly(sql: string, applyLimit = true): Promise<QueryResult> {
+      const database = getDb();
+      database.exec('SAVEPOINT sqg_readonly');
+      try {
+        const result = await adapter.executeSQL(sql, applyLimit);
+        return result;
+      } finally {
+        database.exec('ROLLBACK TO SAVEPOINT sqg_readonly');
+        database.exec('RELEASE SAVEPOINT sqg_readonly');
+      }
+    },
+
+    async initialize(migrations: string[], testdata: string[]): Promise<{ migrationsRun: number; testdataRun: number }> {
+      let migrationsRun = 0;
+      let testdataRun = 0;
+      const database = getDb();
+      for (const sql of migrations) {
+        const cleanSql = sql.replace(/@set\s+\w+\s*=\s*.+\n?/g, '').trim();
+        if (cleanSql) database.exec(cleanSql);
+        migrationsRun++;
+      }
+      for (const sql of testdata) {
+        const cleanSql = sql.replace(/@set\s+\w+\s*=\s*.+\n?/g, '').trim();
+        if (cleanSql) database.exec(cleanSql);
+        testdataRun++;
+      }
+      return { migrationsRun, testdataRun };
+    },
+
     async getSchema(): Promise<SchemaTable[]> {
       const database = getDb();
       const tableRows = database.prepare(

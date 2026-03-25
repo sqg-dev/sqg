@@ -24,6 +24,7 @@ export function parseProject(configPath: string): SqgProject {
 
   const queries: SqgQuery[] = [];
   const migrations: SqgMigration[] = [];
+  const testdata: string[] = [];
   const tables: SqgTable[] = [];
   const sqlFiles: string[] = [];
 
@@ -64,7 +65,7 @@ export function parseProject(configPath: string): SqgProject {
             file,
           });
         } else if (q.isTestdata) {
-          // Skip testdata - not needed in IDE
+          testdata.push(q.rawQuery);
         } else {
           // Resolve ${var} placeholders with @set values
           const vars = Object.fromEntries(q.variables);
@@ -108,6 +109,7 @@ export function parseProject(configPath: string): SqgProject {
     sqlFiles,
     queries,
     migrations,
+    testdata,
     tables,
     engine,
   };

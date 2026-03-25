@@ -1,91 +1,29 @@
 import type { ParsedQuery, CTE, CTENode, CTEPreview, QueryResult } from '@sql-ide/shared';
 import { extractCTEs, detectDependencies } from '@sql-ide/shared';
 import { trpc } from '../trpc';
+import { statusState } from './status.svelte';
+
+/** Extract a clean error message from tRPC/fetch errors */
+function cleanError(e: unknown): string {
+  if (e instanceof TypeError && (e as Error).message === 'Failed to fetch') {
+    return 'Server not reachable. Is the IDE server running?';
+  }
+  if (e instanceof Error) {
+    // tRPC wraps errors with JSON — try to extract the inner message
+    const msg = e.message;
+    try {
+      const parsed = JSON.parse(msg);
+      if (Array.isArray(parsed)) return parsed[0]?.message || msg;
+      if (parsed.message) return parsed.message;
+    } catch { /* not JSON */ }
+    return msg;
+  }
+  return 'Unknown error';
+}
 
 // Reactive state using Svelte 5 runes in .svelte.ts files
 class QueryState {
-  sql = $state<string>(`-- Sales Analysis Pipeline
--- Click each CTE node to see how data transforms at each stage
-
-WITH
-  -- Stage 1: Raw transaction data (12 rows, 5 columns)
-  raw_sales AS (
-    SELECT * FROM (VALUES
-      ('2024-01-15', 'Electronics', 'Laptop', 1200, 2),
-      ('2024-01-15', 'Electronics', 'Phone', 800, 5),
-      ('2024-01-16', 'Clothing', 'Jacket', 150, 3),
-      ('2024-01-16', 'Electronics', 'Tablet', 500, 4),
-      ('2024-01-17', 'Clothing', 'Shoes', 120, 6),
-      ('2024-01-17', 'Home', 'Lamp', 80, 10),
-      ('2024-01-18', 'Electronics', 'Laptop', 1200, 1),
-      ('2024-01-18', 'Home', 'Chair', 250, 2),
-      ('2024-01-19', 'Clothing', 'Shirt', 45, 15),
-      ('2024-01-19', 'Electronics', 'Phone', 800, 3),
-      ('2024-01-20', 'Home', 'Table', 400, 1),
-      ('2024-01-20', 'Clothing', 'Pants', 70, 8)
-    ) AS t(sale_date, category, product, unit_price, quantity)
-  ),
-
-  -- Stage 2: Enrich with computed fields (12 rows, 7 columns)
-  enriched_sales AS (
-    SELECT
-      sale_date,
-      category,
-      product,
-      unit_price,
-      quantity,
-      unit_price * quantity AS line_total,
-      CASE
-        WHEN unit_price >= 500 THEN 'Premium'
-        WHEN unit_price >= 100 THEN 'Standard'
-        ELSE 'Budget'
-      END AS price_tier
-    FROM raw_sales
-  ),
-
-  -- Stage 3: Aggregate by category (3 rows)
-  category_stats AS (
-    SELECT
-      category,
-      COUNT(*) AS transactions,
-      SUM(quantity) AS units_sold,
-      SUM(line_total) AS revenue,
-      ROUND(AVG(line_total), 2) AS avg_order_value
-    FROM enriched_sales
-    GROUP BY category
-  ),
-
-  -- Stage 4: Calculate market share (3 rows, with percentages)
-  category_share AS (
-    SELECT
-      category,
-      revenue,
-      units_sold,
-      ROUND(100.0 * revenue / SUM(revenue) OVER (), 1) AS revenue_pct,
-      ROUND(100.0 * units_sold / SUM(units_sold) OVER (), 1) AS units_pct
-    FROM category_stats
-  ),
-
-  -- Stage 5: Daily revenue trend (6 rows)
-  daily_trend AS (
-    SELECT
-      sale_date,
-      COUNT(*) AS num_orders,
-      SUM(line_total) AS daily_revenue,
-      STRING_AGG(DISTINCT category, ', ') AS categories
-    FROM enriched_sales
-    GROUP BY sale_date
-    ORDER BY sale_date
-  )
-
--- Final: Executive summary (1 row)
-SELECT
-  (SELECT SUM(revenue) FROM category_stats) AS total_revenue,
-  (SELECT category FROM category_share ORDER BY revenue DESC LIMIT 1) AS top_category,
-  (SELECT revenue_pct FROM category_share ORDER BY revenue DESC LIMIT 1) AS top_category_share,
-  (SELECT MAX(daily_revenue) FROM daily_trend) AS peak_day_revenue,
-  (SELECT COUNT(DISTINCT product) FROM raw_sales) AS product_count;
-`);
+  sql = $state<string>('');
 
   parsed = $derived.by(() => {
     try {
@@ -101,6 +39,15 @@ SELECT
     return detectDependencies(this.parsed.ctes);
   });
 
+  hasCTEs = $derived(this.parsed != null && this.parsed.ctes.length > 0);
+
+  /** Annotations from the server-side SQG parser (set by the linter callback) */
+  annotations = $state<Array<{ id: string; type: 'QUERY' | 'EXEC' | 'MIGRATE' | 'TESTDATA' | 'TABLE'; one: boolean; pluck: boolean; line: number; sql: string }>>([]);
+
+  setAnnotations(items: typeof this.annotations) {
+    this.annotations = items;
+  }
+
   nodeStates = $state<Map<string, CTENode>>(new Map());
   selectedCTE = $state<string | null>(null);
 
@@ -110,8 +57,18 @@ SELECT
   isLoading = $state(false);
   isPreviewLoading = $state(false);
 
+  /** The SQL to execute — set when user clicks a query in the sidebar */
+  selectedQuerySQL = $state<string | null>(null);
+
+  /** The SQL that will actually be executed: selected query, or full editor content */
+  executableSQL = $derived(this.selectedQuerySQL || this.sql);
+
   setSQL(value: string) {
     this.sql = value;
+  }
+
+  setSelectedQuery(sql: string | null) {
+    this.selectedQuerySQL = sql;
   }
 
   async previewAll() {
@@ -170,8 +127,8 @@ SELECT
   }
 
   async execute() {
-    const sql = this.sql;
-    const parsed = this.parsed;
+    const sql = this.executableSQL;
+    const parsed = extractCTEs(sql) ?? this.parsed;
 
     if (!parsed) {
       this.error = 'Failed to parse SQL';
@@ -219,7 +176,7 @@ SELECT
       this.error = null;
       this.selectedCTE = 'main';
     } catch (e) {
-      const error = e instanceof Error ? e.message : 'Unknown error';
+      const error = cleanError(e);
       const errorStates = new Map(this.nodeStates);
       errorStates.set('main', {
         id: 'main',
@@ -230,6 +187,7 @@ SELECT
       this.nodeStates = errorStates;
       this.error = error;
       this.result = null;
+      statusState.error(error);
     } finally {
       this.isLoading = false;
     }
@@ -268,7 +226,7 @@ SELECT
       this.error = null;
       this.selectedCTE = cteName;
     } catch (e) {
-      const error = e instanceof Error ? e.message : 'Unknown error';
+      const error = cleanError(e);
       const errorStates = new Map(this.nodeStates);
       errorStates.set(cteName, {
         ...currentState,
@@ -278,6 +236,7 @@ SELECT
       this.nodeStates = errorStates;
       this.error = error;
       this.result = null;
+      statusState.error(error);
     } finally {
       this.isLoading = false;
     }

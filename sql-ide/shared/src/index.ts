@@ -10,8 +10,10 @@ export interface SqgProject {
   sqlFiles: string[];
   queries: SqgQuery[];
   migrations: SqgMigration[];
+  testdata: string[];
   tables: SqgTable[];
   engine?: string;
+  initError?: string;
 }
 
 export interface SqgQuery {

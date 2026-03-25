@@ -11,6 +11,7 @@
 
   let { horizontal = false, initialSplit = 50, minSize = 10, first, second }: Props = $props();
 
+  // svelte-ignore state_referenced_locally
   let splitPercent = $state(initialSplit);
   let container: HTMLDivElement;
   let isDragging = $state(false);
@@ -55,6 +56,8 @@
     {@render first()}
   </div>
 
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <div
     class="splitter"
     class:horizontal

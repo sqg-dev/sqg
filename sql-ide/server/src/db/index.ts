@@ -45,6 +45,17 @@ export async function getAdapter(engine = 'duckdb'): Promise<DatabaseAdapter> {
 }
 
 /**
+ * Close the current adapter and reset. Call when switching projects.
+ */
+export async function resetAdapter(): Promise<void> {
+  if (currentAdapter) {
+    await currentAdapter.close();
+    currentAdapter = null;
+    currentEngine = null;
+  }
+}
+
+/**
  * Get the current engine name.
  */
 export function getCurrentEngine(): string {

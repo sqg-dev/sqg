@@ -7,12 +7,14 @@
     "dev:test": "concurrently \"pnpm --filter server dev -- --project=$(pwd)/../sqg/tests/test-duckdb.yaml\" \"pnpm --filter frontend dev\"",
     "build": "pnpm --filter shared build && pnpm --filter server build && pnpm --filter frontend build",
     "dev:frontend": "pnpm --filter frontend dev",
-    "dev:server": "pnpm --filter server dev"
-  },
-  "dependencies": {
+    "dev:server": "pnpm --filter server dev",
+    "test:e2e": "vitest run",
+    "test:e2e:ui": "vitest --ui"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2",
-    "typescript": "^5.3.3"
+    "concurrently": "catalog:",
+    "playwright": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

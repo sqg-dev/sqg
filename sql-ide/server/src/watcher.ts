@@ -11,6 +11,7 @@ let changeCounter = 0;
 export interface WatchStatus {
   watching: boolean;
   fileCount: number;
+  fileNames: string[];
   lastChangeFile: string | null;
   lastChangeTime: string | null;
   changeCounter: number;
@@ -70,6 +71,7 @@ export function getWatchStatus(): WatchStatus {
   return {
     watching: watchedFiles.length > 0,
     fileCount: watchedFiles.length,
+    fileNames: watchedFiles.map(f => f.split('/').pop() || f),
     lastChangeFile,
     lastChangeTime,
     changeCounter,

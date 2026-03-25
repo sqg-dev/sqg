@@ -6,18 +6,27 @@
   import { sql } from '@codemirror/lang-sql';
   import { oneDark } from '@codemirror/theme-one-dark';
   import { queryState } from '../stores/query.svelte';
+  import { tabsState } from '../stores/tabs.svelte';
   import { sqgAutocompletion } from '../editor/sqg-autocomplete';
-  import { sqgLinter } from '../editor/sqg-lint';
+  import { sqgLinter, sqgHoverTooltip, setAnnotationsCallback } from '../editor/sqg-lint';
 
   let container: HTMLDivElement;
   let view: EditorView;
-  let lastSetSql = '';
+  let lastContent = '';
+  let lastTabId = '';
 
   onMount(() => {
+    // Wire up server annotations to the query store
+    setAnnotationsCallback((annotations) => {
+      queryState.setAnnotations(annotations);
+    });
+
     const updateListener = EditorView.updateListener.of((update) => {
       if (update.docChanged) {
         const newDoc = update.state.doc.toString();
-        lastSetSql = newDoc;
+        lastContent = newDoc;
+        // Update both the tab content and the query state (for CTE parsing)
+        tabsState.updateContent(newDoc);
         queryState.setSQL(newDoc);
       }
     });
@@ -31,10 +40,18 @@
           return true;
         },
       },
+      {
+        key: 'Ctrl-s',
+        mac: 'Cmd-s',
+        run: () => {
+          document.dispatchEvent(new CustomEvent('sqg-save-file'));
+          return true;
+        },
+      },
     ]);
 
     const state = EditorState.create({
-      doc: queryState.sql,
+      doc: tabsState.activeTab.content,
       extensions: [
         lineNumbers(),
         highlightActiveLine(),
@@ -43,6 +60,7 @@
         sql(),
         sqgAutocompletion(),
         sqgLinter(),
+        sqgHoverTooltip(),
         oneDark,
         updateListener,
         runKeymap,
@@ -53,7 +71,9 @@
       ],
     });
 
-    lastSetSql = queryState.sql;
+    lastContent = tabsState.activeTab.content;
+    lastTabId = tabsState.activeTabId;
+    queryState.setSQL(lastContent);
 
     view = new EditorView({
       state,
@@ -71,26 +91,57 @@
     };
     document.addEventListener('sqg-insert-text', handleInsert);
 
+    // Listen for scroll-to-line events from sidebar
+    const handleScrollToLine = (e: Event) => {
+      const lineNum = (e as CustomEvent).detail as number;
+      if (view && lineNum > 0 && lineNum <= view.state.doc.lines) {
+        const line = view.state.doc.line(lineNum);
+        view.dispatch({
+          selection: { anchor: line.from },
+          effects: EditorView.scrollIntoView(line.from, { y: 'start', yMargin: 50 }),
+        });
+        view.focus();
+      }
+    };
+    document.addEventListener('sqg-scroll-to-line', handleScrollToLine);
+
     return () => {
       document.removeEventListener('sqg-insert-text', handleInsert);
+      document.removeEventListener('sqg-scroll-to-line', handleScrollToLine);
       view?.destroy();
     };
   });
 
-  // Watch for external changes to queryState.sql and update the editor
+  // When active tab changes, load its content into the editor
   $effect(() => {
-    const currentSql = queryState.sql;
-    if (view && currentSql !== lastSetSql) {
-      lastSetSql = currentSql;
+    const tab = tabsState.activeTab;
+    if (!view || !tab) return;
+
+    if (tab.id !== lastTabId) {
+      lastTabId = tab.id;
+      lastContent = tab.content;
       view.dispatch({
-        changes: {
-          from: 0,
-          to: view.state.doc.length,
-          insert: currentSql,
-        },
+        changes: { from: 0, to: view.state.doc.length, insert: tab.content },
       });
+      queryState.setSQL(tab.content);
     }
   });
+
+  // When tab content changes externally (e.g., file reload from watch mode)
+  $effect(() => {
+    const tab = tabsState.activeTab;
+    if (!view || !tab || tab.id !== lastTabId) return;
+
+    if (tab.content !== lastContent && !tab.dirty) {
+      lastContent = tab.content;
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: tab.content },
+      });
+      queryState.setSQL(tab.content);
+    }
+  });
+
+
 </script>
 
 <div class="h-full w-full" bind:this={container}></div>
