@@ -206,6 +206,9 @@ create table if not exists log_entries (
 -- QUERY all_log_entries
 select * from log_entries;
 
+-- QUERY log_entries_by_day
+select id, message, created_at::date as day from log_entries;
+
 -- TABLE users :appender
 
 -- TABLE actions :appender

@@ -355,21 +355,21 @@ export class JavaTypeMapper extends TypeMapper {
     // Handle JDBC type conversions for date/time types
     const upperType = column.type?.toString().toUpperCase() ?? "";
     if (upperType === "TIMESTAMP" || upperType === "DATETIME") {
-      return `toLocalDateTime((java.sql.Timestamp)${value})`;
+      return `toLocalDateTime(${value})`;
     }
     // PostgreSQL JDBC returns java.sql.Timestamp for TIMESTAMPTZ — convert to OffsetDateTime
     if (upperType === "TIMESTAMPTZ") {
-      return `toOffsetDateTime((java.sql.Timestamp)${value})`;
+      return `toOffsetDateTime(${value})`;
     }
     // DuckDB JDBC returns OffsetDateTime directly for TIMESTAMP WITH TIME ZONE — no conversion needed
     if (upperType === "TIMESTAMP WITH TIME ZONE") {
       return `(OffsetDateTime)${value}`;
     }
     if (upperType === "DATE") {
-      return `toLocalDate((java.sql.Date)${value})`;
+      return `toLocalDate(${value})`;
     }
     if (upperType === "TIME") {
-      return `toLocalTime((java.sql.Time)${value})`;
+      return `toLocalTime(${value})`;
     }
     // Handle PostgreSQL array types (e.g., _TEXT, _INT4)
     if (upperType.startsWith("_")) {

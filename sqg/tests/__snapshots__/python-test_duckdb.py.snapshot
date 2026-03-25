@@ -261,6 +261,12 @@ class AllLogEntriesRow:
     created_at: datetime.datetime | None
 
 @dataclass(frozen=True)
+class LogEntriesByDayRow:
+    id: int | None
+    message: str | None
+    day: datetime.date | None
+
+@dataclass(frozen=True)
 class GetTasksByPriorityRow:
     id: int | None
     title: str | None
@@ -792,6 +798,17 @@ select a:[1,2,3] ,b:2, c: {'x' : [{'a' : 1}], 'y' : {'z' : 3}}""", []
     def all_log_entries_raw(self) -> list[tuple[Any, ...]]:
         return self._conn.execute(
             "select * from log_entries;", []
+        ).fetchall()
+
+    def log_entries_by_day(self) -> list[LogEntriesByDayRow]:
+        rows = self._conn.execute(
+            "select id, message, created_at::date as day from log_entries;", []
+        ).fetchall()
+        return [LogEntriesByDayRow(id=row[0], message=row[1], day=row[2]) for row in rows]
+
+    def log_entries_by_day_raw(self) -> list[tuple[Any, ...]]:
+        return self._conn.execute(
+            "select id, message, created_at::date as day from log_entries;", []
         ).fetchall()
 
     def insert_task(self, id: int, title: str, priority: str) -> None:

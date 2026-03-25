@@ -62,22 +62,30 @@ public class TestPg {
         }
     }
 
-    private static LocalDateTime toLocalDateTime(java.sql.Timestamp ts) {
-        return ts != null ? ts.toLocalDateTime() : null;
+    private static LocalDateTime toLocalDateTime(Object ts) {
+        if (ts == null) return null;
+        if (ts instanceof LocalDateTime ldt) return ldt;
+        return ((java.sql.Timestamp) ts).toLocalDateTime();
     }
 
-    private static LocalDate toLocalDate(java.sql.Date d) {
-        return d != null ? d.toLocalDate() : null;
+    private static LocalDate toLocalDate(Object d) {
+        if (d == null) return null;
+        if (d instanceof LocalDate ld) return ld;
+        return ((java.sql.Date) d).toLocalDate();
     }
 
-    private static LocalTime toLocalTime(java.sql.Time t) {
-        return t != null ? t.toLocalTime() : null;
+    private static LocalTime toLocalTime(Object t) {
+        if (t == null) return null;
+        if (t instanceof LocalTime lt) return lt;
+        return ((java.sql.Time) t).toLocalTime();
     }
 
-    private static OffsetDateTime toOffsetDateTime(java.sql.Timestamp ts) {
-        return ts != null
-            ? ts.toInstant().atOffset(java.time.ZoneOffset.UTC)
-            : null;
+    private static OffsetDateTime toOffsetDateTime(Object ts) {
+        if (ts == null) return null;
+        if (ts instanceof OffsetDateTime odt) return odt;
+        return ((java.sql.Timestamp) ts).toInstant().atOffset(
+            java.time.ZoneOffset.UTC
+        );
     }
 
     private static <K> List<K> arrayToList(
@@ -1166,13 +1174,9 @@ public class TestPg {
                           (BigDecimal) rs.getObject(8),
                           (String) rs.getObject(9),
                           (String) rs.getObject(10),
-                          toLocalDate((java.sql.Date) rs.getObject(11)),
-                          toLocalDateTime(
-                              (java.sql.Timestamp) rs.getObject(12)
-                          ),
-                          toOffsetDateTime(
-                              (java.sql.Timestamp) rs.getObject(13)
-                          ),
+                          toLocalDate(rs.getObject(11)),
+                          toLocalDateTime(rs.getObject(12)),
+                          toOffsetDateTime(rs.getObject(13)),
                           (UUID) rs.getObject(14),
                           rs.getObject(15) != null
                               ? rs.getObject(15).toString()

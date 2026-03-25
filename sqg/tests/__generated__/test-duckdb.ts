@@ -176,6 +176,7 @@ CREATE TABLE tasks (
       ["insert_event", "insertEvent"],
       ["all_events", "allEvents"],
       ["all_log_entries", "allLogEntries"],
+      ["log_entries_by_day", "logEntriesByDay"],
       ["insert_task", "insertTask"],
       ["get_tasks_by_priority", "getTasksByPriority"],
       ["get_all_tasks", "getAllTasks"],
@@ -1435,6 +1436,22 @@ select * from test_all_types();`;
       id: number | null;
       message: string | null;
       created_at: { micros: bigint } | null;
+    }[];
+  }
+
+  async logEntriesByDay(): Promise<
+    {
+      id: number | null;
+      message: string | null;
+      day: { days: number } | null;
+    }[]
+  > {
+    const sql = "select id, message, created_at::date as day from log_entries;";
+    const reader = await this.conn.runAndReadAll(sql, []);
+    return reader.getRowObjects() as {
+      id: number | null;
+      message: string | null;
+      day: { days: number } | null;
     }[];
   }
 
