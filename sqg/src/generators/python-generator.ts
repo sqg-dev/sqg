@@ -64,7 +64,7 @@ export class PythonGenerator extends BaseGenerator {
   }
 
   override supportsAppenders(_engine: DbEngine): boolean {
-    return this.engine === "duckdb";
+    return this.engine === "duckdb" || this.engine === "postgres";
   }
 
   async beforeGenerate(

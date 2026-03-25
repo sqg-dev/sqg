@@ -4,8 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.lang.reflect.Modifier;
+import java.io.IOException;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -37,6 +43,7 @@ class PostgresTest {
                 stmt.execute("DROP TABLE IF EXISTS bigint_test CASCADE");
                 stmt.execute("DROP TABLE IF EXISTS uuid_test CASCADE");
                 stmt.execute("DROP TABLE IF EXISTS tricky_test CASCADE");
+                stmt.execute("DROP TABLE IF EXISTS all_types_test CASCADE");
                 stmt.execute("DROP TYPE IF EXISTS task_status CASCADE");
                 stmt.execute("DROP TYPE IF EXISTS tricky_enum CASCADE");
             }
@@ -209,6 +216,174 @@ class PostgresTest {
             assertThat(result).isNotNull();
             assertThat(result.id()).isEqualTo(id);
             assertThat(result.label()).isEqualTo("test-label");
+        }
+    }
+
+    @Test
+    void testBulkInsertWithPgBulkInsert() throws SQLException, IOException {
+        try (Connection conn = postgres.createConnection("")) {
+            TestPg pg = new TestPg(conn);
+            TestPg.applyMigrations(conn);
+
+            // Bulk insert using PgBulkInsert COPY BINARY
+            var rows = List.of(
+                    new TestPg.BigintTestRow(1L, 1L, (short) 42, 100, 9999999999L, "alice"),
+                    new TestPg.BigintTestRow(2L, 2L, (short) -100, null, 0L, "bob"),
+                    new TestPg.BigintTestRow(3L, 3L, null, 300, 123L, "carol"));
+
+            pg.bulkInsertBigintTestRow(rows);
+
+            // Verify all rows inserted correctly
+            var r1 = pg.getBigintRecord(1L);
+            assertThat(r1).isNotNull();
+            assertThat(r1.smallId()).isEqualTo((short) 42);
+            assertThat(r1.regularId()).isEqualTo(100);
+            assertThat(r1.amount()).isEqualTo(9999999999L);
+            assertThat(r1.name()).isEqualTo("alice");
+
+            var r2 = pg.getBigintRecord(2L);
+            assertThat(r2).isNotNull();
+            assertThat(r2.smallId()).isEqualTo((short) -100);
+            assertThat(r2.regularId()).isNull();
+            assertThat(r2.amount()).isEqualTo(0L);
+
+            var r3 = pg.getBigintRecord(3L);
+            assertThat(r3).isNotNull();
+            assertThat(r3.smallId()).isNull();
+            assertThat(r3.regularId()).isEqualTo(300);
+        }
+    }
+
+    @Test
+    void testBulkInsertWithSpecialCharacters() throws SQLException, IOException {
+        try (Connection conn = postgres.createConnection("")) {
+            TestPg pg = new TestPg(conn);
+            TestPg.applyMigrations(conn);
+
+            // PgBulkInsert uses COPY BINARY — special characters are handled natively
+            var rows = List.of(
+                    new TestPg.BigintTestRow(1L, 1L, (short) 1, 1, 1L, "hello\tworld"),
+                    new TestPg.BigintTestRow(2L, 2L, (short) 2, 2, 2L, "line1\nline2"),
+                    new TestPg.BigintTestRow(3L, 3L, (short) 3, 3, 3L, "back\\slash"));
+
+            pg.bulkInsertBigintTestRow(rows);
+
+            assertThat(pg.getBigintRecord(1L).name()).isEqualTo("hello\tworld");
+            assertThat(pg.getBigintRecord(2L).name()).isEqualTo("line1\nline2");
+            assertThat(pg.getBigintRecord(3L).name()).isEqualTo("back\\slash");
+        }
+    }
+
+    @Test
+    void testBulkInsertMany() throws SQLException, IOException {
+        try (Connection conn = postgres.createConnection("")) {
+            TestPg pg = new TestPg(conn);
+            TestPg.applyMigrations(conn);
+
+            var rows = List.of(
+                    new TestPg.BigintTestRow(1L, 1L, (short) 10, 100, 1000L, "row1"),
+                    new TestPg.BigintTestRow(2L, 2L, (short) 20, 200, 2000L, "row2"),
+                    new TestPg.BigintTestRow(3L, 3L, (short) 30, 300, 3000L, "row3"));
+
+            pg.bulkInsertBigintTestRow(rows);
+
+            assertThat(pg.countBigintTest()).isEqualTo(3L);
+            assertThat(pg.getBigintRecord(2L).name()).isEqualTo("row2");
+        }
+    }
+
+    @Test
+    void testBulkInsertTasksWithArrays() throws SQLException, IOException {
+        try (Connection conn = postgres.createConnection("")) {
+            TestPg pg = new TestPg(conn);
+            TestPg.applyMigrations(conn);
+
+            // Bulk insert tasks with TEXT[] and INTEGER[] columns
+            // Note: COPY bypasses SERIAL sequences, so we must provide explicit IDs
+            var rows = List.of(
+                    new TestPg.TasksRow(1, "Task A", "active",
+                            List.of("urgent", "backend"), List.of(10, 20, 30)),
+                    new TestPg.TasksRow(2, "Task B", "pending",
+                            List.of("frontend"), List.of(5)),
+                    new TestPg.TasksRow(3, "Task C", "completed",
+                            null, null));
+
+            pg.bulkInsertTasksRow(rows);
+
+            var allTasks = pg.getAllTasks();
+            assertThat(allTasks).hasSize(3);
+            assertThat(allTasks.get(0).tags()).containsExactly("urgent", "backend");
+            assertThat(allTasks.get(0).priorityScores()).containsExactly(10, 20, 30);
+            assertThat(allTasks.get(1).tags()).containsExactly("frontend");
+            assertThat(allTasks.get(2).tags()).isNull();
+            assertThat(allTasks.get(2).priorityScores()).isNull();
+        }
+    }
+
+    @Test
+    void testBulkInsertAllTypes() throws SQLException, IOException {
+        try (Connection conn = postgres.createConnection("")) {
+            TestPg pg = new TestPg(conn);
+            TestPg.applyMigrations(conn);
+
+            var uuid = UUID.fromString("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11");
+            var now = OffsetDateTime.of(2025, 6, 15, 10, 30, 0, 0, ZoneOffset.UTC);
+            // Note: COPY bypasses SERIAL sequences, so we must provide explicit IDs
+            var rows = List.of(
+                    new TestPg.AllTypesTestRow(
+                            1,                             // id (explicit for COPY)
+                            true,                          // bool_val
+                            (short) 42,                    // small_val
+                            12345,                         // int_val
+                            9999999999L,                   // big_val
+                            3.14f,                         // real_val
+                            2.718281828,                   // double_val
+                            new BigDecimal("99999.99"),    // numeric_val
+                            "hello world",                 // text_val
+                            "varchar value",               // varchar_val
+                            LocalDate.of(2025, 6, 15),    // date_val
+                            LocalDateTime.of(2025, 6, 15, 10, 30, 0),  // ts_val
+                            now,                           // tstz_val
+                            uuid,                          // uuid_val
+                            "{\"key\": \"value\"}",        // json_val
+                            List.of(1, 2, 3),              // int_arr
+                            List.of("a", "b", "c"),        // text_arr
+                            List.of(100L, 200L, 300L)      // big_arr
+                    ),
+                    new TestPg.AllTypesTestRow(
+                            2, null, null, null, null, null, null,
+                            null, null, null, null, null, null, null,
+                            null, null, null, null  // all nullable columns null
+                    ));
+
+            pg.bulkInsertAllTypesTestRow(rows);
+
+            // Verify first row with all types populated
+            var r1 = pg.getAllTypesRecord(1);
+            assertThat(r1).isNotNull();
+            assertThat(r1.boolVal()).isTrue();
+            assertThat(r1.smallVal()).isEqualTo((short) 42);
+            assertThat(r1.intVal()).isEqualTo(12345);
+            assertThat(r1.bigVal()).isEqualTo(9999999999L);
+            assertThat(r1.realVal()).isEqualTo(3.14f);
+            assertThat(r1.doubleVal()).isCloseTo(2.718281828, org.assertj.core.api.Assertions.within(0.000001));
+            assertThat(r1.numericVal()).isEqualByComparingTo(new BigDecimal("99999.99"));
+            assertThat(r1.textVal()).isEqualTo("hello world");
+            assertThat(r1.varcharVal()).isEqualTo("varchar value");
+            assertThat(r1.dateVal()).isEqualTo(LocalDate.of(2025, 6, 15));
+            assertThat(r1.uuidVal()).isEqualTo(uuid);
+            assertThat(r1.jsonVal()).isEqualTo("{\"key\": \"value\"}");
+            assertThat(r1.intArr()).containsExactly(1, 2, 3);
+            assertThat(r1.textArr()).containsExactly("a", "b", "c");
+            assertThat(r1.bigArr()).containsExactly(100L, 200L, 300L);
+
+            // Verify second row with all nulls
+            var r2 = pg.getAllTypesRecord(2);
+            assertThat(r2).isNotNull();
+            assertThat(r2.boolVal()).isNull();
+            assertThat(r2.smallVal()).isNull();
+            assertThat(r2.intArr()).isNull();
+            assertThat(r2.textArr()).isNull();
         }
     }
 

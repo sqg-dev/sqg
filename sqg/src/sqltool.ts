@@ -280,6 +280,10 @@ export class TableHelper {
     return this.generator.getClassName(`${this.table.id}_row`);
   }
 
+  get constantName(): string {
+    return this.table.id.toUpperCase();
+  }
+
   get typeMapper(): TypeMapper {
     return this.generator.typeMapper;
   }

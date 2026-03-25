@@ -30,6 +30,27 @@ CREATE TABLE uuid_test (
     label TEXT NOT NULL
 );
 
+CREATE TABLE all_types_test (
+    id SERIAL PRIMARY KEY,
+    bool_val BOOLEAN,
+    small_val SMALLINT,
+    int_val INTEGER,
+    big_val BIGINT,
+    real_val REAL,
+    double_val DOUBLE PRECISION,
+    numeric_val NUMERIC(10, 2),
+    text_val TEXT,
+    varchar_val VARCHAR(255),
+    date_val DATE,
+    ts_val TIMESTAMP,
+    tstz_val TIMESTAMPTZ,
+    uuid_val UUID,
+    json_val JSONB,
+    int_arr INTEGER[],
+    text_arr TEXT[],
+    big_arr BIGINT[]
+);
+
 CREATE TYPE tricky_enum AS ENUM ('hello', 'HELLO', ' hello', ' hello ', 'hello_1');
 
 CREATE TABLE tricky_test (
@@ -152,3 +173,13 @@ INSERT INTO uuid_test (id, label) VALUES (${id}::uuid, ${label});
 -- QUERY get_uuid_by_id :one
 @set id = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
 SELECT id, label FROM uuid_test WHERE id = ${id}::uuid;
+
+-- TABLE bigint_test :appender
+
+-- TABLE tasks :appender
+
+-- TABLE all_types_test :appender
+
+-- QUERY get_all_types_record :one
+@set id = 1
+SELECT * FROM all_types_test WHERE id = ${id};

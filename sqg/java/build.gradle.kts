@@ -11,6 +11,7 @@ dependencies {
     implementation(libs.guava)
     implementation(libs.duckdb)
     implementation(libs.postgresql)
+    implementation(libs.pgbulkinsert)
     implementation(libs.arrowVector)
     implementation(libs.arrowCData)
     runtimeOnly(libs.arrowMemory)

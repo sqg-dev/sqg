@@ -204,19 +204,21 @@ class {{className}}:
 {{/if}}
 {{/unless}}
 {{/each}}
-{{#if (isDuckDB)}}
 {{#if tables.length}}
     # ==================== Appenders ====================
 {{#each tables}}
 
+{{#if (isDuckDB)}}
     def {{functionName}}(self) -> {{className}}:
         return {{className}}(self._conn.cursor())
+{{else if (isPostgres)}}
+    def {{functionName}}(self) -> {{className}}:
+        return {{className}}(self._conn)
+{{/if}}
 
 {{/each}}
 {{/if}}
-{{/if}}
 
-{{#if (isDuckDB)}}
 {{#each tables}}
 
 @dataclass(frozen=True)
@@ -226,6 +228,7 @@ class {{rowTypeName}}:
 {{/each}}
 
 
+{{#if (isDuckDB)}}
 class {{className}}:
     def __init__(self, cursor: duckdb.DuckDBPyConnection) -> None:
         self._cursor = cursor
@@ -244,9 +247,38 @@ class {{className}}:
 
     def close(self) -> None:
         self._cursor.close()
+{{else if (isPostgres)}}
+class {{className}}:
+    """COPY appender for high-performance bulk inserts into {{tableName}}."""
+
+    def __init__(self, conn: psycopg.Connection) -> None:
+        self._conn = conn
+        self._copy: psycopg.Copy | None = None
+
+    def __enter__(self) -> {{className}}:
+        cur = self._conn.cursor()
+        self._copy = cur.copy("COPY {{tableName}} ({{#each columns}}{{name}}{{#unless @last}}, {{/unless}}{{/each}}) FROM STDIN")
+        self._copy.__enter__()
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        if self._copy is not None:
+            self._copy.__exit__(*args)
+            self._copy = None
+
+    def append(self, row: {{rowTypeName}}) -> {{className}}:
+        if self._copy is None:
+            raise RuntimeError("Use as context manager: with appender:")
+        self._copy.write_row(({{#each columns}}row.{{pyVarName name}}, {{/each}}))
+        return self
+
+    def append_many(self, rows: list[{{rowTypeName}}]) -> {{className}}:
+        for row in rows:
+            self.append(row)
+        return self
+{{/if}}
 
 {{/each}}
-{{/if}}
 
 {{!-- ==================== Inline partials ==================== --}}
 

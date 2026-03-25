@@ -379,7 +379,7 @@ export const postgres = new (class implements DatabaseEngine {
       reporter?.onTableStart?.(table.tableName);
       try {
         const result = await db.query(
-          `SELECT column_name, data_type, is_nullable
+          `SELECT column_name, data_type, udt_name, is_nullable
            FROM information_schema.columns
            WHERE table_name = $1
            ORDER BY ordinal_position`,
@@ -387,7 +387,9 @@ export const postgres = new (class implements DatabaseEngine {
         );
         table.columns = result.rows.map((row) => ({
           name: row.column_name,
-          type: row.data_type.toUpperCase(),
+          // Use udt_name (e.g., int4, float8, timestamptz, _int4 for arrays) for consistent
+          // type mapping — data_type uses verbose names like "double precision" that the mapper doesn't handle.
+          type: row.udt_name.toUpperCase(),
           nullable: row.is_nullable === "YES",
         }));
         reporter?.onTableComplete?.(table.tableName, table.columns.length);

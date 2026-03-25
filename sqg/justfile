@@ -67,7 +67,7 @@ build-sources: create-users-sqlite
 # Start a local PostgreSQL container for testing
 [group("services")]
 start-pg:
-  docker run --name sqg-postgres -p 15432:5432 \
+  docker run --name sqg-postgres -p 25432:5432 \
     -e POSTGRES_PASSWORD=secret \
     -e POSTGRES_USER=sqg \
     -e POSTGRES_DB=sqg-db \

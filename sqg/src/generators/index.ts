@@ -42,7 +42,7 @@ export function getGenerator(generator: string): Generator {
       case "typescript/node-api":
         return new TsDuckDBGenerator(`templates/${info.template}`);
       case "java/jdbc":
-        return new JavaGenerator(`templates/${info.template}`);
+        return new JavaGenerator(`templates/${info.template}`, info.engine);
       case "java/arrow":
         return new JavaDuckDBArrowGenerator(`templates/${info.template}`);
       case "python/sqlite3":

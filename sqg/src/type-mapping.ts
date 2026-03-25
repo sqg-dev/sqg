@@ -385,6 +385,10 @@ export class JavaTypeMapper extends TypeMapper {
     if (fieldType === "Byte") {
       return `${value} != null ? ((Number)${value}).byteValue() : null`;
     }
+    // PostgreSQL JDBC returns PGobject for JSON/JSONB — use toString() to get the JSON string
+    if (upperType === "JSON" || upperType === "JSONB") {
+      return `${value} != null ? ${value}.toString() : null`;
+    }
     return `(${fieldType})${value}`;
   }
 

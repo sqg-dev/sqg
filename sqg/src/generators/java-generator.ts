@@ -12,12 +12,15 @@ import { JavaTypeMapper } from "../type-mapping.js";
 import { BaseGenerator } from "./base-generator.js";
 
 export class JavaGenerator extends BaseGenerator {
-  constructor(public template: string) {
+  private engine: DbEngine;
+
+  constructor(public template: string, engine: DbEngine = "duckdb") {
     super(template, new JavaTypeMapper());
+    this.engine = engine;
   }
 
   override supportsAppenders(engine: DbEngine): boolean {
-    return engine === "duckdb";
+    return engine === "duckdb" || engine === "postgres";
   }
 
   getFunctionName(id: string): string {
@@ -77,6 +80,15 @@ export class JavaGenerator extends BaseGenerator {
     _queries: SQLQuery[],
     _tables: TableInfo[],
   ): Promise<void> {
+    Handlebars.registerHelper("isDuckDB", () => this.engine === "duckdb");
+    Handlebars.registerHelper("isPostgres", () => this.engine === "postgres");
+    Handlebars.registerHelper("pgBulkType", (column: ColumnInfo) => {
+      return pgBulkInsertType(column.type.toString().toUpperCase());
+    });
+    Handlebars.registerHelper("pgBulkAccessor", (column: ColumnInfo) => {
+      return pgBulkInsertAccessor(column.type.toString().toUpperCase());
+    });
+    Handlebars.registerHelper("javaVarName", (name: string) => camelCase(name));
     Handlebars.registerHelper("partsToString", (parts: SqlQueryPart[]) =>
       this.partsToString(parts),
     );
@@ -190,4 +202,54 @@ export class JavaGenerator extends BaseGenerator {
       consola.error("Failed to format Java file:", error);
     }
   }
+}
+
+const PG_BULK_TYPE_MAP: Record<string, string> = {
+  // information_schema.data_type names (uppercased)
+  SMALLINT: "INT2",
+  INTEGER: "INT4",
+  BIGINT: "INT8",
+  REAL: "FLOAT4",
+  "DOUBLE PRECISION": "FLOAT8",
+  BOOLEAN: "BOOLEAN",
+  TEXT: "TEXT",
+  "CHARACTER VARYING": "TEXT",
+  CHARACTER: "TEXT",
+  NUMERIC: "NUMERIC",
+  DECIMAL: "NUMERIC",
+  DATE: "DATE",
+  "TIME WITHOUT TIME ZONE": "TIME",
+  "TIMESTAMP WITHOUT TIME ZONE": "TIMESTAMP",
+  "TIMESTAMP WITH TIME ZONE": "TIMESTAMPTZ",
+  UUID: "UUID",
+  BYTEA: "BYTEA",
+  JSONB: "JSONB",
+  JSON: "JSONB",
+  // pg-types builtin names
+  INT2: "INT2",
+  INT4: "INT4",
+  INT8: "INT8",
+  FLOAT4: "FLOAT4",
+  FLOAT8: "FLOAT8",
+  BOOL: "BOOLEAN",
+  VARCHAR: "TEXT",
+  TIMESTAMP: "TIMESTAMP",
+  TIMESTAMPTZ: "TIMESTAMPTZ",
+};
+
+function pgBulkInsertType(sqlType: string): string {
+  // Handle PostgreSQL array types (e.g., _INT4 → array(INT4), _TEXT → array(TEXT))
+  if (sqlType.startsWith("_")) {
+    const baseType = sqlType.substring(1);
+    const mapped = PG_BULK_TYPE_MAP[baseType] || "TEXT";
+    return `array(PgBulkInsert.PostgresTypes.${mapped})`;
+  }
+  return PG_BULK_TYPE_MAP[sqlType] || "TEXT";
+}
+
+// PgBulkInsert uses different accessor methods for some types
+// (e.g., TIMESTAMPTZ needs .offsetDateTime() instead of .from())
+function pgBulkInsertAccessor(sqlType: string): string {
+  if (sqlType === "TIMESTAMPTZ") return "offsetDateTime";
+  return "from";
 }

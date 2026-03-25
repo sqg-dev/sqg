@@ -266,7 +266,7 @@ SQL Annotation Syntax:
   -- EXEC <name>                    Execute statement (INSERT/UPDATE/DELETE)
   -- MIGRATE <number>               Schema migration (run in order)
   -- TESTDATA <name>                Test data setup (not generated)
-  -- TABLE <name> :appender         Table for bulk insert appender (DuckDB only)
+  -- TABLE <name> :appender         Table for bulk insert appender (DuckDB, PostgreSQL)
 
   @set <varName> = <value>          Define a variable
   \${varName}                        Reference a variable in SQL

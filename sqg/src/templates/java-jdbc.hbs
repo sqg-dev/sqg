@@ -29,8 +29,14 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 {{#if tables.length}}
+{{#if (isDuckDB)}}
 import org.duckdb.DuckDBAppender;
 import org.duckdb.DuckDBConnection;
+{{else if (isPostgres)}}
+// Requires dependency: de.bytefish:pgbulkinsert:9.0.0
+import de.bytefish.pgbulkinsert.PgBulkInsert;
+import java.io.IOException;
+{{/if}}
 {{/if}}
 
 public class {{className}} {
@@ -250,18 +256,30 @@ public class {{className}} {
     // ==================== Appenders ====================
     {{#each tables}}
 
+{{#if (isDuckDB)}}
     /** Create an appender for bulk inserts into {{tableName}} */
     public {{className}} {{functionName}}() throws SQLException {
         return new {{className}}(((DuckDBConnection) connection).createAppender(DuckDBConnection.DEFAULT_SCHEMA, "{{tableName}}"));
     }
+{{else if (isPostgres)}}
+    /** Bulk insert rows into {{tableName}} using PostgreSQL COPY BINARY (via PgBulkInsert) */
+    public void bulkInsert{{rowTypeName}}(Iterable<{{rowTypeName}}> rows) throws SQLException, IOException {
+        {{constantName}}_WRITER.saveAll(connection, "{{tableName}}", rows);
+    }
+{{/if}}
     {{/each}}
     {{/if}}
 
 
 {{#each tables}}
 /** Row type for {{tableName}} appender */
+{{#if (isPostgres)}}
+public record {{rowTypeName}}({{#each columns}}{{{appenderType this}}} {{javaVarName name}}{{#unless @last}}, {{/unless}}{{/each}}) {}
+{{else}}
 public record {{rowTypeName}}({{#each columns}}{{{appenderType this}}} {{name}}{{#unless @last}}, {{/unless}}{{/each}}) {}
+{{/if}}
 
+{{#if (isDuckDB)}}
 /** Appender for bulk inserts into {{tableName}} */
 public static class {{className}} implements AutoCloseable {
     private final DuckDBAppender appender;
@@ -309,6 +327,16 @@ public static class {{className}} implements AutoCloseable {
         appender.close();
     }
 }
+{{else if (isPostgres)}}
+private static final PgBulkInsert.PgMapper<{{rowTypeName}}> {{constantName}}_MAPPER =
+    PgBulkInsert.PgMapper.forClass({{rowTypeName}}.class)
+        {{#each columns}}
+        .map("{{name}}", PgBulkInsert.PostgresTypes.{{{pgBulkType this}}}.{{{pgBulkAccessor this}}}({{../rowTypeName}}::{{javaVarName name}}))
+        {{/each}};
+
+private static final PgBulkInsert.PgBulkWriter<{{rowTypeName}}> {{constantName}}_WRITER =
+    new PgBulkInsert.PgBulkWriter<>({{constantName}}_MAPPER);
+{{/if}}
 {{/each}}
 }
 
