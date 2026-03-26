@@ -28,10 +28,9 @@
   },
   "devDependencies": {
     "@astrojs/node": "catalog:",
-    "tsx": "catalog:",
     "@astrojs/svelte": "catalog:",
     "@codemirror/lang-sql": "catalog:",
-    "@codemirror/state": "catalog:",
+    "@codemirror/state": "6.6.0",
     "@codemirror/theme-one-dark": "catalog:",
     "@codemirror/view": "catalog:",
     "@plausible-analytics/tracker": "catalog:",
@@ -40,7 +39,8 @@
     "autoprefixer": "catalog:",
     "codemirror": "catalog:",
     "svelte": "catalog:",
-    "tailwindcss": "catalog:"
+    "tailwindcss": "catalog:",
+    "tsx": "catalog:"
   },
   "files": [
     "dist"

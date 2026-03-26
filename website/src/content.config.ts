@@ -1,7 +1,9 @@
-import { defineCollection, z } from "astro:content";
+import { defineCollection } from "astro:content";
+import { z } from "astro/zod";
 import { docsLoader } from "@astrojs/starlight/loaders";
 import { docsSchema } from "@astrojs/starlight/schema";
 import { blogSchema } from "starlight-blog/schema";
+import { glob } from "astro/loaders";
 
 export const collections = {
   docs: defineCollection({
@@ -11,7 +13,7 @@ export const collections = {
     }),
   }),
   examples: defineCollection({
-    type: "content",
+    loader: glob({ pattern: "**/*.md", base: "./src/content/examples" }),
     schema: z.object({
       id: z.string(),
       title: z.string().optional(),

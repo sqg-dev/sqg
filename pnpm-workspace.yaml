@@ -10,11 +10,11 @@ packages:
   - sql-ide/shared
 
 catalog:
-  '@astrojs/check': ^0.9.6
-  '@astrojs/node': ^9.5.1
-  '@astrojs/starlight': ^0.37.1
-  '@astrojs/svelte': ^7.2.4
-  '@biomejs/biome': 2.4.8
+  '@astrojs/check': ^0.9.8
+  '@astrojs/node': ^10.0.3
+  '@astrojs/starlight': ^0.38.2
+  '@astrojs/svelte': ^8.0.3
+  '@biomejs/biome': 2.4.9
   '@codemirror/autocomplete': ^6.20.1
   '@codemirror/commands': ^6.10.3
   '@codemirror/lang-sql': ^6.10.0
@@ -24,7 +24,7 @@ catalog:
   '@codemirror/view': ^6.40.0
   '@duckdb/node-api': 1.5.0-r.1
   '@duckdb/node-bindings-linux-x64': 1.5.0-r.1
-  '@epic-web/cachified': ^5.6.0
+  '@epic-web/cachified': ^5.6.2
   '@fastify/cors': ^11.2.0
   '@lezer-unofficial/printer': ^1.0.1
   '@lezer/common': ^1.5.1
@@ -38,40 +38,40 @@ catalog:
   '@trpc/client': ^11.14.1
   '@trpc/server': ^11.14.1
   '@types/better-sqlite3': ^7.6.13
-  '@types/dockerode': ^3.3.47
+  '@types/dockerode': ^4.0.1
   '@types/node': ^25.5.0
   '@types/pg': ^8.20.0
   '@vitest/ui': ^4.1.0
   '@xyflow/svelte': ^1.5.1
-  astro: ^5.16.6
-  astro-d2: ^0.8.1
-  autoprefixer: ^10.4.23
+  astro: ^6.0.8
+  astro-d2: ^0.10.0
+  autoprefixer: ^10.4.27
   better-sqlite3: ^12.8.0
   codemirror: ^6.0.2
   commander: ^14.0.3
   concurrently: ^9.2.1
   consola: ^3.4.2
-  dockerode: ^4.0.9
+  dockerode: ^4.0.10
   dotenv: ^17.3.1
   elkjs: ^0.11.1
   es-toolkit: ^1.45.1
   fastify: ^5.8.2
   handlebars: ^4.7.8
-  lru-cache: ^11.2.4
+  lru-cache: ^11.2.7
   pg: ^8.20.0
   pg-types: ^4.1.0
   pino-pretty: ^13.1.3
   playwright: ^1.58.2
   prettier: ^3.8.1
   prettier-plugin-java: ^2.8.1
-  shiki: ^3.20.0
-  starlight-blog: ^0.25.2
-  svelte: ^5.54.1
+  shiki: ^4.0.2
+  starlight-blog: ^0.26.1
+  svelte: ^5.55.0
   tailwindcss: ^4.2.2
   tinybench: ^6.0.0
   tsdown: 0.21.4
   tsx: ^4.21.0
-  typescript: ^5.9.3
+  typescript: ^6.0.2
   vite: ^7.3.1
   vitest: ^4.1.0
   yaml: ^2.8.3
