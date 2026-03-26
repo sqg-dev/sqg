@@ -4,6 +4,18 @@ date: 2026-03-26
 authors:
   - name: Uwe Maurer
     url: https://github.com/uwemaurer
+cover:
+  alt: PostgreSQL elephant racing through INSERT statements at high speed
+  image: ../../../assets/blog/postgres-insert.png
+head:
+  - tag: meta
+    attrs:
+      property: og:image
+      content: https://sqg.dev/images/postgres-insert.png
+  - tag: meta
+    attrs:
+      name: twitter:image
+      content: https://sqg.dev/images/postgres-insert.png
 ---
 
 import BenchmarkReport from "@components/BenchmarkReport.astro";
@@ -23,34 +35,34 @@ All benchmark code is open source: [examples/java-postgres-benchmark](https://gi
 Here's what we tested, roughly in order of complexity:
 
 ### 1. Individual INSERT (the naive approach)
-One `executeUpdate()` per row, wrapped in a single transaction. This is what most beginners write, and what many ORMs produce.
+One `executeUpdate()` per row, wrapped in a single transaction. This is what most beginners write, and what many ORMs produce. ([code](https://github.com/sqg-dev/sqg/blob/main/examples/java-postgres-benchmark/src/main/java/benchmark/InsertMethods.java#L137))
 
 ### 2. Batch INSERT (`addBatch` / `executeBatch`)
-Standard JDBC batching. Accumulate rows with `addBatch()`, flush with `executeBatch()`. The driver sends them as individual INSERT statements but pipelines the network calls.
+Standard JDBC batching. Accumulate rows with `addBatch()`, flush with `executeBatch()`. The driver sends them as individual INSERT statements but pipelines the network calls. ([code](https://github.com/sqg-dev/sqg/blob/main/examples/java-postgres-benchmark/src/main/java/benchmark/InsertMethods.java#L149))
 
 ### 3. Batch INSERT with `reWriteBatchedInserts=true`
-Same code as #2, but with one URL parameter added: `?reWriteBatchedInserts=true`. The PostgreSQL JDBC driver automatically rewrites individual batched INSERTs into multi-value statements: `INSERT INTO t VALUES (...),(...),...`. This is the **lowest-effort optimization** you can make.
+Same code as #2, but with one URL parameter added: `?reWriteBatchedInserts=true`. The PostgreSQL JDBC driver automatically rewrites individual batched INSERTs into multi-value statements: `INSERT INTO t VALUES (...),(...),...`. This is the **lowest-effort optimization** you can make. ([code](https://github.com/sqg-dev/sqg/blob/main/examples/java-postgres-benchmark/src/main/java/benchmark/InsertMethods.java#L153))
 
 ### 4. Multi-value INSERT (hand-crafted)
-Manually build `INSERT INTO t VALUES (...),(...),(...) ...` with chunks of 1,000 rows. The hand-rolled version of what `reWriteBatchedInserts` does automatically.
+Manually build `INSERT INTO t VALUES (...),(...),(...) ...` with chunks of 1,000 rows. The hand-rolled version of what `reWriteBatchedInserts` does automatically. ([code](https://github.com/sqg-dev/sqg/blob/main/examples/java-postgres-benchmark/src/main/java/benchmark/InsertMethods.java#L179))
 
 ### 5. UNNEST
 ```sql
 INSERT INTO t SELECT * FROM unnest($1::uuid[], $2::timestamptz[], ...)
 ```
-Pass one array per column instead of one parameter per cell. Only 9 parameters regardless of row count, so it avoids PostgreSQL's 65K parameter limit. Reduces query planning overhead.
+Pass one array per column instead of one parameter per cell. Only 9 parameters regardless of row count, so it avoids PostgreSQL's 65K parameter limit. Reduces query planning overhead. ([code](https://github.com/sqg-dev/sqg/blob/main/examples/java-postgres-benchmark/src/main/java/benchmark/InsertMethods.java#L209), [generated](https://github.com/sqg-dev/sqg/blob/main/examples/java-postgres-benchmark/src/main/java/generated/Queries.java#L393))
 
 ### 6. COPY CSV
-PostgreSQL's `COPY ... FROM STDIN WITH (FORMAT CSV)` via the JDBC driver's `CopyManager`. Build a CSV string in memory, stream it to PostgreSQL. This is the standard "fast path" that most PostgreSQL performance guides recommend.
+PostgreSQL's `COPY ... FROM STDIN WITH (FORMAT CSV)` via the JDBC driver's `CopyManager`. Build a CSV string in memory, stream it to PostgreSQL. This is the standard "fast path" that most PostgreSQL performance guides recommend. ([code](https://github.com/sqg-dev/sqg/blob/main/examples/java-postgres-benchmark/src/main/java/benchmark/InsertMethods.java#L243))
 
 ### 7. COPY BINARY
-PostgreSQL's `COPY ... FROM STDIN (FORMAT BINARY)` via [PgBulkInsert](https://github.com/PgBulkInsert/PgBulkInsert). Instead of text CSV, it writes PostgreSQL's native binary wire format — no parsing overhead on the server side.
+PostgreSQL's `COPY ... FROM STDIN (FORMAT BINARY)` via [PgBulkInsert](https://github.com/PgBulkInsert/PgBulkInsert). Instead of text CSV, it writes PostgreSQL's native binary wire format — no parsing overhead on the server side. ([code](https://github.com/sqg-dev/sqg/blob/main/examples/java-postgres-benchmark/src/main/java/benchmark/InsertMethods.java#L263), [generated](https://github.com/sqg-dev/sqg/blob/main/examples/java-postgres-benchmark/src/main/java/generated/Queries.java#L457))
 
 ### 8. DuckDB → PostgreSQL
-Load data into an in-memory DuckDB table via DuckDB's Appender API (extremely fast — ~850K rows/sec into DuckDB), then push to PostgreSQL via DuckDB's postgres extension: `INSERT INTO pg.table SELECT * FROM local_table`. DuckDB uses COPY BINARY under the hood for the transfer.
+Load data into an in-memory DuckDB table via DuckDB's Appender API (extremely fast — ~850K rows/sec into DuckDB), then push to PostgreSQL via DuckDB's postgres extension: `INSERT INTO pg.table SELECT * FROM local_table`. DuckDB uses COPY BINARY under the hood for the transfer. ([code](https://github.com/sqg-dev/sqg/blob/main/examples/java-postgres-benchmark/src/main/java/benchmark/InsertMethods.java#L276), [generated](https://github.com/sqg-dev/sqg/blob/main/examples/java-postgres-benchmark/src/main/java/generated/QueriesDuckdb.java#L240))
 
 ### 9. Arrow → DuckDB → PostgreSQL
-Build Apache Arrow columnar vectors in Java, register them with DuckDB as a virtual table (zero-copy), then push to PostgreSQL via the postgres extension. Skips the DuckDB staging table entirely.
+Build Apache Arrow columnar vectors in Java, register them with DuckDB as a virtual table (zero-copy), then push to PostgreSQL via the postgres extension. Skips the DuckDB staging table entirely. ([code](https://github.com/sqg-dev/sqg/blob/main/examples/java-postgres-benchmark/src/main/java/benchmark/InsertMethods.java#L307))
 
 ## The Results
 

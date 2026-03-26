@@ -21,6 +21,7 @@
     "astro-d2": "catalog:",
     "dockerode": "catalog:",
     "lru-cache": "catalog:",
+    "sharp": "^0.34.5",
     "shiki": "catalog:",
     "starlight-blog": "catalog:",
     "typescript": "catalog:",
