@@ -16,8 +16,8 @@ COPY sqg/src ./sqg/src
 COPY sqg/biome.json ./sqg/
 
 # Install dependencies at workspace root (required for pnpm workspaces)
-RUN pnpm install --frozen-lockfile --filter sqg
-RUN (cd sqg && pnpm build)
+RUN pnpm install --frozen-lockfile --ignore-scripts --filter sqg
+RUN cd sqg && pnpm tsc --noEmit && pnpm tsdown && cp -r src/templates dist
 # Create a deployable standalone installation
 RUN pnpm --filter sqg --prod deploy /app-deploy 
 
