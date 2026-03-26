@@ -30,7 +30,7 @@
     "@astrojs/node": "catalog:",
     "@astrojs/svelte": "catalog:",
     "@codemirror/lang-sql": "catalog:",
-    "@codemirror/state": "6.6.0",
+    "@codemirror/state": "catalog:",
     "@codemirror/theme-one-dark": "catalog:",
     "@codemirror/view": "catalog:",
     "@plausible-analytics/tracker": "catalog:",
