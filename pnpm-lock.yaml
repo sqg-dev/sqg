@@ -282,27 +282,15 @@ importers:
 
   sqg:
     dependencies:
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.4.8
       '@clack/prompts':
         specifier: ^1.1.0
         version: 1.1.0
       '@duckdb/node-api':
         specifier: 'catalog:'
         version: 1.5.0-r.1
-      '@duckdb/node-bindings-linux-x64':
-        specifier: 'catalog:'
-        version: 1.5.0-r.1
-      '@lezer-unofficial/printer':
-        specifier: 'catalog:'
-        version: 1.0.1
       '@lezer/common':
         specifier: 'catalog:'
         version: 1.5.1
-      '@lezer/generator':
-        specifier: 'catalog:'
-        version: 1.8.0
       '@lezer/lr':
         specifier: 'catalog:'
         version: 1.4.8
@@ -358,6 +346,18 @@ importers:
         specifier: 'catalog:'
         version: 4.3.6
     devDependencies:
+      '@biomejs/biome':
+        specifier: 'catalog:'
+        version: 2.4.8
+      '@duckdb/node-bindings-linux-x64':
+        specifier: 'catalog:'
+        version: 1.5.0-r.1
+      '@lezer-unofficial/printer':
+        specifier: 'catalog:'
+        version: 1.0.1
+      '@lezer/generator':
+        specifier: 'catalog:'
+        version: 1.8.0
       '@libsql/client':
         specifier: ^0.17.2
         version: 0.17.2
@@ -7968,13 +7968,9 @@ snapshots:
 
   '@sqg/sqg@file:sqg':
     dependencies:
-      '@biomejs/biome': 2.4.8
       '@clack/prompts': 1.1.0
       '@duckdb/node-api': 1.5.0-r.1
-      '@duckdb/node-bindings-linux-x64': 1.5.0-r.1
-      '@lezer-unofficial/printer': 1.0.1
       '@lezer/common': 1.5.1
-      '@lezer/generator': 1.8.0
       '@lezer/lr': 1.4.8
       '@modelcontextprotocol/sdk': 1.27.1(zod@4.3.6)
       '@testcontainers/postgresql': 11.13.0
