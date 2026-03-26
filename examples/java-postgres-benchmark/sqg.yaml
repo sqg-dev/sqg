@@ -1,0 +1,17 @@
+version: 1
+name: java-postgres-benchmark
+sql:
+  - files:
+      - queries.sql
+    gen:
+      - generator: java/postgres
+        output: src/main/java/generated/
+        config:
+          package: generated
+  - files:
+      - queries-duckdb.sql
+    gen:
+      - generator: java/duckdb
+        output: src/main/java/generated/
+        config:
+          package: generated

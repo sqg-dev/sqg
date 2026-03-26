@@ -1,0 +1,135 @@
+---
+title: "I Benchmarked 9 Ways to Insert Data Into PostgreSQL From Java. COPY BINARY Won by a Landslide."
+date: 2026-03-26
+authors:
+  - name: Uwe Maurer
+    url: https://github.com/uwemaurer
+---
+
+import BenchmarkReport from "@components/BenchmarkReport.astro";
+
+**TL;DR:** We benchmarked 9 different methods of inserting data into PostgreSQL from Java, from naive individual INSERTs to DuckDB-via-Arrow pipelines. COPY BINARY wins decisively at scale: **712K rows/sec** for 1M rows — 2x faster than COPY CSV, 5x faster than JDBC batch, and 18x faster than individual INSERTs. The sweet spot for most applications is `reWriteBatchedInserts=true` (one URL parameter, 2.5x speedup over naive batch). For high-volume ingestion, COPY BINARY via [PgBulkInsert](https://github.com/PgBulkInsert/PgBulkInsert) is unbeatable.
+
+## The Setup
+
+We built a benchmark that simulates an IoT sensor ingestion pipeline — a table with 9 columns covering the interesting PostgreSQL types: `UUID`, `TIMESTAMPTZ`, `DOUBLE PRECISION`, `NUMERIC`, `SMALLINT`, `BOOLEAN`, `TEXT`, and `TEXT[]`. One million rows of randomized but deterministic sensor readings (temperature, humidity, pressure, battery level, anomaly flags, location tags).
+
+Each method was warmed up (2 runs), then measured (5 runs, median taken). After every insert, we verified both row count and spot-checked the first and last 10 rows against source data. PostgreSQL 18 via TestContainers. Java 25.
+
+All benchmark code is open source: [examples/java-postgres-benchmark](https://github.com/sqg-dev/sqg/tree/main/examples/java-postgres-benchmark).
+
+## The Methods
+
+Here's what we tested, roughly in order of complexity:
+
+### 1. Individual INSERT (the naive approach)
+One `executeUpdate()` per row, wrapped in a single transaction. This is what most beginners write, and what many ORMs produce.
+
+### 2. Batch INSERT (`addBatch` / `executeBatch`)
+Standard JDBC batching. Accumulate rows with `addBatch()`, flush with `executeBatch()`. The driver sends them as individual INSERT statements but pipelines the network calls.
+
+### 3. Batch INSERT with `reWriteBatchedInserts=true`
+Same code as #2, but with one URL parameter added: `?reWriteBatchedInserts=true`. The PostgreSQL JDBC driver automatically rewrites individual batched INSERTs into multi-value statements: `INSERT INTO t VALUES (...),(...),...`. This is the **lowest-effort optimization** you can make.
+
+### 4. Multi-value INSERT (hand-crafted)
+Manually build `INSERT INTO t VALUES (...),(...),(...) ...` with chunks of 1,000 rows. The hand-rolled version of what `reWriteBatchedInserts` does automatically.
+
+### 5. UNNEST
+```sql
+INSERT INTO t SELECT * FROM unnest($1::uuid[], $2::timestamptz[], ...)
+```
+Pass one array per column instead of one parameter per cell. Only 9 parameters regardless of row count, so it avoids PostgreSQL's 65K parameter limit. Reduces query planning overhead.
+
+### 6. COPY CSV
+PostgreSQL's `COPY ... FROM STDIN WITH (FORMAT CSV)` via the JDBC driver's `CopyManager`. Build a CSV string in memory, stream it to PostgreSQL. This is the standard "fast path" that most PostgreSQL performance guides recommend.
+
+### 7. COPY BINARY
+PostgreSQL's `COPY ... FROM STDIN (FORMAT BINARY)` via [PgBulkInsert](https://github.com/PgBulkInsert/PgBulkInsert). Instead of text CSV, it writes PostgreSQL's native binary wire format — no parsing overhead on the server side.
+
+### 8. DuckDB → PostgreSQL
+Load data into an in-memory DuckDB table via DuckDB's Appender API (extremely fast — ~850K rows/sec into DuckDB), then push to PostgreSQL via DuckDB's postgres extension: `INSERT INTO pg.table SELECT * FROM local_table`. DuckDB uses COPY BINARY under the hood for the transfer.
+
+### 9. Arrow → DuckDB → PostgreSQL
+Build Apache Arrow columnar vectors in Java, register them with DuckDB as a virtual table (zero-copy), then push to PostgreSQL via the postgres extension. Skips the DuckDB staging table entirely.
+
+## The Results
+
+The interactive report below shows all batch sizes from 100 to 1,000,000 rows:
+
+<BenchmarkReport file="benchmark-postgres-insert.html" />
+
+### How They Scale
+
+The performance characteristics change with data volume. At small sizes (100-1,000 rows), the overhead of COPY setup makes simpler methods competitive. COPY CSV actually wins below ~5K rows. But once you cross 10K rows, COPY BINARY pulls away and the gap widens linearly.
+
+At 1M rows, COPY BINARY delivers **712K rows/sec** — 2x faster than COPY CSV, 2.4x faster than `reWriteBatchedInserts`, and 18x faster than individual INSERTs.
+
+## The DuckDB Detour: What We Learned
+
+The DuckDB approach was the most fun to benchmark. DuckDB is known for being heavily optimized, and we were curious whether routing data through its postgres extension could beat a direct COPY. The idea: spin up an in-memory DuckDB instance as a temporary buffer — no files, no persistence, just a fast columnar engine to stage data before pushing it to PostgreSQL.
+
+**DuckDB Appender path (method 8):** DuckDB's appender loads 1M rows into an in-memory table in ~1.1s (~935K rows/sec). But then the DuckDB postgres extension takes ~2.3s to push that data to PostgreSQL. Total: 3.3s. The bottleneck is the cross-engine transfer.
+
+**Arrow path (method 9):** Building Arrow vectors directly and registering them as a virtual table with DuckDB (zero-copy, no staging table needed) is faster than the appender path (~635ms vs ~1.1s for 1M rows). DuckDB scans the Arrow memory directly. But the copy-to-PG step takes the same ~2.2s. Total: 2.8s.
+
+**Key insight:** DuckDB's postgres extension already uses COPY BINARY under the hood (we confirmed this by reading the [source](https://github.com/duckdb/duckdb-postgres/blob/main/src/storage/postgres_insert.cpp)). So the DuckDB → PG transfer is doing the same thing as PgBulkInsert, but with additional overhead from the cross-engine bridge. Direct PgBulkInsert cuts out the middleman.
+
+Where DuckDB shines is if your data is already in DuckDB (from a Parquet file, a CSV, a data pipeline). In that case, `ATTACH` + `INSERT INTO` is the most natural path and gives you COPY BINARY for free without any extra libraries. For data that starts in Java, going direct is faster.
+
+## Recommendations
+
+### For most applications: `reWriteBatchedInserts=true`
+
+If you're using JDBC (directly or through Spring/Hibernate), just add `?reWriteBatchedInserts=true` to your connection URL. One parameter change, zero code changes, ~2.5x throughput improvement over naive batching. This is the best ROI optimization.
+
+```
+jdbc:postgresql://host:5432/db?reWriteBatchedInserts=true
+```
+
+### For bulk ingestion: COPY BINARY via PgBulkInsert
+
+If you're ingesting thousands or millions of rows — ETL pipelines, IoT data, analytics ingestion, data migrations — use [PgBulkInsert](https://github.com/PgBulkInsert/PgBulkInsert) by Philipp Wagner. It's a well-maintained Java library that handles the binary wire format, supports all PostgreSQL types (including arrays, UUIDs, JSONB, timestamps with timezone), and delivers ~700K rows/sec.
+
+### For COPY CSV users
+
+If you're already using COPY CSV (a common recommendation), know that switching to COPY BINARY roughly doubles your throughput. The difference is server-side parsing: CSV requires text → type conversion for every value, while binary sends data in PostgreSQL's native format.
+
+### What about UNNEST?
+
+UNNEST (`INSERT INTO t SELECT * FROM unnest(...)`) is often recommended as "faster than multi-value INSERT" because it reduces query planning overhead. In our benchmark with 9 columns, it was roughly equivalent to multi-value INSERT at most sizes. The advantage may be more pronounced with wider tables or simpler column types. Its real benefit is avoiding the 65K parameter limit — with 9 columns, multi-value INSERT maxes out at ~7,200 rows per statement.
+
+## How We Built This
+
+The benchmark was built using [SQG](https://sqg.dev), a SQL-first code generator. SQG reads annotated `.sql` files and generates type-safe database access code for Java, TypeScript, and Python — queries, inserts, COPY BINARY appenders, DuckDB bulk insert appenders, all from a single SQL file.
+
+In this benchmark, SQG generated the COPY BINARY appender (with PgBulkInsert mapper and row record), the DuckDB appender, the UNNEST insert, the individual INSERT, and the verification queries — all from [`queries.sql`](https://github.com/sqg-dev/sqg/blob/main/examples/java-postgres-benchmark/queries.sql). The only hand-written insert methods are Batch INSERT and COPY CSV, which use raw JDBC.
+
+## Methodology
+
+- PostgreSQL 18 (alpine) via TestContainers 2.0.4
+- Java 25 (Temurin 25+36-LTS)
+- DuckDB 1.5.1, Apache Arrow 19.0.0, PgBulkInsert 9.0.0
+- Each method: 2 warmup runs + 5 measurement runs, median reported
+- Data verified after every insert (row count + first/last row spot checks)
+- All methods use a single connection (no parallel streams)
+- TestContainers runs PostgreSQL in Docker with default settings (no tuning)
+
+## Try It Yourself
+
+```bash
+git clone https://github.com/sqg-dev/sqg
+cd sqg/examples/java-postgres-benchmark
+just run
+```
+
+This generates the code from SQL files, runs the full benchmark, and writes an HTML report with interactive charts.
+
+## Credits
+
+- [PgBulkInsert](https://github.com/PgBulkInsert/PgBulkInsert) by Philipp Wagner — the library that makes COPY BINARY accessible from Java
+- [DuckDB](https://duckdb.org/) and its [postgres extension](https://github.com/duckdb/duckdb-postgres)
+- [TestContainers](https://testcontainers.com/)
+
+---
+
+*Have questions or want to challenge the methodology? Open an issue on [GitHub](https://github.com/sqg-dev/sqg).*
