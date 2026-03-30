@@ -1,0 +1,22 @@
+# SQG UI development commands
+
+default:
+    @just --list
+
+# Test dev mode startup (checks for errors)
+test-dev:
+    kill $(lsof -t -i:5173 -i:5174 -i:3000) 2>/dev/null || true
+    timeout 15 pnpm dev 2>&1 | grep -i "error\|Invalid\|ready\|Local" | head -10
+
+# Kill all dev/test servers
+kill:
+    kill $(lsof -t -i:5173 -i:5174 -i:3000 -i:3333 -i:3399) 2>/dev/null || true
+
+# Build frontend
+build:
+    pnpm --filter @sqg-ui/frontend build
+
+# Run all tests
+test:
+    pnpm --filter @sqg-ui/server test:run
+    pnpm --filter sqg-ui test:e2e

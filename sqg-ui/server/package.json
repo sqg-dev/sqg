@@ -1,0 +1,38 @@
+{
+  "name": "@sqg-ui/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./trpc": "./src/trpc/router.ts"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc --noEmit && tsdown",
+    "start": "node dist/index.mjs",
+    "test": "vitest",
+    "test:run": "vitest run"
+  },
+  "dependencies": {
+    "@duckdb/node-api": "catalog:",
+    "@fastify/cors": "catalog:",
+    "@sqg/sqg": "workspace:*",
+    "@sqg-ui/shared": "workspace:*",
+    "@trpc/server": "catalog:",
+    "better-sqlite3": "catalog:",
+    "fastify": "catalog:",
+    "pg": "catalog:",
+    "yaml": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "catalog:",
+    "@types/node": "catalog:",
+    "@types/pg": "catalog:",
+    "pino-pretty": "catalog:",
+    "tsdown": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -4,10 +4,10 @@ packages:
   - examples/typescript-sqlite
   - examples/typescript-duckdb
   - examples/typescript-sqlite-benchmark
-  - sql-ide
-  - sql-ide/frontend
-  - sql-ide/server
-  - sql-ide/shared
+  - sqg-ui
+  - sqg-ui/frontend
+  - sqg-ui/server
+  - sqg-ui/shared
 
 catalog:
   '@astrojs/check': ^0.9.8

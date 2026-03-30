@@ -94,6 +94,8 @@ export class SQLQuery {
     public isBatch: boolean,
     public variables: Map<string, string>,
     public config: Config | null,
+    /** 1-indexed line number of the annotation comment in the source file */
+    public line: number,
   ) {
     this.columns = [];
   }
@@ -154,6 +156,8 @@ export class TableInfo {
     public includeColumns: string[],
     /** Whether :appender modifier was specified (required for generation) */
     public hasAppender: boolean,
+    /** 1-indexed line number of the annotation comment in the source file */
+    public line: number,
   ) {}
 
   get skipGenerateFunction(): boolean {
@@ -203,6 +207,9 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
 
   do {
     if (cursor.name === "QueryBlock") {
+      const annotationNode =
+        cursor.node.getChild("LineCommentStartSpecial") ?? cursor.node.getChild("BlockCommentStartSpecial");
+      const annotationLine = annotationNode ? getLineNumber(annotationNode.from) : getLineNumber(cursor.node.from);
       const queryTypeRaw =
         getStr("LineCommentStartSpecial", true) ?? getStr("BlockCommentStartSpecial");
       const queryType = queryTypeRaw.replace("--", "").replace("/*", "").trim();
@@ -450,7 +457,7 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
           }
         }
 
-        const table = new TableInfo(filePath, name, tableName, includeColumns, hasAppender);
+        const table = new TableInfo(filePath, name, tableName, includeColumns, hasAppender, annotationLine);
 
         if (queryNames.has(name)) {
           throw SqgError.inFile(`Duplicate name '${name}'`, "DUPLICATE_QUERY", filePath, {
@@ -487,6 +494,7 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
         isBatch,
         variables,
         config,
+        annotationLine,
       );
 
       if (queryNames.has(name)) {

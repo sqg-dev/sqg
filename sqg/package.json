@@ -26,8 +26,8 @@
   },
   "scripts": {
     "prepublishOnly": "pnpm run build",
-    "build": "tsc --noEmit && tsdown && cp -r src/templates dist && pnpm run build:ide",
-    "build:ide": "cd ../sql-ide/frontend && pnpx vite build && cd ../server && pnpx tsdown && cd ../../sqg && cp ../sql-ide/server/dist/index.mjs dist/ide-server.mjs && cp -r ../sql-ide/frontend/dist dist/ide-public",
+    "build": "tsc --noEmit && tsdown && cp -r src/templates dist && pnpm run build:ui",
+    "build:ui": "cd ../sqg-ui/frontend && pnpx vite build && cd ../server && pnpx tsdown && cd ../../sqg && cp ../sqg-ui/server/dist/index.mjs dist/ui-server.mjs && cp -r ../sqg-ui/frontend/dist dist/ui-public",
     "lezer-gen": "lezer-generator src/parser/sql.grammar -o src/parser/sql-parser.ts",
     "test-grammar": "tsx src/test-grammar.ts",
     "check": "biome check --write src/",

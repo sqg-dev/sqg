@@ -1,0 +1,37 @@
+{
+  "name": "@sqg-ui/frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@codemirror/autocomplete": "catalog:",
+    "@codemirror/commands": "catalog:",
+    "@codemirror/lang-sql": "catalog:",
+    "@codemirror/lint": "catalog:",
+    "@codemirror/state": "catalog:",
+    "@codemirror/theme-one-dark": "catalog:",
+    "@codemirror/view": "catalog:",
+    "@lezer/generator": "catalog:",
+    "@lezer/lr": "catalog:",
+    "@sqg-ui/server": "workspace:*",
+    "@sqg-ui/shared": "workspace:*",
+    "@tanstack/svelte-table": "catalog:",
+    "@trpc/client": "catalog:",
+    "@xyflow/svelte": "catalog:",
+    "codemirror": "catalog:",
+    "elkjs": "catalog:"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "catalog:",
+    "@tailwindcss/vite": "catalog:",
+    "svelte": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:"
+  }
+}
