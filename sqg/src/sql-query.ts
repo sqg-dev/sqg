@@ -91,6 +91,7 @@ export class SQLQuery {
     public type: "EXEC" | "QUERY" | "MIGRATE" | "TESTDATA",
     public isOne: boolean,
     public isPluck: boolean,
+    public isBatch: boolean,
     public variables: Map<string, string>,
     public config: Config | null,
   ) {
@@ -211,6 +212,7 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
         .map((node: SyntaxNode) => nodeStr(node));
       const isOne = modifiers.includes(":one");
       const isPluck = modifiers.includes(":pluck");
+      const isBatch = modifiers.includes(":batch");
 
       let configStr = getStr("Config", true);
       if (configStr?.endsWith("*/")) {
@@ -482,6 +484,7 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
         queryType as "EXEC" | "QUERY" | "MIGRATE" | "TESTDATA",
         isOne,
         isPluck,
+        isBatch,
         variables,
         config,
       );

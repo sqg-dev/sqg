@@ -854,6 +854,41 @@ public class TestPg {
         }
     }
 
+    public record InsertTaskParams(
+        String title,
+        TaskStatus status,
+        List<String> tags,
+        List<Integer> priority_scores
+    ) {}
+
+    public int[] insertTaskBatch(Iterable<InsertTaskParams> params)
+        throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "INSERT INTO tasks (title, status, tags, priority_scores) VALUES (?,?::task_status,?,?);"
+            )
+        ) {
+            for (var row : params) {
+                stmt.setObject(1, row.title());
+                stmt.setObject(2, row.status().getValue());
+                stmt.setArray(
+                    3,
+                    connection.createArrayOf("TEXT", row.tags().toArray())
+                );
+                stmt.setArray(
+                    4,
+                    connection.createArrayOf(
+                        "INT4",
+                        row.priority_scores().toArray()
+                    )
+                );
+
+                stmt.addBatch();
+            }
+            return stmt.executeBatch();
+        }
+    }
+
     public int insertBigintRecord(
         Long id,
         Short small_id,
@@ -873,6 +908,35 @@ public class TestPg {
             stmt.setObject(5, name);
 
             return stmt.executeUpdate();
+        }
+    }
+
+    public record InsertBigintRecordParams(
+        Long id,
+        Short small_id,
+        Integer regular_id,
+        Long amount,
+        String name
+    ) {}
+
+    public int[] insertBigintRecordBatch(
+        Iterable<InsertBigintRecordParams> params
+    ) throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "INSERT INTO bigint_test (id, small_id, regular_id, amount, name) VALUES (?,?,?,?,?);"
+            )
+        ) {
+            for (var row : params) {
+                stmt.setObject(1, row.id());
+                stmt.setObject(2, row.small_id());
+                stmt.setObject(3, row.regular_id());
+                stmt.setObject(4, row.amount());
+                stmt.setObject(5, row.name());
+
+                stmt.addBatch();
+            }
+            return stmt.executeBatch();
         }
     }
 
@@ -945,6 +1009,22 @@ public class TestPg {
             stmt.setObject(1, val.getValue());
 
             return stmt.executeUpdate();
+        }
+    }
+
+    public int[] insertTrickyBatch(Iterable<TrickyEnum> params)
+        throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "INSERT INTO tricky_test (val) VALUES (?::tricky_enum);"
+            )
+        ) {
+            for (var value : params) {
+                stmt.setObject(1, value.getValue());
+
+                stmt.addBatch();
+            }
+            return stmt.executeBatch();
         }
     }
 
@@ -1031,6 +1111,25 @@ public class TestPg {
         }
     }
 
+    public record InsertUuidParams(UUID id, String label) {}
+
+    public int[] insertUuidBatch(Iterable<InsertUuidParams> params)
+        throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "INSERT INTO uuid_test (id, label) VALUES (?::uuid,?);"
+            )
+        ) {
+            for (var row : params) {
+                stmt.setObject(1, row.id());
+                stmt.setObject(2, row.label());
+
+                stmt.addBatch();
+            }
+            return stmt.executeBatch();
+        }
+    }
+
     public record GetUuidByIdResult(UUID id, String label) {}
 
     public GetUuidByIdResult getUuidById(UUID id) throws SQLException {
@@ -1049,6 +1148,100 @@ public class TestPg {
                       )
                     : null;
             }
+        }
+    }
+
+    public int insertUser(String id, String name, String email)
+        throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "INSERT INTO users (id, name, email) VALUES (?,?,?);"
+            )
+        ) {
+            stmt.setObject(1, id);
+            stmt.setObject(2, name);
+            stmt.setObject(3, email);
+
+            return stmt.executeUpdate();
+        }
+    }
+
+    public record InsertUserParams(String id, String name, String email) {}
+
+    public int[] insertUserBatch(Iterable<InsertUserParams> params)
+        throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "INSERT INTO users (id, name, email) VALUES (?,?,?);"
+            )
+        ) {
+            for (var row : params) {
+                stmt.setObject(1, row.id());
+                stmt.setObject(2, row.name());
+                stmt.setObject(3, row.email());
+
+                stmt.addBatch();
+            }
+            return stmt.executeBatch();
+        }
+    }
+
+    public int updateUserEmail(String id, String email) throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "UPDATE users SET email =? WHERE id =?;"
+            )
+        ) {
+            stmt.setObject(1, email);
+            stmt.setObject(2, id);
+
+            return stmt.executeUpdate();
+        }
+    }
+
+    public record UpdateUserEmailParams(String id, String email) {}
+
+    public int[] updateUserEmailBatch(Iterable<UpdateUserEmailParams> params)
+        throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "UPDATE users SET email =? WHERE id =?;"
+            )
+        ) {
+            for (var row : params) {
+                stmt.setObject(1, row.email());
+                stmt.setObject(2, row.id());
+
+                stmt.addBatch();
+            }
+            return stmt.executeBatch();
+        }
+    }
+
+    public int deleteUser(String id) throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "DELETE FROM users WHERE id =?;"
+            )
+        ) {
+            stmt.setObject(1, id);
+
+            return stmt.executeUpdate();
+        }
+    }
+
+    public int[] deleteUserBatch(Iterable<String> params) throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "DELETE FROM users WHERE id =?;"
+            )
+        ) {
+            for (var value : params) {
+                stmt.setObject(1, value);
+
+                stmt.addBatch();
+            }
+            return stmt.executeBatch();
         }
     }
 

@@ -490,6 +490,197 @@ class PostgresTest {
     }
 
     @Test
+    void testBatchInsertMultipleParams() throws SQLException {
+        try (Connection conn = postgres.createConnection("")) {
+            TestPg pg = new TestPg(conn);
+            TestPg.applyMigrations(conn);
+
+            // Batch insert multiple users using the generated record
+            var params = List.of(
+                    new TestPg.InsertUserParams("1", "Alice", "alice@example.com"),
+                    new TestPg.InsertUserParams("2", "Bob", "bob@example.com"),
+                    new TestPg.InsertUserParams("3", "Carol", null));
+
+            int[] results = pg.insertUserBatch(params);
+            assertThat(results).hasSize(3);
+            for (int r : results) {
+                assertThat(r).isEqualTo(1);
+            }
+
+            // Verify all rows were inserted
+            var users = pg.users1();
+            assertThat(users).hasSize(3);
+        }
+    }
+
+    @Test
+    void testBatchInsertSingleEnumParam() throws SQLException {
+        try (Connection conn = postgres.createConnection("")) {
+            TestPg pg = new TestPg(conn);
+            TestPg.applyMigrations(conn);
+
+            // Batch insert with single enum parameter (no record, just Iterable<TrickyEnum>)
+            int[] results = pg.insertTrickyBatch(
+                    List.of(TestPg.TrickyEnum.HELLO, TestPg.TrickyEnum.HELLO_2, TestPg.TrickyEnum._HELLO));
+
+            assertThat(results).hasSize(3);
+
+            var values = pg.getTrickyValues();
+            assertThat(values).hasSize(3);
+            assertThat(values.stream().map(TestPg.GetTrickyValuesResult::val).toList())
+                    .containsExactly(
+                            TestPg.TrickyEnum.HELLO,
+                            TestPg.TrickyEnum.HELLO_2,
+                            TestPg.TrickyEnum._HELLO);
+        }
+    }
+
+    @Test
+    void testBatchInsertWithArraysAndEnum() throws SQLException {
+        try (Connection conn = postgres.createConnection("")) {
+            TestPg pg = new TestPg(conn);
+            TestPg.applyMigrations(conn);
+
+            // Batch insert tasks with array params (List<String>, List<Integer>) and enum param
+            var params = List.of(
+                    new TestPg.InsertTaskParams("Task A", TestPg.TaskStatus.ACTIVE,
+                            List.of("urgent", "backend"), List.of(10, 20)),
+                    new TestPg.InsertTaskParams("Task B", TestPg.TaskStatus.PENDING,
+                            List.of("frontend"), List.of(5)));
+
+            int[] results = pg.insertTaskBatch(params);
+            assertThat(results).hasSize(2);
+
+            var tasks = pg.getAllTasks();
+            assertThat(tasks).hasSize(2);
+            assertThat(tasks.get(0).title()).isEqualTo("Task A");
+            assertThat(tasks.get(0).status()).isEqualTo(TestPg.TaskStatus.ACTIVE);
+            assertThat(tasks.get(0).tags()).containsExactly("urgent", "backend");
+            assertThat(tasks.get(0).priorityScores()).containsExactly(10, 20);
+            assertThat(tasks.get(1).title()).isEqualTo("Task B");
+            assertThat(tasks.get(1).tags()).containsExactly("frontend");
+        }
+    }
+
+    @Test
+    void testBatchInsertWithNumericTypes() throws SQLException {
+        try (Connection conn = postgres.createConnection("")) {
+            TestPg pg = new TestPg(conn);
+            TestPg.applyMigrations(conn);
+
+            // Batch insert with Long, Short, Integer params
+            var params = List.of(
+                    new TestPg.InsertBigintRecordParams(1L, (short) 42, 100, 9999999999L, "alice"),
+                    new TestPg.InsertBigintRecordParams(2L, null, null, 0L, "bob"));
+
+            int[] results = pg.insertBigintRecordBatch(params);
+            assertThat(results).hasSize(2);
+
+            var r1 = pg.getBigintRecord(1L);
+            assertThat(r1).isNotNull();
+            assertThat(r1.smallId()).isEqualTo((short) 42);
+            assertThat(r1.regularId()).isEqualTo(100);
+            assertThat(r1.amount()).isEqualTo(9999999999L);
+
+            var r2 = pg.getBigintRecord(2L);
+            assertThat(r2).isNotNull();
+            assertThat(r2.smallId()).isNull();
+            assertThat(r2.regularId()).isNull();
+        }
+    }
+
+    @Test
+    void testBatchInsertWithUuid() throws SQLException {
+        try (Connection conn = postgres.createConnection("")) {
+            TestPg pg = new TestPg(conn);
+            TestPg.applyMigrations(conn);
+
+            UUID id1 = UUID.fromString("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11");
+            UUID id2 = UUID.fromString("b1ffcd00-1d1c-5ff9-cc7e-7ccaae491b22");
+
+            var params = List.of(
+                    new TestPg.InsertUuidParams(id1, "first"),
+                    new TestPg.InsertUuidParams(id2, "second"));
+
+            int[] results = pg.insertUuidBatch(params);
+            assertThat(results).hasSize(2);
+
+            assertThat(pg.getUuidById(id1).label()).isEqualTo("first");
+            assertThat(pg.getUuidById(id2).label()).isEqualTo("second");
+        }
+    }
+
+    @Test
+    void testBatchUpdate() throws SQLException {
+        try (Connection conn = postgres.createConnection("")) {
+            TestPg pg = new TestPg(conn);
+            TestPg.applyMigrations(conn);
+
+            // Insert some users first
+            pg.insertUserBatch(List.of(
+                    new TestPg.InsertUserParams("1", "Alice", "alice@old.com"),
+                    new TestPg.InsertUserParams("2", "Bob", "bob@old.com"),
+                    new TestPg.InsertUserParams("3", "Carol", "carol@old.com")));
+
+            // Batch update emails (record order matches @set declaration order: id, email)
+            int[] results = pg.updateUserEmailBatch(List.of(
+                    new TestPg.UpdateUserEmailParams("1", "alice@new.com"),
+                    new TestPg.UpdateUserEmailParams("3", "carol@new.com")));
+
+            assertThat(results).hasSize(2);
+            assertThat(results).containsExactly(1, 1);
+
+            var users = pg.users1();
+            assertThat(users).hasSize(3);
+            var byId = new java.util.HashMap<String, String>();
+            for (var u : users) {
+                byId.put(u.id(), u.email());
+            }
+            assertThat(byId.get("1")).isEqualTo("alice@new.com");
+            assertThat(byId.get("2")).isEqualTo("bob@old.com");
+            assertThat(byId.get("3")).isEqualTo("carol@new.com");
+        }
+    }
+
+    @Test
+    void testBatchDelete() throws SQLException {
+        try (Connection conn = postgres.createConnection("")) {
+            TestPg pg = new TestPg(conn);
+            TestPg.applyMigrations(conn);
+
+            // Insert some users first
+            pg.insertUserBatch(List.of(
+                    new TestPg.InsertUserParams("1", "Alice", null),
+                    new TestPg.InsertUserParams("2", "Bob", null),
+                    new TestPg.InsertUserParams("3", "Carol", null)));
+
+            // Batch delete two of them
+            int[] results = pg.deleteUserBatch(List.of("1", "3"));
+
+            assertThat(results).hasSize(2);
+            assertThat(results).containsExactly(1, 1);
+
+            var users = pg.users1();
+            assertThat(users).hasSize(1);
+            assertThat(users.getFirst().id()).isEqualTo("2");
+        }
+    }
+
+    @Test
+    void testBatchInsertEmpty() throws SQLException {
+        try (Connection conn = postgres.createConnection("")) {
+            TestPg pg = new TestPg(conn);
+            TestPg.applyMigrations(conn);
+
+            // Batch insert with empty iterable should return empty array
+            int[] results = pg.insertUserBatch(List.of());
+            assertThat(results).isEmpty();
+
+            assertThat(pg.users1()).isEmpty();
+        }
+    }
+
+    @Test
     void testStreamClosesResources() throws SQLException {
         try (Connection conn = postgres.createConnection("")) {
             TestPg pg = new TestPg(conn);

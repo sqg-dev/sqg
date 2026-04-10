@@ -129,7 +129,7 @@ SELECT tags FROM tasks WHERE id = 1;
 SELECT priority_scores FROM tasks WHERE id = 1;
 
 
--- EXEC insert_task
+-- EXEC insert_task :batch
 @set title = 'Test Task'
 @set status = 'active'
 @set tags = '{test,urgent}'
@@ -139,7 +139,7 @@ INSERT INTO tasks (title, status, tags, priority_scores) VALUES (${title}, ${sta
 -- TESTDATA seed_bigint
 INSERT INTO bigint_test (id, small_id, regular_id, amount, name) VALUES (1, 42, 100, 9999999999, 'test');
 
--- EXEC insert_bigint_record
+-- EXEC insert_bigint_record :batch
 @set id = 2
 @set small_id = 7
 @set regular_id = 200
@@ -161,7 +161,7 @@ SELECT COUNT(*) FROM bigint_test;
 -- TESTDATA seed_tricky
 INSERT INTO tricky_test (val) VALUES ('hello'), ('HELLO'), (' hello'), (' hello '), ('hello_1');
 
--- EXEC insert_tricky
+-- EXEC insert_tricky :batch
 @set val = 'hello'
 INSERT INTO tricky_test (val) VALUES (${val}::tricky_enum);
 
@@ -171,7 +171,7 @@ SELECT id, val FROM tricky_test;
 -- TESTDATA seed_uuid
 INSERT INTO uuid_test (id, label) VALUES ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'test-uuid');
 
--- EXEC insert_uuid
+-- EXEC insert_uuid :batch
 @set id = 'b1ffcd00-1d1c-5ff9-cc7e-7ccaae491b22'
 @set label = 'test'
 INSERT INTO uuid_test (id, label) VALUES (${id}::uuid, ${label});
@@ -179,6 +179,21 @@ INSERT INTO uuid_test (id, label) VALUES (${id}::uuid, ${label});
 -- QUERY get_uuid_by_id :one
 @set id = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
 SELECT id, label FROM uuid_test WHERE id = ${id}::uuid;
+
+-- EXEC insert_user :batch
+@set id = 'test'
+@set name = 'Test User'
+@set email = 'test@example.com'
+INSERT INTO users (id, name, email) VALUES (${id}, ${name}, ${email});
+
+-- EXEC update_user_email :batch
+@set id = 'test'
+@set email = 'new@example.com'
+UPDATE users SET email = ${email} WHERE id = ${id};
+
+-- EXEC delete_user :batch
+@set id = 'test'
+DELETE FROM users WHERE id = ${id};
 
 -- TABLE bigint_test :appender
 

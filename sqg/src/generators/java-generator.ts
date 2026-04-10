@@ -95,6 +95,7 @@ export class JavaGenerator extends BaseGenerator {
     Handlebars.registerHelper("partsToString", (parts: SqlQueryPart[]) =>
       this.partsToString(parts),
     );
+    Handlebars.registerHelper("hasMultipleParams", (params: unknown[]) => params.length > 1);
     Handlebars.registerHelper("declareTypes", (queryHelper: SqlQueryHelper) => {
       const query = queryHelper.query;
       if (queryHelper.isPluck) {

@@ -225,6 +225,37 @@ public class {{className}} {
             {{> execute}}
         }
     }
+    {{#if isBatch}}
+    {{#if (hasMultipleParams variables)}}
+    public record {{batchParamsType}}({{#each variables}}{{{type}}} {{name}}{{#unless @last}}, {{/unless}}{{/each}}) {}
+
+    public int[] {{functionName}}Batch(Iterable<{{batchParamsType}}> params) throws SQLException {
+        try (var stmt = connection.prepareStatement({{{partsToString sqlQueryParts}}})) {
+            for (var row : params) {
+                {{#each parameters}}{{#if isArray}}stmt.setArray({{plusOne @index}}, connection.createArrayOf("{{arrayBaseType}}", row.{{name}}().toArray()));
+                {{else if isEnum}}stmt.setObject({{plusOne @index}}, row.{{name}}().getValue());
+                {{else}}stmt.setObject({{plusOne @index}}, row.{{name}}());
+                {{/if}}{{/each}}
+                stmt.addBatch();
+            }
+            return stmt.executeBatch();
+        }
+    }
+    {{else}}
+    public int[] {{functionName}}Batch(Iterable<{{#each variables}}{{{type}}}{{/each}}> params) throws SQLException {
+        try (var stmt = connection.prepareStatement({{{partsToString sqlQueryParts}}})) {
+            for (var value : params) {
+                {{#each parameters}}{{#if isArray}}stmt.setArray({{plusOne @index}}, connection.createArrayOf("{{arrayBaseType}}", value.toArray()));
+                {{else if isEnum}}stmt.setObject({{plusOne @index}}, value.getValue());
+                {{else}}stmt.setObject({{plusOne @index}}, value);
+                {{/if}}{{/each}}
+                stmt.addBatch();
+            }
+            return stmt.executeBatch();
+        }
+    }
+    {{/if}}
+    {{/if}}
     {{#if isQuery}}{{#unless isOne}}
     public Stream<{{rowType}}> {{functionName}}Stream({{#each variables}}{{{type}}} {{name}}{{#unless @last}}, {{/unless}}{{/each}}) throws SQLException {
         var stmt = connection.prepareStatement({{{partsToString sqlQueryParts}}});

@@ -149,6 +149,14 @@ export class SqlQueryHelper {
     return this.query.isOne;
   }
 
+  get isBatch(): boolean {
+    return this.query.isBatch;
+  }
+
+  get batchParamsType(): string {
+    return this.generator.getClassName(`${this.query.id}_params`);
+  }
+
   get parameterNames(): string[] {
     return this.statement.parameters.map((param) => param.name);
   }
