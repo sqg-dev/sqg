@@ -187,6 +187,47 @@ The generator creates a single Java file with:
 
 All types are nullable (using wrapper classes).
 
+## Batch EXEC (`:batch`)
+
+Add the `:batch` modifier to any `EXEC` to also generate a JDBC batch method. The single-row method is kept alongside it, so callers can pick per use case. Works with any JDBC database (SQLite, DuckDB, PostgreSQL, ...).
+
+```sql
+-- EXEC insert_user :batch
+@set id = 'u1'
+@set name = 'Alice'
+@set email = 'alice@example.com'
+INSERT INTO users (id, name, email) VALUES (${id}, ${name}, ${email});
+```
+
+Multi-parameter EXECs generate a params record so call sites stay readable:
+
+```java
+public record InsertUserParams(String id, String name, String email) {}
+
+public int insertUser(String id, String name, String email) throws SQLException { ... }
+
+public int[] insertUserBatch(Iterable<InsertUserParams> params) throws SQLException { ... }
+```
+
+Single-parameter EXECs skip the record:
+
+```sql
+-- EXEC delete_user :batch
+@set id = 'u1'
+DELETE FROM users WHERE id = ${id};
+```
+
+```java
+public int[] deleteUserBatch(Iterable<String> params) throws SQLException { ... }
+```
+
+Parameters are bound with typed JDBC setters (`setInt`, `setString`, `setLong`, ...) based on the inferred Java type, falling back to `setObject` for types without a typed setter (`LocalDate`, `OffsetDateTime`, `BigDecimal`, `UUID`, list/array types). Typed setters skip the driver's per-row type inspection, which is noticeable on large batches.
+
+**When to use:**
+- `:batch` works for INSERT, UPDATE, and DELETE on any JDBC database.
+- For PostgreSQL INSERTs, add `?reWriteBatchedInserts=true` to your JDBC URL for ~2.5× throughput — the driver automatically rewrites batches into multi-VALUES statements.
+- For the fastest PostgreSQL INSERTs, use [`TABLE ... :appender`](#bulk-inserts-postgresql) (COPY BINARY) instead — typically 5–20× faster than `:batch`. See the [PostgreSQL insert benchmark](/blog/java-postgres-insert-benchmark/) for the numbers.
+
 ## PostgreSQL
 
 SQG supports PostgreSQL via the `java/postgres` generator. PostgreSQL-specific features include:

@@ -152,6 +152,8 @@ UPDATE users SET active = false WHERE id = ${id};
 - Database-specific result type (e.g., `RunResult` for SQLite)
 - Typically includes `changes` count and `lastInsertRowid`
 
+Add `:batch` to additionally generate a JDBC batch method — see the [`:batch`](#batch) modifier below.
+
 ### TABLE (Bulk Inserts)
 
 Generate high-performance bulk insert code for DuckDB and PostgreSQL tables. Provides significantly faster inserts than individual INSERT statements.
@@ -244,6 +246,52 @@ SELECT id FROM users;
 // Generated: (number | null)[]
 getUserIds(): (number | null)[]
 ```
+
+### :batch
+
+Applies to `EXEC` statements only. Generates an additional `<name>Batch(...)` method that uses JDBC's `addBatch()` / `executeBatch()` to send many rows in one round trip. The regular single-row method is still generated alongside it.
+
+**Java only** — ignored by the TypeScript and Python generators.
+
+```sql
+-- EXEC insert_user :batch
+@set id = 'u1'
+@set name = 'Alice'
+@set email = 'alice@example.com'
+INSERT INTO users (id, name, email) VALUES (${id}, ${name}, ${email});
+```
+
+For queries with multiple parameters, SQG generates a params record to keep call sites readable:
+
+```java
+// Generated
+public record InsertUserParams(String id, String name, String email) {}
+
+public int[] insertUserBatch(Iterable<InsertUserParams> params) throws SQLException { ... }
+```
+
+```java
+queries.insertUserBatch(List.of(
+    new MyApp.InsertUserParams("u1", "Alice", "alice@example.com"),
+    new MyApp.InsertUserParams("u2", "Bob",   "bob@example.com")
+));
+```
+
+Single-parameter EXECs skip the record wrapper:
+
+```sql
+-- EXEC delete_user :batch
+@set id = 'u1'
+DELETE FROM users WHERE id = ${id};
+```
+
+```java
+queries.deleteUserBatch(List.of("u1", "u2", "u3"));
+```
+
+**When to use which:**
+- `:batch` — general-purpose; works for INSERT, UPDATE, and DELETE on any JDBC database. For PostgreSQL, add `?reWriteBatchedInserts=true` to the JDBC URL for ~2.5× throughput on batched INSERTs (see the [insert benchmark](/blog/java-postgres-insert-benchmark/)).
+- `TABLE ... :appender` — INSERT-only, DuckDB and PostgreSQL only, typically 5–20× faster than `:batch` because it bypasses SQL parsing entirely (COPY BINARY / DuckDB appender API).
 
 ### Combining Modifiers
 
