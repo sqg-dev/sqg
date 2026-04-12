@@ -535,7 +535,7 @@ public class TestPg {
                 "SELECT * FROM users WHERE name =?"
             )
         ) {
-            stmt.setObject(1, name);
+            stmt.setString(1, name);
 
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
@@ -557,7 +557,7 @@ public class TestPg {
                 "SELECT * FROM users WHERE name =?"
             )
         ) {
-            stmt.setObject(1, name);
+            stmt.setString(1, name);
 
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<Users7Result>();
@@ -579,7 +579,7 @@ public class TestPg {
         var stmt = connection.prepareStatement(
             "SELECT * FROM users WHERE name =?"
         );
-        stmt.setObject(1, name);
+        stmt.setString(1, name);
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<Users7Result>() {
@@ -842,7 +842,7 @@ public class TestPg {
                 "INSERT INTO tasks (title, status, tags, priority_scores) VALUES (?,?::task_status,?,?);"
             )
         ) {
-            stmt.setObject(1, title);
+            stmt.setString(1, title);
             stmt.setObject(2, status.getValue());
             stmt.setArray(3, connection.createArrayOf("TEXT", tags.toArray()));
             stmt.setArray(
@@ -869,7 +869,7 @@ public class TestPg {
             )
         ) {
             for (var row : params) {
-                stmt.setObject(1, row.title());
+                stmt.setString(1, row.title());
                 stmt.setObject(2, row.status().getValue());
                 stmt.setArray(
                     3,
@@ -901,11 +901,15 @@ public class TestPg {
                 "INSERT INTO bigint_test (id, small_id, regular_id, amount, name) VALUES (?,?,?,?,?);"
             )
         ) {
-            stmt.setObject(1, id);
-            stmt.setObject(2, small_id);
-            stmt.setObject(3, regular_id);
-            stmt.setObject(4, amount);
-            stmt.setObject(5, name);
+            if (id != null) stmt.setLong(1, id);
+            else stmt.setNull(1, java.sql.Types.BIGINT);
+            if (small_id != null) stmt.setShort(2, small_id);
+            else stmt.setNull(2, java.sql.Types.SMALLINT);
+            if (regular_id != null) stmt.setInt(3, regular_id);
+            else stmt.setNull(3, java.sql.Types.INTEGER);
+            if (amount != null) stmt.setLong(4, amount);
+            else stmt.setNull(4, java.sql.Types.BIGINT);
+            stmt.setString(5, name);
 
             return stmt.executeUpdate();
         }
@@ -928,11 +932,15 @@ public class TestPg {
             )
         ) {
             for (var row : params) {
-                stmt.setObject(1, row.id());
-                stmt.setObject(2, row.small_id());
-                stmt.setObject(3, row.regular_id());
-                stmt.setObject(4, row.amount());
-                stmt.setObject(5, row.name());
+                if (row.id() != null) stmt.setLong(1, row.id());
+                else stmt.setNull(1, java.sql.Types.BIGINT);
+                if (row.small_id() != null) stmt.setShort(2, row.small_id());
+                else stmt.setNull(2, java.sql.Types.SMALLINT);
+                if (row.regular_id() != null) stmt.setInt(3, row.regular_id());
+                else stmt.setNull(3, java.sql.Types.INTEGER);
+                if (row.amount() != null) stmt.setLong(4, row.amount());
+                else stmt.setNull(4, java.sql.Types.BIGINT);
+                stmt.setString(5, row.name());
 
                 stmt.addBatch();
             }
@@ -955,7 +963,8 @@ public class TestPg {
                 "SELECT id, serial_id, small_id, regular_id, amount, name FROM bigint_test WHERE id =?;"
             )
         ) {
-            stmt.setObject(1, id);
+            if (id != null) stmt.setLong(1, id);
+            else stmt.setNull(1, java.sql.Types.BIGINT);
 
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
@@ -980,7 +989,8 @@ public class TestPg {
                 "SELECT amount FROM bigint_test WHERE id =?;"
             )
         ) {
-            stmt.setObject(1, id);
+            if (id != null) stmt.setLong(1, id);
+            else stmt.setNull(1, java.sql.Types.BIGINT);
 
             try (var rs = stmt.executeQuery()) {
                 return rs.next() ? (Long) rs.getObject(1) : null;
@@ -1105,7 +1115,7 @@ public class TestPg {
             )
         ) {
             stmt.setObject(1, id);
-            stmt.setObject(2, label);
+            stmt.setString(2, label);
 
             return stmt.executeUpdate();
         }
@@ -1122,7 +1132,7 @@ public class TestPg {
         ) {
             for (var row : params) {
                 stmt.setObject(1, row.id());
-                stmt.setObject(2, row.label());
+                stmt.setString(2, row.label());
 
                 stmt.addBatch();
             }
@@ -1158,9 +1168,9 @@ public class TestPg {
                 "INSERT INTO users (id, name, email) VALUES (?,?,?);"
             )
         ) {
-            stmt.setObject(1, id);
-            stmt.setObject(2, name);
-            stmt.setObject(3, email);
+            stmt.setString(1, id);
+            stmt.setString(2, name);
+            stmt.setString(3, email);
 
             return stmt.executeUpdate();
         }
@@ -1176,9 +1186,9 @@ public class TestPg {
             )
         ) {
             for (var row : params) {
-                stmt.setObject(1, row.id());
-                stmt.setObject(2, row.name());
-                stmt.setObject(3, row.email());
+                stmt.setString(1, row.id());
+                stmt.setString(2, row.name());
+                stmt.setString(3, row.email());
 
                 stmt.addBatch();
             }
@@ -1192,8 +1202,8 @@ public class TestPg {
                 "UPDATE users SET email =? WHERE id =?;"
             )
         ) {
-            stmt.setObject(1, email);
-            stmt.setObject(2, id);
+            stmt.setString(1, email);
+            stmt.setString(2, id);
 
             return stmt.executeUpdate();
         }
@@ -1209,8 +1219,8 @@ public class TestPg {
             )
         ) {
             for (var row : params) {
-                stmt.setObject(1, row.email());
-                stmt.setObject(2, row.id());
+                stmt.setString(1, row.email());
+                stmt.setString(2, row.id());
 
                 stmt.addBatch();
             }
@@ -1224,7 +1234,7 @@ public class TestPg {
                 "DELETE FROM users WHERE id =?;"
             )
         ) {
-            stmt.setObject(1, id);
+            stmt.setString(1, id);
 
             return stmt.executeUpdate();
         }
@@ -1237,7 +1247,7 @@ public class TestPg {
             )
         ) {
             for (var value : params) {
-                stmt.setObject(1, value);
+                stmt.setString(1, value);
 
                 stmt.addBatch();
             }
@@ -1350,7 +1360,8 @@ public class TestPg {
                 "SELECT * FROM all_types_test WHERE id =?;"
             )
         ) {
-            stmt.setObject(1, id);
+            if (id != null) stmt.setInt(1, id);
+            else stmt.setNull(1, java.sql.Types.INTEGER);
 
             try (var rs = stmt.executeQuery()) {
                 return rs.next()

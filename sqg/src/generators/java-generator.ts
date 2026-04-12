@@ -96,6 +96,14 @@ export class JavaGenerator extends BaseGenerator {
       this.partsToString(parts),
     );
     Handlebars.registerHelper("hasMultipleParams", (params: unknown[]) => params.length > 1);
+    Handlebars.registerHelper(
+      "jdbcSet",
+      (javaType: string, index: number, expr: string) =>
+        new Handlebars.SafeString(jdbcSetterStatement(javaType, index, expr)),
+    );
+    Handlebars.registerHelper("concat", (...args: unknown[]) =>
+      args.slice(0, -1).join(""),
+    );
     Handlebars.registerHelper("declareTypes", (queryHelper: SqlQueryHelper) => {
       const query = queryHelper.query;
       if (queryHelper.isPluck) {
@@ -206,6 +214,34 @@ export class JavaGenerator extends BaseGenerator {
       consola.error("Failed to format Java file:", error);
     }
   }
+}
+
+// Boxed Java parameter type → typed JDBC setter + java.sql.Types code for null.
+// Anything not listed falls back to setObject (LocalDate, OffsetDateTime,
+// BigDecimal, UUID, List<...>, etc.), where the driver inspects the value.
+const JDBC_SETTER_MAP: Record<string, { setter: string; sqlType: string }> = {
+  String: { setter: "setString", sqlType: "VARCHAR" },
+  Integer: { setter: "setInt", sqlType: "INTEGER" },
+  Long: { setter: "setLong", sqlType: "BIGINT" },
+  Short: { setter: "setShort", sqlType: "SMALLINT" },
+  Boolean: { setter: "setBoolean", sqlType: "BOOLEAN" },
+  Double: { setter: "setDouble", sqlType: "DOUBLE" },
+  Float: { setter: "setFloat", sqlType: "REAL" },
+  "byte[]": { setter: "setBytes", sqlType: "VARBINARY" },
+};
+
+// Reference setters pass null through; boxed-primitive setters auto-unbox and NPE on null.
+const NULL_SAFE_SETTERS = new Set(["setString", "setBytes"]);
+
+function jdbcSetterStatement(javaType: string, index: number, expr: string): string {
+  const entry = JDBC_SETTER_MAP[javaType];
+  if (!entry) {
+    return `stmt.setObject(${index}, ${expr});`;
+  }
+  if (NULL_SAFE_SETTERS.has(entry.setter)) {
+    return `stmt.${entry.setter}(${index}, ${expr});`;
+  }
+  return `if (${expr} != null) stmt.${entry.setter}(${index}, ${expr}); else stmt.setNull(${index}, java.sql.Types.${entry.sqlType});`;
 }
 
 const PG_BULK_TYPE_MAP: Record<string, string> = {

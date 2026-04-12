@@ -296,8 +296,8 @@ public class TestDuckdb {
                 "insert into users (name, email) values (?,?);"
             )
         ) {
-            stmt.setObject(1, name);
-            stmt.setObject(2, email);
+            stmt.setString(1, name);
+            stmt.setString(2, email);
 
             return stmt.executeUpdate();
         }
@@ -447,7 +447,8 @@ public class TestDuckdb {
                 "select * from users where id =? limit 1;"
             )
         ) {
-            stmt.setObject(1, id);
+            if (id != null) stmt.setInt(1, id);
+            else stmt.setNull(1, java.sql.Types.INTEGER);
 
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
@@ -469,7 +470,7 @@ public class TestDuckdb {
                 "select * from users where email =?;"
             )
         ) {
-            stmt.setObject(1, email);
+            stmt.setString(1, email);
 
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
@@ -489,7 +490,7 @@ public class TestDuckdb {
                 "select id from users where email =?;"
             )
         ) {
-            stmt.setObject(1, email);
+            stmt.setString(1, email);
 
             try (var rs = stmt.executeQuery()) {
                 return rs.next() ? (Integer) rs.getObject(1) : null;
@@ -503,8 +504,9 @@ public class TestDuckdb {
                 "update users set email =? where id =?;"
             )
         ) {
-            stmt.setObject(1, email);
-            stmt.setObject(2, id);
+            stmt.setString(1, email);
+            if (id != null) stmt.setInt(2, id);
+            else stmt.setNull(2, java.sql.Types.INTEGER);
 
             return stmt.executeUpdate();
         }
@@ -516,7 +518,8 @@ public class TestDuckdb {
                 "delete from users where id =?;"
             )
         ) {
-            stmt.setObject(1, id);
+            if (id != null) stmt.setInt(1, id);
+            else stmt.setNull(1, java.sql.Types.INTEGER);
 
             return stmt.executeUpdate();
         }
@@ -537,7 +540,8 @@ public class TestDuckdb {
                 "select * from actions where user_id =?;"
             )
         ) {
-            stmt.setObject(1, user_id);
+            if (user_id != null) stmt.setInt(1, user_id);
+            else stmt.setNull(1, java.sql.Types.INTEGER);
 
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<ActionsByUserIdResult>();
@@ -562,7 +566,8 @@ public class TestDuckdb {
         var stmt = connection.prepareStatement(
             "select * from actions where user_id =?;"
         );
-        stmt.setObject(1, user_id);
+        if (user_id != null) stmt.setInt(1, user_id);
+        else stmt.setNull(1, java.sql.Types.INTEGER);
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<ActionsByUserIdResult>() {
@@ -630,8 +635,9 @@ public class TestDuckdb {
                  """
             )
         ) {
-            stmt.setObject(1, user_id);
-            stmt.setObject(2, action);
+            if (user_id != null) stmt.setInt(1, user_id);
+            else stmt.setNull(1, java.sql.Types.INTEGER);
+            stmt.setString(2, action);
 
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<ActionsByUserIdAndActionResult>();
@@ -663,8 +669,9 @@ public class TestDuckdb {
 
              """
         );
-        stmt.setObject(1, user_id);
-        stmt.setObject(2, action);
+        if (user_id != null) stmt.setInt(1, user_id);
+        else stmt.setNull(1, java.sql.Types.INTEGER);
+        stmt.setString(2, action);
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<ActionsByUserIdAndActionResult>() {
@@ -787,7 +794,8 @@ public class TestDuckdb {
                 "select 1 as n where? ::int is null; "
             )
         ) {
-            stmt.setObject(1, a);
+            if (a != null) stmt.setInt(1, a);
+            else stmt.setNull(1, java.sql.Types.INTEGER);
 
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<TestResult>();
@@ -803,7 +811,8 @@ public class TestDuckdb {
         var stmt = connection.prepareStatement(
             "select 1 as n where? ::int is null; "
         );
-        stmt.setObject(1, a);
+        if (a != null) stmt.setInt(1, a);
+        else stmt.setNull(1, java.sql.Types.INTEGER);
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<TestResult>() {
@@ -2220,8 +2229,9 @@ public class TestDuckdb {
                 "INSERT INTO events (id, name, tags) VALUES (?,?,?);"
             )
         ) {
-            stmt.setObject(1, id);
-            stmt.setObject(2, name);
+            if (id != null) stmt.setInt(1, id);
+            else stmt.setNull(1, java.sql.Types.INTEGER);
+            stmt.setString(2, name);
             stmt.setArray(
                 3,
                 connection.createArrayOf("VARCHAR", tags.toArray())
@@ -2451,8 +2461,9 @@ public class TestDuckdb {
                 "INSERT INTO tasks (id, title, priority) VALUES (?,?,?);"
             )
         ) {
-            stmt.setObject(1, id);
-            stmt.setObject(2, title);
+            if (id != null) stmt.setInt(1, id);
+            else stmt.setNull(1, java.sql.Types.INTEGER);
+            stmt.setString(2, title);
             stmt.setObject(3, priority.getValue());
 
             return stmt.executeUpdate();

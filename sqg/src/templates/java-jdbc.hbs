@@ -234,7 +234,7 @@ public class {{className}} {
             for (var row : params) {
                 {{#each parameters}}{{#if isArray}}stmt.setArray({{plusOne @index}}, connection.createArrayOf("{{arrayBaseType}}", row.{{name}}().toArray()));
                 {{else if isEnum}}stmt.setObject({{plusOne @index}}, row.{{name}}().getValue());
-                {{else}}stmt.setObject({{plusOne @index}}, row.{{name}}());
+                {{else}}{{{jdbcSet type (plusOne @index) (concat "row." name "()")}}}
                 {{/if}}{{/each}}
                 stmt.addBatch();
             }
@@ -247,7 +247,7 @@ public class {{className}} {
             for (var value : params) {
                 {{#each parameters}}{{#if isArray}}stmt.setArray({{plusOne @index}}, connection.createArrayOf("{{arrayBaseType}}", value.toArray()));
                 {{else if isEnum}}stmt.setObject({{plusOne @index}}, value.getValue());
-                {{else}}stmt.setObject({{plusOne @index}}, value);
+                {{else}}{{{jdbcSet type (plusOne @index) "value"}}}
                 {{/if}}{{/each}}
                 stmt.addBatch();
             }
@@ -261,7 +261,7 @@ public class {{className}} {
         var stmt = connection.prepareStatement({{{partsToString sqlQueryParts}}});
         {{#each parameters}}{{#if isArray}}stmt.setArray({{plusOne @index}}, connection.createArrayOf("{{arrayBaseType}}", {{name}}.toArray()));
         {{else if isEnum}}stmt.setObject({{plusOne @index}}, {{name}}.getValue());
-        {{else}}stmt.setObject({{plusOne @index}}, {{name}});
+        {{else}}{{{jdbcSet type (plusOne @index) name}}}
         {{/if}}{{/each}}
         var rs = stmt.executeQuery();
         var iter = new Iterator<{{rowType}}>() {
@@ -400,7 +400,7 @@ int
 {{#*inline "execute"}}
 {{#each parameters}}{{#if isArray}}stmt.setArray({{plusOne @index}}, connection.createArrayOf("{{arrayBaseType}}", {{name}}.toArray()));
 {{else if isEnum}}stmt.setObject({{plusOne @index}}, {{name}}.getValue());
-{{else}}stmt.setObject({{plusOne @index}}, {{name}});
+{{else}}{{{jdbcSet type (plusOne @index) name}}}
 {{/if}}{{/each}}
 {{#if isQuery}}
 try(var rs = stmt.executeQuery()) {

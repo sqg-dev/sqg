@@ -263,7 +263,7 @@ export function formatGeneratorsList(): string {
 export const SQL_SYNTAX_REFERENCE = `
 SQL Annotation Syntax:
   -- QUERY <name> [:one] [:pluck]   Select query (returns rows)
-  -- EXEC <name>                    Execute statement (INSERT/UPDATE/DELETE)
+  -- EXEC <name> [:batch]           Execute statement (INSERT/UPDATE/DELETE)
   -- MIGRATE <number>               Schema migration (run in order)
   -- TESTDATA <name>                Test data setup (not generated)
   -- TABLE <name> :appender         Table for bulk insert appender (DuckDB, PostgreSQL)
@@ -275,6 +275,7 @@ Modifiers:
   :one      Return single row (or null) instead of array
   :pluck    Return single column value (requires exactly 1 column)
   :all      Return all rows (default)
+  :batch    Generate a JDBC batch method for an EXEC (Java only)
   :appender Generate bulk insert appender for TABLE annotation
 
 Example:

@@ -411,7 +411,7 @@ public class TestSqlite {
                 "SELECT * FROM users WHERE name =?"
             )
         ) {
-            stmt.setObject(1, name);
+            stmt.setString(1, name);
 
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
@@ -433,7 +433,7 @@ public class TestSqlite {
                 "SELECT * FROM users WHERE name =?"
             )
         ) {
-            stmt.setObject(1, name);
+            stmt.setString(1, name);
 
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<Users7Result>();
@@ -455,7 +455,7 @@ public class TestSqlite {
         var stmt = connection.prepareStatement(
             "SELECT * FROM users WHERE name =?"
         );
-        stmt.setObject(1, name);
+        stmt.setString(1, name);
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<Users7Result>() {
