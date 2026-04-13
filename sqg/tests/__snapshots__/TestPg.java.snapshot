@@ -40,6 +40,15 @@ public class TestPg {
         this.connection = connection;
     }
 
+    /** Options for streaming queries. fetchSize hints at the JDBC driver's batch size; 0 means driver default. */
+    public record StreamOptions(int fetchSize) {
+        public static final StreamOptions DEFAULT = new StreamOptions(1000);
+
+        public StreamOptions withFetchSize(int fetchSize) {
+            return new StreamOptions(fetchSize);
+        }
+    }
+
     private static Object[] getObjectArray(Array array) {
         if (array == null) {
             return null;
@@ -371,7 +380,15 @@ public class TestPg {
     }
 
     public Stream<Users1Result> users1Stream() throws SQLException {
+        return users1Stream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<Users1Result> users1Stream(StreamOptions options)
+        throws SQLException {
+        boolean wasAutoCommit = connection.getAutoCommit();
+        if (wasAutoCommit) connection.setAutoCommit(false);
         var stmt = connection.prepareStatement("select * from users;");
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<Users1Result>() {
@@ -409,6 +426,7 @@ public class TestPg {
             try {
                 rs.close();
                 stmt.close();
+                if (wasAutoCommit) connection.setAutoCommit(true);
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
@@ -482,9 +500,17 @@ public class TestPg {
     }
 
     public Stream<Users5Result> users5Stream() throws SQLException {
+        return users5Stream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<Users5Result> users5Stream(StreamOptions options)
+        throws SQLException {
+        boolean wasAutoCommit = connection.getAutoCommit();
+        if (wasAutoCommit) connection.setAutoCommit(false);
         var stmt = connection.prepareStatement(
             "select 10 count, email from users where id = '1';"
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<Users5Result>() {
@@ -521,6 +547,7 @@ public class TestPg {
             try {
                 rs.close();
                 stmt.close();
+                if (wasAutoCommit) connection.setAutoCommit(true);
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
@@ -576,9 +603,17 @@ public class TestPg {
     }
 
     public Stream<Users7Result> users7Stream(String name) throws SQLException {
+        return users7Stream(name, StreamOptions.DEFAULT);
+    }
+
+    public Stream<Users7Result> users7Stream(String name, StreamOptions options)
+        throws SQLException {
+        boolean wasAutoCommit = connection.getAutoCommit();
+        if (wasAutoCommit) connection.setAutoCommit(false);
         var stmt = connection.prepareStatement(
             "SELECT * FROM users WHERE name =?"
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
         stmt.setString(1, name);
 
         var rs = stmt.executeQuery();
@@ -617,6 +652,7 @@ public class TestPg {
             try {
                 rs.close();
                 stmt.close();
+                if (wasAutoCommit) connection.setAutoCommit(true);
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
@@ -667,9 +703,19 @@ public class TestPg {
     public Stream<GetTasksByStatusResult> getTasksByStatusStream(
         TaskStatus status
     ) throws SQLException {
+        return getTasksByStatusStream(status, StreamOptions.DEFAULT);
+    }
+
+    public Stream<GetTasksByStatusResult> getTasksByStatusStream(
+        TaskStatus status,
+        StreamOptions options
+    ) throws SQLException {
+        boolean wasAutoCommit = connection.getAutoCommit();
+        if (wasAutoCommit) connection.setAutoCommit(false);
         var stmt = connection.prepareStatement(
             "SELECT id, title, status, tags, priority_scores FROM tasks WHERE status =?::task_status;"
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
         stmt.setObject(1, status.getValue());
 
         var rs = stmt.executeQuery();
@@ -710,6 +756,7 @@ public class TestPg {
             try {
                 rs.close();
                 stmt.close();
+                if (wasAutoCommit) connection.setAutoCommit(true);
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
@@ -755,9 +802,17 @@ public class TestPg {
     }
 
     public Stream<GetAllTasksResult> getAllTasksStream() throws SQLException {
+        return getAllTasksStream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<GetAllTasksResult> getAllTasksStream(StreamOptions options)
+        throws SQLException {
+        boolean wasAutoCommit = connection.getAutoCommit();
+        if (wasAutoCommit) connection.setAutoCommit(false);
         var stmt = connection.prepareStatement(
             "SELECT id, title, status, tags, priority_scores FROM tasks;"
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<GetAllTasksResult>() {
@@ -797,6 +852,7 @@ public class TestPg {
             try {
                 rs.close();
                 stmt.close();
+                if (wasAutoCommit) connection.setAutoCommit(true);
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
@@ -1063,9 +1119,18 @@ public class TestPg {
 
     public Stream<GetTrickyValuesResult> getTrickyValuesStream()
         throws SQLException {
+        return getTrickyValuesStream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<GetTrickyValuesResult> getTrickyValuesStream(
+        StreamOptions options
+    ) throws SQLException {
+        boolean wasAutoCommit = connection.getAutoCommit();
+        if (wasAutoCommit) connection.setAutoCommit(false);
         var stmt = connection.prepareStatement(
             "SELECT id, val FROM tricky_test;"
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<GetTrickyValuesResult>() {
@@ -1102,6 +1167,7 @@ public class TestPg {
             try {
                 rs.close();
                 stmt.close();
+                if (wasAutoCommit) connection.setAutoCommit(true);
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
@@ -1286,9 +1352,18 @@ public class TestPg {
 
     public Stream<GetIdentityRecordsResult> getIdentityRecordsStream()
         throws SQLException {
+        return getIdentityRecordsStream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<GetIdentityRecordsResult> getIdentityRecordsStream(
+        StreamOptions options
+    ) throws SQLException {
+        boolean wasAutoCommit = connection.getAutoCommit();
+        if (wasAutoCommit) connection.setAutoCommit(false);
         var stmt = connection.prepareStatement(
             "SELECT * FROM identity_test ORDER BY id;"
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<GetIdentityRecordsResult>() {
@@ -1326,6 +1401,7 @@ public class TestPg {
             try {
                 rs.close();
                 stmt.close();
+                if (wasAutoCommit) connection.setAutoCommit(true);
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }

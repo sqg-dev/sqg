@@ -39,6 +39,15 @@ public class TestDuckdb {
         this.connection = connection;
     }
 
+    /** Options for streaming queries. fetchSize hints at the JDBC driver's batch size; 0 means driver default. */
+    public record StreamOptions(int fetchSize) {
+        public static final StreamOptions DEFAULT = new StreamOptions(0);
+
+        public StreamOptions withFetchSize(int fetchSize) {
+            return new StreamOptions(fetchSize);
+        }
+    }
+
     private static Object[] getObjectArray(Array array) {
         if (array == null) {
             return null;
@@ -336,9 +345,15 @@ public class TestDuckdb {
     }
 
     public Stream<AllResult> allStream() throws SQLException {
+        return allStream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<AllResult> allStream(StreamOptions options)
+        throws SQLException {
         var stmt = connection.prepareStatement(
             "select 'abc' as a,1 as x,* from users;"
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<AllResult>() {
@@ -399,7 +414,13 @@ public class TestDuckdb {
     }
 
     public Stream<String> allEmailsStream() throws SQLException {
+        return allEmailsStream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<String> allEmailsStream(StreamOptions options)
+        throws SQLException {
         var stmt = connection.prepareStatement("select email from users;");
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<String>() {
@@ -563,9 +584,17 @@ public class TestDuckdb {
 
     public Stream<ActionsByUserIdResult> actionsByUserIdStream(Integer user_id)
         throws SQLException {
+        return actionsByUserIdStream(user_id, StreamOptions.DEFAULT);
+    }
+
+    public Stream<ActionsByUserIdResult> actionsByUserIdStream(
+        Integer user_id,
+        StreamOptions options
+    ) throws SQLException {
         var stmt = connection.prepareStatement(
             "select * from actions where user_id =?;"
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
         if (user_id != null) stmt.setInt(1, user_id);
         else stmt.setNull(1, java.sql.Types.INTEGER);
 
@@ -661,6 +690,20 @@ public class TestDuckdb {
         ActionsByUserIdAndActionResult
     > actionsByUserIdAndActionStream(Integer user_id, String action)
         throws SQLException {
+        return actionsByUserIdAndActionStream(
+            user_id,
+            action,
+            StreamOptions.DEFAULT
+        );
+    }
+
+    public Stream<
+        ActionsByUserIdAndActionResult
+    > actionsByUserIdAndActionStream(
+        Integer user_id,
+        String action,
+        StreamOptions options
+    ) throws SQLException {
         var stmt = connection.prepareStatement(
             """
             select * from actions
@@ -669,6 +712,7 @@ public class TestDuckdb {
 
              """
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
         if (user_id != null) stmt.setInt(1, user_id);
         else stmt.setNull(1, java.sql.Types.INTEGER);
         stmt.setString(2, action);
@@ -741,9 +785,15 @@ public class TestDuckdb {
     }
 
     public Stream<TopUsersResult> topUsersStream() throws SQLException {
+        return topUsersStream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<TopUsersResult> topUsersStream(StreamOptions options)
+        throws SQLException {
         var stmt = connection.prepareStatement(
             "SELECT user_id, SUM(value) as total_value FROM actions GROUP BY user_id ORDER BY total_value DESC LIMIT 10;"
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<TopUsersResult>() {
@@ -808,9 +858,15 @@ public class TestDuckdb {
     }
 
     public Stream<TestResult> testStream(Integer a) throws SQLException {
+        return testStream(a, StreamOptions.DEFAULT);
+    }
+
+    public Stream<TestResult> testStream(Integer a, StreamOptions options)
+        throws SQLException {
         var stmt = connection.prepareStatement(
             "select 1 as n where? ::int is null; "
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
         if (a != null) stmt.setInt(1, a);
         else stmt.setNull(1, java.sql.Types.INTEGER);
 
@@ -867,7 +923,13 @@ public class TestDuckdb {
     }
 
     public Stream<Test2Result> test2Stream() throws SQLException {
+        return test2Stream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<Test2Result> test2Stream(StreamOptions options)
+        throws SQLException {
         var stmt = connection.prepareStatement("select  1 as n;");
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<Test2Result>() {
@@ -929,7 +991,13 @@ public class TestDuckdb {
     }
 
     public Stream<Test3Result> test3Stream() throws SQLException {
+        return test3Stream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<Test3Result> test3Stream(StreamOptions options)
+        throws SQLException {
         var stmt = connection.prepareStatement("select '--ok' b,2 as a ");
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<Test3Result>() {
@@ -996,7 +1064,13 @@ public class TestDuckdb {
     }
 
     public Stream<Test4Result> test4Stream() throws SQLException {
+        return test4Stream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<Test4Result> test4Stream(StreamOptions options)
+        throws SQLException {
         var stmt = connection.prepareStatement("select '/* lol */' s , 5 as z");
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<Test4Result>() {
@@ -1064,9 +1138,15 @@ public class TestDuckdb {
     }
 
     public Stream<Test5Result> test5Stream() throws SQLException {
+        return test5Stream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<Test5Result> test5Stream(StreamOptions options)
+        throws SQLException {
         var stmt = connection.prepareStatement(
             "select 'a 	' x , 'a	 a' y, 1 as c"
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<Test5Result>() {
@@ -1133,9 +1213,15 @@ public class TestDuckdb {
     }
 
     public Stream<TestListResult> testListStream() throws SQLException {
+        return testListStream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<TestListResult> testListStream(StreamOptions options)
+        throws SQLException {
         var stmt = connection.prepareStatement(
             "select ['a','b', 'c'] as names"
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<TestListResult>() {
@@ -1196,9 +1282,15 @@ public class TestDuckdb {
     }
 
     public Stream<List<String>> testList2Stream() throws SQLException {
+        return testList2Stream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<List<String>> testList2Stream(StreamOptions options)
+        throws SQLException {
         var stmt = connection.prepareStatement(
             "select ['a','b', 'c'] as names"
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<List<String>>() {
@@ -1271,7 +1363,13 @@ public class TestDuckdb {
     }
 
     public Stream<TestMapResult> testMapStream() throws SQLException {
+        return testMapStream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<TestMapResult> testMapStream(StreamOptions options)
+        throws SQLException {
         var stmt = connection.prepareStatement("select props: MAP {'a' : 1}");
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<TestMapResult>() {
@@ -1332,11 +1430,17 @@ public class TestDuckdb {
     }
 
     public Stream<TestMap2Result> testMap2Stream() throws SQLException {
+        return testMap2Stream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<TestMap2Result> testMap2Stream(StreamOptions options)
+        throws SQLException {
         var stmt = connection.prepareStatement(
             """
 
             select props: MAP { 1 : 2 }"""
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<TestMap2Result>() {
@@ -1397,11 +1501,17 @@ public class TestDuckdb {
     }
 
     public Stream<TestMap3Result> testMap3Stream() throws SQLException {
+        return testMap3Stream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<TestMap3Result> testMap3Stream(StreamOptions options)
+        throws SQLException {
         var stmt = connection.prepareStatement(
             """
 
             select props: MAP { [1] : 2 }"""
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<TestMap3Result>() {
@@ -1486,9 +1596,15 @@ public class TestDuckdb {
     }
 
     public Stream<TestStructResult> testStructStream() throws SQLException {
+        return testStructStream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<TestStructResult> testStructStream(StreamOptions options)
+        throws SQLException {
         var stmt = connection.prepareStatement(
             "select data: {'test' : 1, 'name' : 'abc', 'nested' : {'test' : true}}"
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<TestStructResult>() {
@@ -1573,9 +1689,15 @@ public class TestDuckdb {
     }
 
     public Stream<TestStruct2Result> testStruct2Stream() throws SQLException {
+        return testStruct2Stream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<TestStruct2Result> testStruct2Stream(StreamOptions options)
+        throws SQLException {
         var stmt = connection.prepareStatement(
             "select data: {'test' : 1, 'name' : 'abc', 'nested' : {'test' : true}}"
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<TestStruct2Result>() {
@@ -1761,9 +1883,15 @@ public class TestDuckdb {
     }
 
     public Stream<TestNestedResult> testNestedStream() throws SQLException {
+        return testNestedStream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<TestNestedResult> testNestedStream(StreamOptions options)
+        throws SQLException {
         var stmt = connection.prepareStatement(
             "select MAP {'x' : [{'a' : 1}]} as data"
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<TestNestedResult>() {
@@ -2094,11 +2222,17 @@ public class TestDuckdb {
     }
 
     public Stream<TestAllTypesResult> testAllTypesStream() throws SQLException {
+        return testAllTypesStream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<TestAllTypesResult> testAllTypesStream(StreamOptions options)
+        throws SQLException {
         var stmt = connection.prepareStatement(
             """
 
             select * from test_all_types();"""
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<TestAllTypesResult>() {
@@ -2262,7 +2396,13 @@ public class TestDuckdb {
     }
 
     public Stream<AllEventsResult> allEventsStream() throws SQLException {
+        return allEventsStream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<AllEventsResult> allEventsStream(StreamOptions options)
+        throws SQLException {
         var stmt = connection.prepareStatement("select * from events;");
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<AllEventsResult>() {
@@ -2334,7 +2474,14 @@ public class TestDuckdb {
 
     public Stream<AllLogEntriesResult> allLogEntriesStream()
         throws SQLException {
+        return allLogEntriesStream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<AllLogEntriesResult> allLogEntriesStream(
+        StreamOptions options
+    ) throws SQLException {
         var stmt = connection.prepareStatement("select * from log_entries;");
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<AllLogEntriesResult>() {
@@ -2408,9 +2555,16 @@ public class TestDuckdb {
 
     public Stream<LogEntriesByDayResult> logEntriesByDayStream()
         throws SQLException {
+        return logEntriesByDayStream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<LogEntriesByDayResult> logEntriesByDayStream(
+        StreamOptions options
+    ) throws SQLException {
         var stmt = connection.prepareStatement(
             "select id, message, created_at::date as day from log_entries;"
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<LogEntriesByDayResult>() {
@@ -2505,9 +2659,17 @@ public class TestDuckdb {
     public Stream<GetTasksByPriorityResult> getTasksByPriorityStream(
         TaskPriority priority
     ) throws SQLException {
+        return getTasksByPriorityStream(priority, StreamOptions.DEFAULT);
+    }
+
+    public Stream<GetTasksByPriorityResult> getTasksByPriorityStream(
+        TaskPriority priority,
+        StreamOptions options
+    ) throws SQLException {
         var stmt = connection.prepareStatement(
             "SELECT id, title, priority FROM tasks WHERE priority =?;"
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
         stmt.setObject(1, priority.getValue());
 
         var rs = stmt.executeQuery();
@@ -2581,9 +2743,15 @@ public class TestDuckdb {
     }
 
     public Stream<GetAllTasksResult> getAllTasksStream() throws SQLException {
+        return getAllTasksStream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<GetAllTasksResult> getAllTasksStream(StreamOptions options)
+        throws SQLException {
         var stmt = connection.prepareStatement(
             "SELECT id, title, priority FROM tasks;"
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<GetAllTasksResult>() {

@@ -37,6 +37,15 @@ public class TestSources {
         this.connection = connection;
     }
 
+    /** Options for streaming queries. fetchSize hints at the JDBC driver's batch size; 0 means driver default. */
+    public record StreamOptions(int fetchSize) {
+        public static final StreamOptions DEFAULT = new StreamOptions(0);
+
+        public StreamOptions withFetchSize(int fetchSize) {
+            return new StreamOptions(fetchSize);
+        }
+    }
+
     private static Object[] getObjectArray(Array array) {
         if (array == null) {
             return null;
@@ -234,7 +243,13 @@ public class TestSources {
     }
 
     public Stream<Test1Result> test1Stream() throws SQLException {
+        return test1Stream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<Test1Result> test1Stream(StreamOptions options)
+        throws SQLException {
         var stmt = connection.prepareStatement("select 1 as x;");
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<Test1Result>() {
@@ -312,9 +327,15 @@ public class TestSources {
     }
 
     public Stream<Test2Result> test2Stream() throws SQLException {
+        return test2Stream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<Test2Result> test2Stream(StreamOptions options)
+        throws SQLException {
         var stmt = connection.prepareStatement(
             "select * from users.users limit 10;"
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<Test2Result>() {

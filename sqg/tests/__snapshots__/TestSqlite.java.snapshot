@@ -37,6 +37,15 @@ public class TestSqlite {
         this.connection = connection;
     }
 
+    /** Options for streaming queries. fetchSize hints at the JDBC driver's batch size; 0 means driver default. */
+    public record StreamOptions(int fetchSize) {
+        public static final StreamOptions DEFAULT = new StreamOptions(0);
+
+        public StreamOptions withFetchSize(int fetchSize) {
+            return new StreamOptions(fetchSize);
+        }
+    }
+
     private static Object[] getObjectArray(Array array) {
         if (array == null) {
             return null;
@@ -247,7 +256,13 @@ public class TestSqlite {
     }
 
     public Stream<Users1Result> users1Stream() throws SQLException {
+        return users1Stream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<Users1Result> users1Stream(StreamOptions options)
+        throws SQLException {
         var stmt = connection.prepareStatement("select * from users;");
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<Users1Result>() {
@@ -358,9 +373,15 @@ public class TestSqlite {
     }
 
     public Stream<Users5Result> users5Stream() throws SQLException {
+        return users5Stream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<Users5Result> users5Stream(StreamOptions options)
+        throws SQLException {
         var stmt = connection.prepareStatement(
             "select 10 count, email from users where id = '1';"
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<Users5Result>() {
@@ -452,9 +473,15 @@ public class TestSqlite {
     }
 
     public Stream<Users7Result> users7Stream(String name) throws SQLException {
+        return users7Stream(name, StreamOptions.DEFAULT);
+    }
+
+    public Stream<Users7Result> users7Stream(String name, StreamOptions options)
+        throws SQLException {
         var stmt = connection.prepareStatement(
             "SELECT * FROM users WHERE name =?"
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
         stmt.setString(1, name);
 
         var rs = stmt.executeQuery();

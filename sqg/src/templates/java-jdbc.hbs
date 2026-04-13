@@ -46,6 +46,12 @@ public class {{className}} {
         this.connection = connection;
     }
 
+    /** Options for streaming queries. fetchSize hints at the JDBC driver's batch size; 0 means driver default. */
+    public record StreamOptions(int fetchSize) {
+        public static final StreamOptions DEFAULT = new StreamOptions({{#if (isPostgres)}}1000{{else}}0{{/if}});
+        public StreamOptions withFetchSize(int fetchSize) { return new StreamOptions(fetchSize); }
+    }
+
     private static Object[] getObjectArray(Array array) {
         if (array == null) {
             return null;
@@ -258,7 +264,16 @@ public class {{className}} {
     {{/if}}
     {{#if isQuery}}{{#unless isOne}}
     public Stream<{{rowType}}> {{functionName}}Stream({{#each variables}}{{{type}}} {{name}}{{#unless @last}}, {{/unless}}{{/each}}) throws SQLException {
+        return {{functionName}}Stream({{#each variables}}{{name}}, {{/each}}StreamOptions.DEFAULT);
+    }
+
+    public Stream<{{rowType}}> {{functionName}}Stream({{#each variables}}{{{type}}} {{name}}, {{/each}}StreamOptions options) throws SQLException {
+        {{#if (isPostgres)}}
+        boolean wasAutoCommit = connection.getAutoCommit();
+        if (wasAutoCommit) connection.setAutoCommit(false);
+        {{/if}}
         var stmt = connection.prepareStatement({{{partsToString sqlQueryParts}}});
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
         {{#each parameters}}{{#if isArray}}stmt.setArray({{plusOne @index}}, connection.createArrayOf("{{arrayBaseType}}", {{name}}.toArray()));
         {{else if isEnum}}stmt.setObject({{plusOne @index}}, {{name}}.getValue());
         {{else}}{{{jdbcSet type (plusOne @index) name}}}
@@ -283,7 +298,13 @@ public class {{className}} {
         return StreamSupport.stream(
             Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED), false
         ).onClose(() -> {
-            try { rs.close(); stmt.close(); }
+            try {
+                rs.close();
+                stmt.close();
+                {{#if (isPostgres)}}
+                if (wasAutoCommit) connection.setAutoCommit(true);
+                {{/if}}
+            }
             catch (SQLException e) { throw new RuntimeException(e); }
         });
     }
