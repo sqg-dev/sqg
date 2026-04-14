@@ -244,9 +244,9 @@ public class TestSqlite {
                 while (rs.next()) {
                     results.add(
                         new Users1Result(
-                            (String) rs.getObject(1),
-                            (String) rs.getObject(2),
-                            (String) rs.getObject(3)
+                            rs.getString(1),
+                            rs.getString(2),
+                            rs.getString(3)
                         )
                     );
                 }
@@ -284,9 +284,9 @@ public class TestSqlite {
                 hasNext = null;
                 try {
                     return new Users1Result(
-                        (String) rs.getObject(1),
-                        (String) rs.getObject(2),
-                        (String) rs.getObject(3)
+                        rs.getString(1),
+                        rs.getString(2),
+                        rs.getString(3)
                     );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
@@ -313,7 +313,7 @@ public class TestSqlite {
             )
         ) {
             try (var rs = stmt.executeQuery()) {
-                return rs.next() ? (String) rs.getObject(1) : null;
+                return rs.next() ? rs.getString(1) : null;
             }
         }
     }
@@ -325,7 +325,7 @@ public class TestSqlite {
             )
         ) {
             try (var rs = stmt.executeQuery()) {
-                return rs.next() ? (String) rs.getObject(1) : null;
+                return rs.next() ? rs.getString(1) : null;
             }
         }
     }
@@ -340,10 +340,7 @@ public class TestSqlite {
         ) {
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
-                    ? new Users4Result(
-                          (String) rs.getObject(1),
-                          (String) rs.getObject(2)
-                      )
+                    ? new Users4Result(rs.getString(1), rs.getString(2))
                     : null;
             }
         }
@@ -362,8 +359,8 @@ public class TestSqlite {
                 while (rs.next()) {
                     results.add(
                         new Users5Result(
-                            (Integer) rs.getObject(1),
-                            (String) rs.getObject(2)
+                            rs.getObject(1, Integer.class),
+                            rs.getString(2)
                         )
                     );
                 }
@@ -403,8 +400,8 @@ public class TestSqlite {
                 hasNext = null;
                 try {
                     return new Users5Result(
-                        (Integer) rs.getObject(1),
-                        (String) rs.getObject(2)
+                        rs.getObject(1, Integer.class),
+                        rs.getString(2)
                     );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
@@ -437,9 +434,9 @@ public class TestSqlite {
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
                     ? new Users6Result(
-                          (String) rs.getObject(1),
-                          (String) rs.getObject(2),
-                          (String) rs.getObject(3)
+                          rs.getString(1),
+                          rs.getString(2),
+                          rs.getString(3)
                       )
                     : null;
             }
@@ -461,9 +458,9 @@ public class TestSqlite {
                 while (rs.next()) {
                     results.add(
                         new Users7Result(
-                            (String) rs.getObject(1),
-                            (String) rs.getObject(2),
-                            (String) rs.getObject(3)
+                            rs.getString(1),
+                            rs.getString(2),
+                            rs.getString(3)
                         )
                     );
                 }
@@ -504,9 +501,9 @@ public class TestSqlite {
                 hasNext = null;
                 try {
                     return new Users7Result(
-                        (String) rs.getObject(1),
-                        (String) rs.getObject(2),
-                        (String) rs.getObject(3)
+                        rs.getString(1),
+                        rs.getString(2),
+                        rs.getString(3)
                     );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
@@ -537,8 +534,8 @@ public class TestSqlite {
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
                     ? new ReservedWordTestResult(
-                          (String) rs.getObject(1),
-                          (String) rs.getObject(2)
+                          rs.getString(1),
+                          rs.getString(2)
                       )
                     : null;
             }

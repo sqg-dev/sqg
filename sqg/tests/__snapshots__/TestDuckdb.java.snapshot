@@ -331,11 +331,11 @@ public class TestDuckdb {
                 while (rs.next()) {
                     results.add(
                         new AllResult(
-                            (String) rs.getObject(1),
-                            (Integer) rs.getObject(2),
-                            (Integer) rs.getObject(3),
-                            (String) rs.getObject(4),
-                            (String) rs.getObject(5)
+                            rs.getString(1),
+                            rs.getObject(2, Integer.class),
+                            rs.getObject(3, Integer.class),
+                            rs.getString(4),
+                            rs.getString(5)
                         )
                     );
                 }
@@ -375,11 +375,11 @@ public class TestDuckdb {
                 hasNext = null;
                 try {
                     return new AllResult(
-                        (String) rs.getObject(1),
-                        (Integer) rs.getObject(2),
-                        (Integer) rs.getObject(3),
-                        (String) rs.getObject(4),
-                        (String) rs.getObject(5)
+                        rs.getString(1),
+                        rs.getObject(2, Integer.class),
+                        rs.getObject(3, Integer.class),
+                        rs.getString(4),
+                        rs.getString(5)
                     );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
@@ -406,7 +406,7 @@ public class TestDuckdb {
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<String>();
                 while (rs.next()) {
-                    results.add((String) rs.getObject(1));
+                    results.add(rs.getString(1));
                 }
                 return results;
             }
@@ -441,7 +441,7 @@ public class TestDuckdb {
                 if (!hasNext()) throw new NoSuchElementException();
                 hasNext = null;
                 try {
-                    return (String) rs.getObject(1);
+                    return rs.getString(1);
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
                 }
@@ -474,9 +474,9 @@ public class TestDuckdb {
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
                     ? new ByIdResult(
-                          (Integer) rs.getObject(1),
-                          (String) rs.getObject(2),
-                          (String) rs.getObject(3)
+                          rs.getObject(1, Integer.class),
+                          rs.getString(2),
+                          rs.getString(3)
                       )
                     : null;
             }
@@ -496,9 +496,9 @@ public class TestDuckdb {
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
                     ? new ByEmailResult(
-                          (Integer) rs.getObject(1),
-                          (String) rs.getObject(2),
-                          (String) rs.getObject(3)
+                          rs.getObject(1, Integer.class),
+                          rs.getString(2),
+                          rs.getString(3)
                       )
                     : null;
             }
@@ -514,7 +514,7 @@ public class TestDuckdb {
             stmt.setString(1, email);
 
             try (var rs = stmt.executeQuery()) {
-                return rs.next() ? (Integer) rs.getObject(1) : null;
+                return rs.next() ? rs.getObject(1, Integer.class) : null;
             }
         }
     }
@@ -569,11 +569,11 @@ public class TestDuckdb {
                 while (rs.next()) {
                     results.add(
                         new ActionsByUserIdResult(
-                            (Integer) rs.getObject(1),
-                            (String) rs.getObject(2),
-                            (Double) rs.getObject(3),
-                            (Integer) rs.getObject(4),
-                            (Integer) rs.getObject(5)
+                            rs.getObject(1, Integer.class),
+                            rs.getString(2),
+                            rs.getObject(3, Double.class),
+                            rs.getObject(4, Integer.class),
+                            rs.getObject(5, Integer.class)
                         )
                     );
                 }
@@ -618,11 +618,11 @@ public class TestDuckdb {
                 hasNext = null;
                 try {
                     return new ActionsByUserIdResult(
-                        (Integer) rs.getObject(1),
-                        (String) rs.getObject(2),
-                        (Double) rs.getObject(3),
-                        (Integer) rs.getObject(4),
-                        (Integer) rs.getObject(5)
+                        rs.getObject(1, Integer.class),
+                        rs.getString(2),
+                        rs.getObject(3, Double.class),
+                        rs.getObject(4, Integer.class),
+                        rs.getObject(5, Integer.class)
                     );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
@@ -673,11 +673,11 @@ public class TestDuckdb {
                 while (rs.next()) {
                     results.add(
                         new ActionsByUserIdAndActionResult(
-                            (Integer) rs.getObject(1),
-                            (String) rs.getObject(2),
-                            (Double) rs.getObject(3),
-                            (Integer) rs.getObject(4),
-                            (Integer) rs.getObject(5)
+                            rs.getObject(1, Integer.class),
+                            rs.getString(2),
+                            rs.getObject(3, Double.class),
+                            rs.getObject(4, Integer.class),
+                            rs.getObject(5, Integer.class)
                         )
                     );
                 }
@@ -737,11 +737,11 @@ public class TestDuckdb {
                 hasNext = null;
                 try {
                     return new ActionsByUserIdAndActionResult(
-                        (Integer) rs.getObject(1),
-                        (String) rs.getObject(2),
-                        (Double) rs.getObject(3),
-                        (Integer) rs.getObject(4),
-                        (Integer) rs.getObject(5)
+                        rs.getObject(1, Integer.class),
+                        rs.getString(2),
+                        rs.getObject(3, Double.class),
+                        rs.getObject(4, Integer.class),
+                        rs.getObject(5, Integer.class)
                     );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
@@ -774,8 +774,8 @@ public class TestDuckdb {
                 while (rs.next()) {
                     results.add(
                         new TopUsersResult(
-                            (Integer) rs.getObject(1),
-                            (Double) rs.getObject(2)
+                            rs.getObject(1, Integer.class),
+                            rs.getObject(2, Double.class)
                         )
                     );
                 }
@@ -815,8 +815,8 @@ public class TestDuckdb {
                 hasNext = null;
                 try {
                     return new TopUsersResult(
-                        (Integer) rs.getObject(1),
-                        (Double) rs.getObject(2)
+                        rs.getObject(1, Integer.class),
+                        rs.getObject(2, Double.class)
                     );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
@@ -850,7 +850,7 @@ public class TestDuckdb {
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<TestResult>();
                 while (rs.next()) {
-                    results.add(new TestResult((Integer) rs.getObject(1)));
+                    results.add(new TestResult(rs.getObject(1, Integer.class)));
                 }
                 return results;
             }
@@ -889,7 +889,7 @@ public class TestDuckdb {
                 if (!hasNext()) throw new NoSuchElementException();
                 hasNext = null;
                 try {
-                    return new TestResult((Integer) rs.getObject(1));
+                    return new TestResult(rs.getObject(1, Integer.class));
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
                 }
@@ -915,7 +915,9 @@ public class TestDuckdb {
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<Test2Result>();
                 while (rs.next()) {
-                    results.add(new Test2Result((Integer) rs.getObject(1)));
+                    results.add(
+                        new Test2Result(rs.getObject(1, Integer.class))
+                    );
                 }
                 return results;
             }
@@ -950,7 +952,7 @@ public class TestDuckdb {
                 if (!hasNext()) throw new NoSuchElementException();
                 hasNext = null;
                 try {
-                    return new Test2Result((Integer) rs.getObject(1));
+                    return new Test2Result(rs.getObject(1, Integer.class));
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
                 }
@@ -980,8 +982,8 @@ public class TestDuckdb {
                 while (rs.next()) {
                     results.add(
                         new Test3Result(
-                            (String) rs.getObject(1),
-                            (Integer) rs.getObject(2)
+                            rs.getString(1),
+                            rs.getObject(2, Integer.class)
                         )
                     );
                 }
@@ -1019,8 +1021,8 @@ public class TestDuckdb {
                 hasNext = null;
                 try {
                     return new Test3Result(
-                        (String) rs.getObject(1),
-                        (Integer) rs.getObject(2)
+                        rs.getString(1),
+                        rs.getObject(2, Integer.class)
                     );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
@@ -1053,8 +1055,8 @@ public class TestDuckdb {
                 while (rs.next()) {
                     results.add(
                         new Test4Result(
-                            (String) rs.getObject(1),
-                            (Integer) rs.getObject(2)
+                            rs.getString(1),
+                            rs.getObject(2, Integer.class)
                         )
                     );
                 }
@@ -1092,8 +1094,8 @@ public class TestDuckdb {
                 hasNext = null;
                 try {
                     return new Test4Result(
-                        (String) rs.getObject(1),
-                        (Integer) rs.getObject(2)
+                        rs.getString(1),
+                        rs.getObject(2, Integer.class)
                     );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
@@ -1126,9 +1128,9 @@ public class TestDuckdb {
                 while (rs.next()) {
                     results.add(
                         new Test5Result(
-                            (String) rs.getObject(1),
-                            (String) rs.getObject(2),
-                            (Integer) rs.getObject(3)
+                            rs.getString(1),
+                            rs.getString(2),
+                            rs.getObject(3, Integer.class)
                         )
                     );
                 }
@@ -1168,9 +1170,9 @@ public class TestDuckdb {
                 hasNext = null;
                 try {
                     return new Test5Result(
-                        (String) rs.getObject(1),
-                        (String) rs.getObject(2),
-                        (Integer) rs.getObject(3)
+                        rs.getString(1),
+                        rs.getString(2),
+                        rs.getObject(3, Integer.class)
                     );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
@@ -2009,7 +2011,7 @@ public class TestDuckdb {
                 return rs.next()
                     ? new TestNested3Result(
                           arrayToList((Array) rs.getObject(1), Integer[].class),
-                          (Integer) rs.getObject(2),
+                          rs.getObject(2, Integer.class),
                           TestNested3Result.CResult.fromAttributes(
                               getAttr((Struct) rs.getObject(3))
                           )
@@ -2118,24 +2120,18 @@ public class TestDuckdb {
                 while (rs.next()) {
                     results.add(
                         new TestAllTypesResult(
-                            (Boolean) rs.getObject(1),
-                            rs.getObject(2) != null
-                                ? ((Number) rs.getObject(2)).byteValue()
-                                : null,
-                            rs.getObject(3) != null
-                                ? ((Number) rs.getObject(3)).shortValue()
-                                : null,
-                            (Integer) rs.getObject(4),
-                            (Long) rs.getObject(5),
+                            rs.getObject(1, Boolean.class),
+                            rs.getObject(2, Byte.class),
+                            rs.getObject(3, Short.class),
+                            rs.getObject(4, Integer.class),
+                            rs.getObject(5, Long.class),
                             (BigInteger) rs.getObject(6),
                             (BigInteger) rs.getObject(7),
-                            rs.getObject(8) != null
-                                ? ((Number) rs.getObject(8)).shortValue()
-                                : null,
-                            (Integer) rs.getObject(9),
-                            (Long) rs.getObject(10),
+                            rs.getObject(8, Short.class),
+                            rs.getObject(9, Integer.class),
+                            rs.getObject(10, Long.class),
                             (BigInteger) rs.getObject(11),
-                            (BigDecimal) rs.getObject(12),
+                            rs.getBigDecimal(12),
                             toLocalDate(rs.getObject(13)),
                             toLocalTime(rs.getObject(14)),
                             toLocalDateTime(rs.getObject(15)),
@@ -2144,17 +2140,17 @@ public class TestDuckdb {
                             (Instant) rs.getObject(18),
                             (OffsetTime) rs.getObject(19),
                             (OffsetDateTime) rs.getObject(20),
-                            (Float) rs.getObject(21),
-                            (Double) rs.getObject(22),
-                            (BigDecimal) rs.getObject(23),
-                            (BigDecimal) rs.getObject(24),
-                            (BigDecimal) rs.getObject(25),
-                            (BigDecimal) rs.getObject(26),
+                            rs.getObject(21, Float.class),
+                            rs.getObject(22, Double.class),
+                            rs.getBigDecimal(23),
+                            rs.getBigDecimal(24),
+                            rs.getBigDecimal(25),
+                            rs.getBigDecimal(26),
                             (UUID) rs.getObject(27),
-                            (String) rs.getObject(28),
-                            (String) rs.getObject(29),
-                            (byte[]) rs.getObject(30),
-                            (String) rs.getObject(31),
+                            rs.getString(28),
+                            rs.getString(29),
+                            rs.getBytes(30),
+                            rs.getString(31),
                             (String) rs.getObject(32),
                             (String) rs.getObject(33),
                             (String) rs.getObject(34),
@@ -2212,7 +2208,7 @@ public class TestDuckdb {
                                 (Array) rs.getObject(54),
                                 Object[].class
                             ),
-                            (String) rs.getObject(55)
+                            rs.getString(55)
                         )
                     );
                 }
@@ -2254,24 +2250,18 @@ public class TestDuckdb {
                 hasNext = null;
                 try {
                     return new TestAllTypesResult(
-                        (Boolean) rs.getObject(1),
-                        rs.getObject(2) != null
-                            ? ((Number) rs.getObject(2)).byteValue()
-                            : null,
-                        rs.getObject(3) != null
-                            ? ((Number) rs.getObject(3)).shortValue()
-                            : null,
-                        (Integer) rs.getObject(4),
-                        (Long) rs.getObject(5),
+                        rs.getObject(1, Boolean.class),
+                        rs.getObject(2, Byte.class),
+                        rs.getObject(3, Short.class),
+                        rs.getObject(4, Integer.class),
+                        rs.getObject(5, Long.class),
                         (BigInteger) rs.getObject(6),
                         (BigInteger) rs.getObject(7),
-                        rs.getObject(8) != null
-                            ? ((Number) rs.getObject(8)).shortValue()
-                            : null,
-                        (Integer) rs.getObject(9),
-                        (Long) rs.getObject(10),
+                        rs.getObject(8, Short.class),
+                        rs.getObject(9, Integer.class),
+                        rs.getObject(10, Long.class),
                         (BigInteger) rs.getObject(11),
-                        (BigDecimal) rs.getObject(12),
+                        rs.getBigDecimal(12),
                         toLocalDate(rs.getObject(13)),
                         toLocalTime(rs.getObject(14)),
                         toLocalDateTime(rs.getObject(15)),
@@ -2280,17 +2270,17 @@ public class TestDuckdb {
                         (Instant) rs.getObject(18),
                         (OffsetTime) rs.getObject(19),
                         (OffsetDateTime) rs.getObject(20),
-                        (Float) rs.getObject(21),
-                        (Double) rs.getObject(22),
-                        (BigDecimal) rs.getObject(23),
-                        (BigDecimal) rs.getObject(24),
-                        (BigDecimal) rs.getObject(25),
-                        (BigDecimal) rs.getObject(26),
+                        rs.getObject(21, Float.class),
+                        rs.getObject(22, Double.class),
+                        rs.getBigDecimal(23),
+                        rs.getBigDecimal(24),
+                        rs.getBigDecimal(25),
+                        rs.getBigDecimal(26),
                         (UUID) rs.getObject(27),
-                        (String) rs.getObject(28),
-                        (String) rs.getObject(29),
-                        (byte[]) rs.getObject(30),
-                        (String) rs.getObject(31),
+                        rs.getString(28),
+                        rs.getString(29),
+                        rs.getBytes(30),
+                        rs.getString(31),
                         (String) rs.getObject(32),
                         (String) rs.getObject(33),
                         (String) rs.getObject(34),
@@ -2336,7 +2326,7 @@ public class TestDuckdb {
                         ),
                         (Object) rs.getObject(53),
                         arrayToList((Array) rs.getObject(54), Object[].class),
-                        (String) rs.getObject(55)
+                        rs.getString(55)
                     );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
@@ -2384,8 +2374,8 @@ public class TestDuckdb {
                 while (rs.next()) {
                     results.add(
                         new AllEventsResult(
-                            (Integer) rs.getObject(1),
-                            (String) rs.getObject(2),
+                            rs.getObject(1, Integer.class),
+                            rs.getString(2),
                             arrayToList((Array) rs.getObject(3), String[].class)
                         )
                     );
@@ -2424,8 +2414,8 @@ public class TestDuckdb {
                 hasNext = null;
                 try {
                     return new AllEventsResult(
-                        (Integer) rs.getObject(1),
-                        (String) rs.getObject(2),
+                        rs.getObject(1, Integer.class),
+                        rs.getString(2),
                         arrayToList((Array) rs.getObject(3), String[].class)
                     );
                 } catch (SQLException e) {
@@ -2461,8 +2451,8 @@ public class TestDuckdb {
                 while (rs.next()) {
                     results.add(
                         new AllLogEntriesResult(
-                            (Integer) rs.getObject(1),
-                            (String) rs.getObject(2),
+                            rs.getObject(1, Integer.class),
+                            rs.getString(2),
                             (OffsetDateTime) rs.getObject(3)
                         )
                     );
@@ -2503,8 +2493,8 @@ public class TestDuckdb {
                 hasNext = null;
                 try {
                     return new AllLogEntriesResult(
-                        (Integer) rs.getObject(1),
-                        (String) rs.getObject(2),
+                        rs.getObject(1, Integer.class),
+                        rs.getString(2),
                         (OffsetDateTime) rs.getObject(3)
                     );
                 } catch (SQLException e) {
@@ -2542,8 +2532,8 @@ public class TestDuckdb {
                 while (rs.next()) {
                     results.add(
                         new LogEntriesByDayResult(
-                            (Integer) rs.getObject(1),
-                            (String) rs.getObject(2),
+                            rs.getObject(1, Integer.class),
+                            rs.getString(2),
                             toLocalDate(rs.getObject(3))
                         )
                     );
@@ -2586,8 +2576,8 @@ public class TestDuckdb {
                 hasNext = null;
                 try {
                     return new LogEntriesByDayResult(
-                        (Integer) rs.getObject(1),
-                        (String) rs.getObject(2),
+                        rs.getObject(1, Integer.class),
+                        rs.getString(2),
                         toLocalDate(rs.getObject(3))
                     );
                 } catch (SQLException e) {
@@ -2645,8 +2635,8 @@ public class TestDuckdb {
                 while (rs.next()) {
                     results.add(
                         new GetTasksByPriorityResult(
-                            (Integer) rs.getObject(1),
-                            (String) rs.getObject(2),
+                            rs.getObject(1, Integer.class),
+                            rs.getString(2),
                             TaskPriority.fromValue((String) rs.getObject(3))
                         )
                     );
@@ -2692,8 +2682,8 @@ public class TestDuckdb {
                 hasNext = null;
                 try {
                     return new GetTasksByPriorityResult(
-                        (Integer) rs.getObject(1),
-                        (String) rs.getObject(2),
+                        rs.getObject(1, Integer.class),
+                        rs.getString(2),
                         TaskPriority.fromValue((String) rs.getObject(3))
                     );
                 } catch (SQLException e) {
@@ -2731,8 +2721,8 @@ public class TestDuckdb {
                 while (rs.next()) {
                     results.add(
                         new GetAllTasksResult(
-                            (Integer) rs.getObject(1),
-                            (String) rs.getObject(2),
+                            rs.getObject(1, Integer.class),
+                            rs.getString(2),
                             TaskPriority.fromValue((String) rs.getObject(3))
                         )
                     );
@@ -2773,8 +2763,8 @@ public class TestDuckdb {
                 hasNext = null;
                 try {
                     return new GetAllTasksResult(
-                        (Integer) rs.getObject(1),
-                        (String) rs.getObject(2),
+                        rs.getObject(1, Integer.class),
+                        rs.getString(2),
                         TaskPriority.fromValue((String) rs.getObject(3))
                     );
                 } catch (SQLException e) {

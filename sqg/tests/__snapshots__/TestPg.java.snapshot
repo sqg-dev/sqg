@@ -368,9 +368,9 @@ public class TestPg {
                 while (rs.next()) {
                     results.add(
                         new Users1Result(
-                            (String) rs.getObject(1),
-                            (String) rs.getObject(2),
-                            (String) rs.getObject(3)
+                            rs.getString(1),
+                            rs.getString(2),
+                            rs.getString(3)
                         )
                     );
                 }
@@ -410,9 +410,9 @@ public class TestPg {
                 hasNext = null;
                 try {
                     return new Users1Result(
-                        (String) rs.getObject(1),
-                        (String) rs.getObject(2),
-                        (String) rs.getObject(3)
+                        rs.getString(1),
+                        rs.getString(2),
+                        rs.getString(3)
                     );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
@@ -440,7 +440,7 @@ public class TestPg {
             )
         ) {
             try (var rs = stmt.executeQuery()) {
-                return rs.next() ? (String) rs.getObject(1) : null;
+                return rs.next() ? rs.getString(1) : null;
             }
         }
     }
@@ -452,7 +452,7 @@ public class TestPg {
             )
         ) {
             try (var rs = stmt.executeQuery()) {
-                return rs.next() ? (String) rs.getObject(1) : null;
+                return rs.next() ? rs.getString(1) : null;
             }
         }
     }
@@ -467,10 +467,7 @@ public class TestPg {
         ) {
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
-                    ? new Users4Result(
-                          (String) rs.getObject(1),
-                          (String) rs.getObject(2)
-                      )
+                    ? new Users4Result(rs.getString(1), rs.getString(2))
                     : null;
             }
         }
@@ -489,8 +486,8 @@ public class TestPg {
                 while (rs.next()) {
                     results.add(
                         new Users5Result(
-                            (Integer) rs.getObject(1),
-                            (String) rs.getObject(2)
+                            rs.getObject(1, Integer.class),
+                            rs.getString(2)
                         )
                     );
                 }
@@ -532,8 +529,8 @@ public class TestPg {
                 hasNext = null;
                 try {
                     return new Users5Result(
-                        (Integer) rs.getObject(1),
-                        (String) rs.getObject(2)
+                        rs.getObject(1, Integer.class),
+                        rs.getString(2)
                     );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
@@ -567,9 +564,9 @@ public class TestPg {
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
                     ? new Users6Result(
-                          (String) rs.getObject(1),
-                          (String) rs.getObject(2),
-                          (String) rs.getObject(3)
+                          rs.getString(1),
+                          rs.getString(2),
+                          rs.getString(3)
                       )
                     : null;
             }
@@ -591,9 +588,9 @@ public class TestPg {
                 while (rs.next()) {
                     results.add(
                         new Users7Result(
-                            (String) rs.getObject(1),
-                            (String) rs.getObject(2),
-                            (String) rs.getObject(3)
+                            rs.getString(1),
+                            rs.getString(2),
+                            rs.getString(3)
                         )
                     );
                 }
@@ -636,9 +633,9 @@ public class TestPg {
                 hasNext = null;
                 try {
                     return new Users7Result(
-                        (String) rs.getObject(1),
-                        (String) rs.getObject(2),
-                        (String) rs.getObject(3)
+                        rs.getString(1),
+                        rs.getString(2),
+                        rs.getString(3)
                     );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
@@ -681,8 +678,8 @@ public class TestPg {
                 while (rs.next()) {
                     results.add(
                         new GetTasksByStatusResult(
-                            (Integer) rs.getObject(1),
-                            (String) rs.getObject(2),
+                            rs.getObject(1, Integer.class),
+                            rs.getString(2),
                             TaskStatus.fromValue((String) rs.getObject(3)),
                             arrayToList(
                                 (Array) rs.getObject(4),
@@ -738,8 +735,8 @@ public class TestPg {
                 hasNext = null;
                 try {
                     return new GetTasksByStatusResult(
-                        (Integer) rs.getObject(1),
-                        (String) rs.getObject(2),
+                        rs.getObject(1, Integer.class),
+                        rs.getString(2),
                         TaskStatus.fromValue((String) rs.getObject(3)),
                         arrayToList((Array) rs.getObject(4), String[].class),
                         arrayToList((Array) rs.getObject(5), Integer[].class)
@@ -782,8 +779,8 @@ public class TestPg {
                 while (rs.next()) {
                     results.add(
                         new GetAllTasksResult(
-                            (Integer) rs.getObject(1),
-                            (String) rs.getObject(2),
+                            rs.getObject(1, Integer.class),
+                            rs.getString(2),
                             TaskStatus.fromValue((String) rs.getObject(3)),
                             arrayToList(
                                 (Array) rs.getObject(4),
@@ -834,8 +831,8 @@ public class TestPg {
                 hasNext = null;
                 try {
                     return new GetAllTasksResult(
-                        (Integer) rs.getObject(1),
-                        (String) rs.getObject(2),
+                        rs.getObject(1, Integer.class),
+                        rs.getString(2),
                         TaskStatus.fromValue((String) rs.getObject(3)),
                         arrayToList((Array) rs.getObject(4), String[].class),
                         arrayToList((Array) rs.getObject(5), Integer[].class)
@@ -1025,14 +1022,12 @@ public class TestPg {
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
                     ? new GetBigintRecordResult(
-                          (Long) rs.getObject(1),
-                          (Long) rs.getObject(2),
-                          rs.getObject(3) != null
-                              ? ((Number) rs.getObject(3)).shortValue()
-                              : null,
-                          (Integer) rs.getObject(4),
-                          (Long) rs.getObject(5),
-                          (String) rs.getObject(6)
+                          rs.getObject(1, Long.class),
+                          rs.getObject(2, Long.class),
+                          rs.getObject(3, Short.class),
+                          rs.getObject(4, Integer.class),
+                          rs.getObject(5, Long.class),
+                          rs.getString(6)
                       )
                     : null;
             }
@@ -1049,7 +1044,7 @@ public class TestPg {
             else stmt.setNull(1, java.sql.Types.BIGINT);
 
             try (var rs = stmt.executeQuery()) {
-                return rs.next() ? (Long) rs.getObject(1) : null;
+                return rs.next() ? rs.getObject(1, Long.class) : null;
             }
         }
     }
@@ -1061,7 +1056,7 @@ public class TestPg {
             )
         ) {
             try (var rs = stmt.executeQuery()) {
-                return rs.next() ? (Long) rs.getObject(1) : null;
+                return rs.next() ? rs.getObject(1, Long.class) : null;
             }
         }
     }
@@ -1107,7 +1102,7 @@ public class TestPg {
                 while (rs.next()) {
                     results.add(
                         new GetTrickyValuesResult(
-                            (Integer) rs.getObject(1),
+                            rs.getObject(1, Integer.class),
                             TrickyEnum.fromValue((String) rs.getObject(2))
                         )
                     );
@@ -1152,7 +1147,7 @@ public class TestPg {
                 hasNext = null;
                 try {
                     return new GetTrickyValuesResult(
-                        (Integer) rs.getObject(1),
+                        rs.getObject(1, Integer.class),
                         TrickyEnum.fromValue((String) rs.getObject(2))
                     );
                 } catch (SQLException e) {
@@ -1220,7 +1215,7 @@ public class TestPg {
                 return rs.next()
                     ? new GetUuidByIdResult(
                           (UUID) rs.getObject(1),
-                          (String) rs.getObject(2)
+                          rs.getString(2)
                       )
                     : null;
             }
@@ -1339,9 +1334,9 @@ public class TestPg {
                 while (rs.next()) {
                     results.add(
                         new GetIdentityRecordsResult(
-                            (Integer) rs.getObject(1),
-                            (String) rs.getObject(2),
-                            (Integer) rs.getObject(3)
+                            rs.getObject(1, Integer.class),
+                            rs.getString(2),
+                            rs.getObject(3, Integer.class)
                         )
                     );
                 }
@@ -1385,9 +1380,9 @@ public class TestPg {
                 hasNext = null;
                 try {
                     return new GetIdentityRecordsResult(
-                        (Integer) rs.getObject(1),
-                        (String) rs.getObject(2),
-                        (Integer) rs.getObject(3)
+                        rs.getObject(1, Integer.class),
+                        rs.getString(2),
+                        rs.getObject(3, Integer.class)
                     );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
@@ -1442,18 +1437,16 @@ public class TestPg {
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
                     ? new GetAllTypesRecordResult(
-                          (Integer) rs.getObject(1),
-                          (Boolean) rs.getObject(2),
-                          rs.getObject(3) != null
-                              ? ((Number) rs.getObject(3)).shortValue()
-                              : null,
-                          (Integer) rs.getObject(4),
-                          (Long) rs.getObject(5),
-                          (Float) rs.getObject(6),
-                          (Double) rs.getObject(7),
-                          (BigDecimal) rs.getObject(8),
-                          (String) rs.getObject(9),
-                          (String) rs.getObject(10),
+                          rs.getObject(1, Integer.class),
+                          rs.getObject(2, Boolean.class),
+                          rs.getObject(3, Short.class),
+                          rs.getObject(4, Integer.class),
+                          rs.getObject(5, Long.class),
+                          rs.getObject(6, Float.class),
+                          rs.getObject(7, Double.class),
+                          rs.getBigDecimal(8),
+                          rs.getString(9),
+                          rs.getString(10),
                           toLocalDate(rs.getObject(11)),
                           toLocalDateTime(rs.getObject(12)),
                           toOffsetDateTime(rs.getObject(13)),

@@ -6,7 +6,7 @@ import prettier from "prettier/standalone";
 import prettierPluginJava from "prettier-plugin-java";
 import type { DbEngine } from "../constants.js";
 import type { ColumnInfo, SQLQuery, TableInfo } from "../sql-query.js";
-import { EnumType } from "../sql-query.js";
+import { EnumType, ListType, StructType } from "../sql-query.js";
 import type { GeneratorConfig, SqlQueryHelper, SqlQueryPart } from "../sqltool.js";
 import { JavaTypeMapper } from "../type-mapping.js";
 import { BaseGenerator } from "./base-generator.js";
@@ -71,7 +71,12 @@ export class JavaGenerator extends BaseGenerator {
   }
 
   private readColumn(column: ColumnInfo, index: number, path: string) {
-    return this.typeMapper.parseValue(column, `rs.getObject(${index + 1})`, path);
+    const idx = index + 1;
+    const readExpr = jdbcReadExpression(column, idx, this.typeMapper as JavaTypeMapper);
+    if (readExpr !== null) {
+      return readExpr;
+    }
+    return this.typeMapper.parseValue(column, `rs.getObject(${idx})`, path);
   }
 
   async beforeGenerate(
@@ -214,6 +219,60 @@ export class JavaGenerator extends BaseGenerator {
       consola.error("Failed to format Java file:", error);
     }
   }
+}
+
+// Maps Java target type → typed JDBC ResultSet getter. Using typed getters
+// avoids the driver's generic Object path and unnecessary casts. Boxed
+// primitives use the JDBC 4.2 getObject(int, Class) form so null is preserved.
+const JDBC_GETTER_MAP: Record<string, (i: number) => string> = {
+  String: (i) => `rs.getString(${i})`,
+  "byte[]": (i) => `rs.getBytes(${i})`,
+  BigDecimal: (i) => `rs.getBigDecimal(${i})`,
+  Integer: (i) => `rs.getObject(${i}, Integer.class)`,
+  Long: (i) => `rs.getObject(${i}, Long.class)`,
+  Short: (i) => `rs.getObject(${i}, Short.class)`,
+  Byte: (i) => `rs.getObject(${i}, Byte.class)`,
+  Boolean: (i) => `rs.getObject(${i}, Boolean.class)`,
+  Double: (i) => `rs.getObject(${i}, Double.class)`,
+  Float: (i) => `rs.getObject(${i}, Float.class)`,
+};
+
+// SQL types that need helper-based conversion (date/time, JSON, arrays) — leave
+// these on the generic getObject path so the existing wrapper helpers apply.
+const OPAQUE_SQL_TYPES = new Set([
+  "TIMESTAMP",
+  "DATETIME",
+  "TIMESTAMPTZ",
+  "TIMESTAMP WITH TIME ZONE",
+  "TIMESTAMP_S",
+  "TIMESTAMP_MS",
+  "TIMESTAMP_NS",
+  "DATE",
+  "TIME",
+  "TIME WITH TIME ZONE",
+  "JSON",
+  "JSONB",
+]);
+
+function jdbcReadExpression(
+  column: ColumnInfo,
+  index: number,
+  typeMapper: JavaTypeMapper,
+): string | null {
+  if (
+    column.type instanceof EnumType ||
+    column.type instanceof ListType ||
+    column.type instanceof StructType
+  ) {
+    return null;
+  }
+  const upperType = column.type?.toString().toUpperCase() ?? "";
+  if (OPAQUE_SQL_TYPES.has(upperType) || upperType.startsWith("_")) {
+    return null;
+  }
+  const fieldType = typeMapper.getTypeName(column);
+  const getter = JDBC_GETTER_MAP[fieldType];
+  return getter ? getter(index) : null;
 }
 
 // Boxed Java parameter type → typed JDBC setter + java.sql.Types code for null.

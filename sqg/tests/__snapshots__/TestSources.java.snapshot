@@ -235,7 +235,9 @@ public class TestSources {
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<Test1Result>();
                 while (rs.next()) {
-                    results.add(new Test1Result((Integer) rs.getObject(1)));
+                    results.add(
+                        new Test1Result(rs.getObject(1, Integer.class))
+                    );
                 }
                 return results;
             }
@@ -270,7 +272,7 @@ public class TestSources {
                 if (!hasNext()) throw new NoSuchElementException();
                 hasNext = null;
                 try {
-                    return new Test1Result((Integer) rs.getObject(1));
+                    return new Test1Result(rs.getObject(1, Integer.class));
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
                 }
@@ -315,9 +317,9 @@ public class TestSources {
                 while (rs.next()) {
                     results.add(
                         new Test2Result(
-                            (Long) rs.getObject(1),
-                            (String) rs.getObject(2),
-                            (String) rs.getObject(3)
+                            rs.getObject(1, Long.class),
+                            rs.getString(2),
+                            rs.getString(3)
                         )
                     );
                 }
@@ -357,9 +359,9 @@ public class TestSources {
                 hasNext = null;
                 try {
                     return new Test2Result(
-                        (Long) rs.getObject(1),
-                        (String) rs.getObject(2),
-                        (String) rs.getObject(3)
+                        rs.getObject(1, Long.class),
+                        rs.getString(2),
+                        rs.getString(3)
                     );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
