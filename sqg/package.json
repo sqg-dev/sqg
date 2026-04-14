@@ -1,6 +1,6 @@
 {
   "name": "@sqg/sqg",
-  "version": "0.17.3",
+  "version": "0.17.4",
   "description": "SQG - SQL Query Generator - Type-safe code generation from SQL (https://sqg.dev)",
   "type": "module",
   "main": "dist/index.mjs",
