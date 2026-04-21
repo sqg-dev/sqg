@@ -8,7 +8,7 @@ repositories {
 }
 
 dependencies {
-    implementation("org.duckdb:duckdb_jdbc:1.4.2.0")
+    implementation("org.duckdb:duckdb_jdbc:1.5.2.0")
 }
 
 java {

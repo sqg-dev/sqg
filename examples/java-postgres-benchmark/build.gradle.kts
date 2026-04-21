@@ -11,7 +11,7 @@ repositories {
 dependencies {
     implementation("org.postgresql:postgresql:42.7.10")
     implementation("de.bytefish:pgbulkinsert:9.0.0")
-    implementation("org.duckdb:duckdb_jdbc:1.5.1.0")
+    implementation("org.duckdb:duckdb_jdbc:1.5.2.0")
     implementation("org.apache.arrow:arrow-vector:19.0.0")
     implementation("org.apache.arrow:arrow-c-data:19.0.0")
     runtimeOnly("org.apache.arrow:arrow-memory-netty:19.0.0")
