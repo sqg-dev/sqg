@@ -1,0 +1,10 @@
+version: 1
+name: java-duckdb-benchmark
+sql:
+  - files:
+      - queries.sql
+    gen:
+      - generator: java/duckdb
+        output: src/main/java/generated/
+        config:
+          package: generated

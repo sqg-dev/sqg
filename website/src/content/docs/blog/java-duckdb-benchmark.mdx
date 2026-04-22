@@ -1,0 +1,219 @@
+---
+title: "Benchmarking DuckDB From Java: Fast INSERT, UPDATE, and DELETE"
+date: 2026-04-21
+authors:
+  - name: Uwe Maurer
+    url: https://github.com/uwemaurer
+cover:
+  alt: DuckDB benchmark comparing 7 methods for INSERT, UPDATE, and DELETE from Java
+  image: ../../../assets/blog/duckdb-benchmark.png
+head:
+  - tag: meta
+    attrs:
+      property: og:image
+      content: https://sqg.dev/images/duckdb-benchmark.png
+  - tag: meta
+    attrs:
+      name: twitter:image
+      content: https://sqg.dev/images/duckdb-benchmark.png
+---
+
+import BenchmarkReport from "@components/BenchmarkReport.astro";
+
+DuckDB's [Java documentation](https://duckdb.org/docs/current/clients/java) recommends the Appender as the efficient way to insert data. But two questions come up in practice: **how do you efficiently UPDATE and DELETE?** And **is the Appender really the fastest option for INSERT, or are there faster alternatives?**
+
+We benchmarked 7 different methods — from naive row-by-row JDBC to the Appender, Arrow streams, and DuckDB's [Java table function API](https://github.com/duckdb/duckdb-java/blob/main/UDF.MD) — across INSERT, UPDATE, and DELETE, scaling from 1K to 1M rows.
+
+## The Setup
+
+We used a sensor-readings table with 9 columns covering DuckDB's core types: `UUID`, `TIMESTAMPTZ`, `DOUBLE`, `DECIMAL(10,2)`, `SMALLINT`, `BOOLEAN`, `VARCHAR`, and `VARCHAR[]` (same schema as [our PostgreSQL benchmark](/blog/java-postgres-insert-benchmark/)).
+
+Each method was warmed up, then measured multiple times (median taken). After every operation, we verified correctness: row counts, spot-checked values, and for UPDATE specifically verified the target column was actually modified. DuckDB runs on disk with a single connection.
+
+All benchmark code is open source: [examples/java-duckdb-benchmark](https://github.com/sqg-dev/sqg/tree/main/examples/java-duckdb-benchmark).
+
+## INSERT Methods
+
+We tested 6 insert methods:
+
+**1. Individual INSERT** — One `executeUpdate()` per row in a transaction. Simple but slow: ~3.3K rows/sec at all sizes. ([code](https://github.com/sqg-dev/sqg/blob/main/examples/java-duckdb-benchmark/src/main/java/benchmark/InsertMethods.java#L118))
+
+**2. JDBC Batch** — Standard JDBC `addBatch()` / `executeBatch()` via the [DuckDB JDBC driver](https://duckdb.org/docs/current/clients/java). On PostgreSQL this is a solid optimization; on DuckDB it barely helps — ~5K rows/sec. ([code](https://github.com/sqg-dev/sqg/blob/main/examples/java-duckdb-benchmark/src/main/java/benchmark/InsertMethods.java#L131))
+
+**3. Multi-value INSERT** — Build `INSERT INTO t VALUES (...),(...),(...) ...` with up to 10K rows per statement. ~14K rows/sec. ([code](https://github.com/sqg-dev/sqg/blob/main/examples/java-duckdb-benchmark/src/main/java/benchmark/InsertMethods.java#L154))
+
+**4. Appender** — DuckDB's [recommended bulk insert API](https://duckdb.org/docs/current/clients/java#appender). Bypasses the SQL parser — you call `beginRow()`, `append()` for each column, and `endRow()`: ([code](https://github.com/sqg-dev/sqg/blob/main/examples/java-duckdb-benchmark/src/main/java/benchmark/InsertMethods.java#L179))
+
+```java
+try (var appender = ((DuckDBConnection) conn)
+        .createAppender(DuckDBConnection.DEFAULT_SCHEMA, "sensor_readings")) {
+    for (var r : rows) {
+        appender.beginRow();
+        appender.append(r.deviceId());
+        appender.append(r.timestamp());
+        appender.append(r.temperature());
+        // ... remaining columns
+        appender.endRow();
+    }
+}
+```
+
+**5. Arrow Stream** — Build [Apache Arrow](https://arrow.apache.org/) columnar vectors in Java, register them with DuckDB via [`registerArrowStream`](https://duckdb.org/docs/current/clients/java#arrow-import), then `INSERT INTO ... SELECT FROM stream`. Since Arrow vectors must be fully built before registering, the data is processed in chunks of 10K rows — each chunk requires a separate `INSERT ... SELECT` statement. ([code](https://github.com/sqg-dev/sqg/blob/main/examples/java-duckdb-benchmark/src/main/java/benchmark/InsertMethods.java#L192))
+
+**6. Table Function (UDF)** — Register a Java table function via DuckDB's [`DuckDBFunctions.tableFunction()` API](https://github.com/duckdb/duckdb-java/blob/main/UDF.MD#table-functions-duckdbtablefunction). DuckDB pulls rows directly from a Java `Iterator` in chunks of 2,048. Unlike Arrow, this executes a **single SQL statement** regardless of data size — DuckDB calls the `apply()` callback repeatedly until the iterator is exhausted: ([code](https://github.com/sqg-dev/sqg/blob/main/examples/java-duckdb-benchmark/src/main/java/benchmark/TableFunctionMethods.java#L35))
+
+```java
+DuckDBFunctions.tableFunction()
+    .withName("_bench_insert_rows")
+    .withFunction(new DuckDBTableFunction<>() {
+        public long apply(DuckDBTableFunctionCallInfo info,
+                          DuckDBDataChunkWriter output) {
+            // Fill columnar vectors, up to output.capacity() rows
+            // DuckDB calls this repeatedly until we return 0
+        }
+    })
+    .register(conn);
+
+// Then: INSERT INTO sensor_readings SELECT ... FROM _bench_insert_rows()
+```
+
+## UPDATE and DELETE Methods
+
+For UPDATE and DELETE, Individual and JDBC Batch work the same way as for INSERT — one statement per row or batch. ([update code](https://github.com/sqg-dev/sqg/blob/main/examples/java-duckdb-benchmark/src/main/java/benchmark/UpdateMethods.java#L38), [delete code](https://github.com/sqg-dev/sqg/blob/main/examples/java-duckdb-benchmark/src/main/java/benchmark/DeleteMethods.java#L35))
+
+The interesting methods are the set-based approaches:
+
+**UNNEST list params** — Pass all keys as parallel array parameters: ([code](https://github.com/sqg-dev/sqg/blob/main/examples/java-duckdb-benchmark/src/main/java/benchmark/DeleteMethods.java#L61))
+
+```sql
+DELETE FROM sensor_readings
+WHERE (device_id, timestamp) IN (
+    SELECT UNNEST(?::UUID[]), UNNEST(?::TIMESTAMPTZ[])
+);
+```
+
+**Arrow stream join** — Stage keys as Arrow vectors, then join against the main table. Same `registerArrowStream` technique but with only the key columns. ([update code](https://github.com/sqg-dev/sqg/blob/main/examples/java-duckdb-benchmark/src/main/java/benchmark/UpdateMethods.java#L83), [delete code](https://github.com/sqg-dev/sqg/blob/main/examples/java-duckdb-benchmark/src/main/java/benchmark/DeleteMethods.java#L77))
+
+```sql
+DELETE FROM sensor_readings s
+USING arrow_stream k
+WHERE s.device_id = k.device_id::UUID AND s.timestamp = k.timestamp
+```
+
+**Temp table + Appender** — Create a temp table, bulk-load keys with the Appender, then execute a set-based join. This turns DuckDB's INSERT-only Appender into a tool for bulk UPDATE and DELETE: ([update code](https://github.com/sqg-dev/sqg/blob/main/examples/java-duckdb-benchmark/src/main/java/benchmark/UpdateMethods.java#L121), [delete code](https://github.com/sqg-dev/sqg/blob/main/examples/java-duckdb-benchmark/src/main/java/benchmark/DeleteMethods.java#L110))
+
+```java
+// 1. Create staging table
+stmt.execute("CREATE TEMP TABLE _keys (device_id UUID, timestamp TIMESTAMPTZ)");
+
+// 2. Bulk-load keys via Appender
+try (var appender = ((DuckDBConnection) conn)
+        .createAppender(DuckDBConnection.DEFAULT_SCHEMA, "_keys")) {
+    for (var r : rows) {
+        appender.beginRow();
+        appender.append(r.deviceId());
+        appender.append(r.timestamp());
+        appender.endRow();
+    }
+}
+
+// 3. Set-based delete
+stmt.execute("""
+    DELETE FROM sensor_readings s
+    USING _keys k
+    WHERE s.device_id = k.device_id AND s.timestamp = k.timestamp""");
+stmt.execute("DROP TABLE _keys");
+```
+
+The same pattern works for UPDATE — add the new values to the staging table:
+
+```sql
+CREATE TEMP TABLE _update_keys (device_id UUID, timestamp TIMESTAMPTZ, temperature DOUBLE);
+-- Appender-load keys + new values
+UPDATE sensor_readings s
+SET temperature = k.temperature
+FROM _update_keys k
+WHERE s.device_id = k.device_id AND s.timestamp = k.timestamp;
+```
+
+**Table function join** — Same as the insert table function, but DuckDB uses it as a key source in a `DELETE ... USING` or `UPDATE ... FROM` join. ([update code](https://github.com/sqg-dev/sqg/blob/main/examples/java-duckdb-benchmark/src/main/java/benchmark/TableFunctionMethods.java#L204), [delete code](https://github.com/sqg-dev/sqg/blob/main/examples/java-duckdb-benchmark/src/main/java/benchmark/TableFunctionMethods.java#L148))
+
+## The Results
+
+<BenchmarkReport file="benchmark-duckdb.html" />
+
+## Which Method Should You Use?
+
+| Scenario | Best method | Throughput (1M rows) | Extra deps |
+|----------|------------|---------------------|------------|
+| Bulk INSERT, simple code | [Appender](https://duckdb.org/docs/current/clients/java#appender) | 160K rows/sec | None |
+| Bulk INSERT, max throughput | [Table Function](https://github.com/duckdb/duckdb-java/blob/main/UDF.MD#table-functions-duckdbtablefunction) | 427K rows/sec | None |
+| Bulk INSERT, columnar data | [Arrow](https://duckdb.org/docs/current/clients/java#arrow-import) | 381K rows/sec | Arrow JARs |
+| Bulk UPDATE or DELETE | Temp table + Appender | 3.8–5.8M rows/sec | None |
+| Portable across DuckDB + PostgreSQL | JDBC Batch | 5K rows/sec | None |
+
+### Appender: The Simple Default
+
+The [Appender](https://duckdb.org/docs/current/clients/java#appender) is the right starting point for most Java applications. It's simple, has no extra dependencies, and at 160K rows/sec it's **30× faster than JDBC batch**. For batches under 5K rows, it's actually the fastest method. Use it unless you have a measured need for more throughput.
+
+### Table Functions and Arrow: For Higher Throughput
+
+Above 10K rows, [Table Functions](https://github.com/duckdb/duckdb-java/blob/main/UDF.MD#table-functions-duckdbtablefunction) (427K rows/sec at 1M) and [Arrow](https://duckdb.org/docs/current/clients/java#arrow-import) (381K rows/sec) both deliver **2.5–2.7× the Appender's throughput**:
+
+- **Table Functions** need no extra dependencies — just the DuckDB JDBC driver. You implement a `bind()`/`init()`/`apply()` callback that writes columnar vectors. The key advantage: the entire operation runs as a **single SQL statement**, regardless of data size. DuckDB streams through the callback internally. This is why Table Functions overtake Arrow at large sizes (500K+). For UPDATE/DELETE they place second behind temp-table-join at 3.0–3.4M rows/sec.
+- **Arrow** requires Apache Arrow JARs and more code (schema definitions, vector building, stream registration, off-heap memory management). Arrow vectors must be fully built in memory before registering, so data is processed in chunks — each chunk is a separate SQL statement. At 1M rows with 10K-row chunks, that's 100 statements vs Table Function's 1. Arrow wins at medium sizes (10K–100K) but falls behind Table Functions at 1M. It's the right choice when your data is already columnar or when you need interop with other Arrow-based systems.
+
+### Temp Table + Appender: For Bulk Mutations
+
+The temp-table-join pattern delivers **5.8M deletes/sec** and **3.8M updates/sec** at 1M rows — over **1,000× faster than JDBC batch**. Instead of executing 1M individual statements, DuckDB executes a single set-based join. UNNEST (the other set-based approach) is 9–11× slower at 1M.
+
+### JDBC Batch: For Small Operations
+
+On DuckDB, `addBatch()` / `executeBatch()` provides almost no speedup over individual statements (~5K vs ~3.3K rows/sec). DuckDB doesn't rewrite batched statements the way PostgreSQL does with `reWriteBatchedInserts`. JDBC Batch is still the simplest option and works across both DuckDB and PostgreSQL, making it useful for portable code or small batches.
+
+## Methodology
+
+- [DuckDB JDBC](https://duckdb.org/docs/current/clients/java) (in-process, on-disk database)
+- Java 25 (Temurin)
+- Apache Arrow 19.0.0
+- Each method: warmup + measurement runs, median reported
+- Data verified after every operation (row count + value checks)
+- All methods use a single connection
+- All methods accept `Iterable` (not `List`) — no method assumes the full dataset fits in memory
+- Methods that need batching (Arrow, UNNEST, Multi-value, JDBC Batch) chunk at 10,000 rows internally
+- The Table Function streams naturally via its `Iterator`-based callback at 2,048 rows per chunk
+
+## Try It Yourself
+
+```bash
+git clone https://github.com/sqg-dev/sqg
+cd sqg/examples/java-duckdb-benchmark
+just run            # normal (skips slow methods at large sizes)
+just run --all      # include Individual/Batch at every size
+```
+
+## How We Built This
+
+The benchmark uses [SQG](https://sqg.dev), a type-safe SQL code generator. You write annotated `.sql` files with your queries, and SQG introspects them against a real database at build time to generate type-safe access code for Java, TypeScript, or Python. No ORM, no runtime reflection — just plain SQL in, type-safe code out.
+
+For example, this annotation:
+
+```sql
+-- TABLE sensor_readings :appender
+```
+
+generates a complete type-safe `SensorReadingsAppender` class with `append(UUID deviceId, OffsetDateTime timestamp, ...)` — column types inferred directly from DuckDB.
+
+From the single [`queries.sql`](https://github.com/sqg-dev/sqg/blob/main/examples/java-duckdb-benchmark/queries.sql) file, SQG generated most of the code used in this benchmark:
+
+- The Appender for `sensor_readings` ([from `TABLE sensor_readings :appender`](https://github.com/sqg-dev/sqg/blob/main/examples/java-duckdb-benchmark/queries.sql#L14))
+- Batch INSERT/UPDATE/DELETE methods ([from `:batch` annotations](https://github.com/sqg-dev/sqg/blob/main/examples/java-duckdb-benchmark/queries.sql#L27))
+- UNNEST bulk delete/update methods ([`delete_readings_unnest`](https://github.com/sqg-dev/sqg/blob/main/examples/java-duckdb-benchmark/queries.sql#L65))
+- The temp-table staging pattern: `CREATE` EXECs, staging Appenders ([`TABLE _delete_keys :appender`](https://github.com/sqg-dev/sqg/blob/main/examples/java-duckdb-benchmark/queries.sql#L80)), and set-based join EXECs
+- Individual row methods and verification queries
+
+The Arrow and Table Function methods are the only hand-written ones — everything else is generated from SQL.
+
+---
+
+*Have questions or want to challenge the methodology? Open an issue on [GitHub](https://github.com/sqg-dev/sqg/discussions).*

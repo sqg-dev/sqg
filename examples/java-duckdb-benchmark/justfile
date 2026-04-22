@@ -1,0 +1,24 @@
+# List available recipes
+[private]
+default:
+  @just --list --unsorted
+
+# Generate SQG code
+generate:
+  cd ../../sqg && pnpm sqg ../examples/java-duckdb-benchmark/sqg.yaml
+
+# Run the benchmark
+run: generate
+  ./gradlew run
+
+# Run the benchmark without regenerating
+run-only:
+  ./gradlew run
+
+# Build without running
+build: generate
+  ./gradlew classes
+
+# Clean build artifacts
+clean:
+  ./gradlew clean

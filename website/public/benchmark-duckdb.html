@@ -1,0 +1,521 @@
+<div class="benchmark-report">
+  <style>
+    .benchmark-report {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      color: #111827;
+      line-height: 1.6;
+    }
+    .benchmark-report .container {
+      max-width: 1100px;
+      margin: 0;
+      background: transparent;
+      padding: 0;
+    }
+    h1 { font-size: 2rem; margin-bottom: 0.5rem; color: #111827; }
+    .subtitle { color: #6b7280; margin-bottom: 2rem; }
+    .chart-section { margin-top: 2rem; padding-top: 1.5rem; border-top: 2px solid #e5e7eb; }
+    .chart-section h2 { font-size: 1.25rem; margin-bottom: 0.75rem; }
+    .chart-container { max-width: 900px; margin: 0 auto 2rem; }
+    .batch-section { margin-top: 1.5rem; }
+    .batch-section h3 { font-size: 1rem; margin-bottom: 0.5rem; color: #374151; }
+    .results-table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+    .results-table th, .results-table td {
+      padding: 0.5rem 0.75rem; text-align: left;
+      border-bottom: 1px solid #e5e7eb; font-size: 0.875rem;
+    }
+    .results-table th { background: #f9fafb; font-weight: 600; color: #374151; }
+    .results-table td.number { text-align: right; font-variant-numeric: tabular-nums; }
+    .winner { font-weight: 600; color: #10b981; }
+    .system-info { margin-top: 2rem; padding-top: 2rem; border-top: 2px solid #e5e7eb; }
+    .system-info h3 { font-size: 1.125rem; margin-bottom: 0.75rem; color: #374151; }
+    .system-table { width: 100%; border-collapse: collapse; }
+    .system-table td {
+      padding: 0.375rem 0.5rem; border-bottom: 1px solid #e5e7eb; font-size: 0.875rem;
+    }
+    .system-table td:first-child { font-weight: 600; color: #6b7280; width: 160px; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <div class="container">
+    <h1>DuckDB Insert / Update / Delete Benchmark</h1>
+    <p class="subtitle">Comparing JDBC :batch, appender, Arrow, UNNEST list params, and temp-table join</p>
+
+    <div class="chart-section">
+  <h2>INSERT: Throughput vs Total Rows</h2>
+  <div class="chart-container"><canvas id="insertChart"></canvas></div>
+  <script>
+  new Chart(document.getElementById('insertChart'), {
+    type: 'line',
+    data: {
+      labels: ['1K', '5K', '10K', '50K', '100K', '500K', '1M'],
+      datasets: [
+        { label: 'Individual INSERT',
+          borderColor: '#ef4444',
+          backgroundColor: '#ef444422',
+          tension: 0,
+          data: [2891, 3160, 3315, 3319, 3300, null, null], spanGaps: true },
+        { label: 'Batch (:batch)',
+          borderColor: '#f97316',
+          backgroundColor: '#f9731622',
+          tension: 0,
+          data: [4613, 4954, 5128, 5099, 5037, null, null], spanGaps: true },
+        { label: 'Multi-value INSERT',
+          borderColor: '#eab308',
+          backgroundColor: '#eab30822',
+          tension: 0,
+          data: [18582, 14948, 13325, 13433, 13697, null, null], spanGaps: true },
+        { label: 'Appender (:appender)',
+          borderColor: '#22c55e',
+          backgroundColor: '#22c55e22',
+          tension: 0,
+          data: [84630, 142985, 160472, 143751, 158945, 160243, 152812], spanGaps: true },
+        { label: 'Arrow stream',
+          borderColor: '#06b6d4',
+          backgroundColor: '#06b6d422',
+          tension: 0,
+          data: [51977, 191677, 369291, 265791, 424734, 387994, 342139], spanGaps: true },
+        { label: 'Table function',
+          borderColor: '#3b82f6',
+          backgroundColor: '#3b82f622',
+          tension: 0,
+          data: [73622, 203537, 254808, 353377, 399683, 423747, 383377], spanGaps: true },
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'right' } },
+      scales: {
+        y: { type: 'logarithmic', title: { display: true, text: 'Rows/sec (log scale)' } },
+        x: { title: { display: true, text: 'Total rows' } }
+      }
+    }
+  });
+  </script>
+</div>
+<div class="chart-section">
+  <h2>UPDATE: Throughput vs Total Rows</h2>
+  <div class="chart-container"><canvas id="updateChart"></canvas></div>
+  <script>
+  new Chart(document.getElementById('updateChart'), {
+    type: 'line',
+    data: {
+      labels: ['1K', '5K', '10K', '50K', '100K', '500K', '1M'],
+      datasets: [
+        { label: 'Individual UPDATE',
+          borderColor: '#ef4444',
+          backgroundColor: '#ef444422',
+          tension: 0,
+          data: [4421, 4239, 3492, 3418, 2707, null, null], spanGaps: true },
+        { label: 'Batch (:batch)',
+          borderColor: '#f97316',
+          backgroundColor: '#f9731622',
+          tension: 0,
+          data: [5208, 4750, 4350, 3682, 3153, null, null], spanGaps: true },
+        { label: 'UNNEST list params',
+          borderColor: '#eab308',
+          backgroundColor: '#eab30822',
+          tension: 0,
+          data: [81756, 294131, 417146, 417188, 431070, 408575, 427299], spanGaps: true },
+        { label: 'Arrow stream join',
+          borderColor: '#22c55e',
+          backgroundColor: '#22c55e22',
+          tension: 0,
+          data: [85900, 329765, 597372, 724504, 724798, 746591, 756654], spanGaps: true },
+        { label: 'Temp table join',
+          borderColor: '#06b6d4',
+          backgroundColor: '#06b6d422',
+          tension: 0,
+          data: [91933, 402927, 739041, 2351675, 3248036, 3106897, 3887168], spanGaps: true },
+        { label: 'Table function',
+          borderColor: '#3b82f6',
+          backgroundColor: '#3b82f622',
+          tension: 0,
+          data: [90759, 396662, 660487, 2033870, 2707682, 2513792, 3023035], spanGaps: true },
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'right' } },
+      scales: {
+        y: { type: 'logarithmic', title: { display: true, text: 'Rows/sec (log scale)' } },
+        x: { title: { display: true, text: 'Total rows' } }
+      }
+    }
+  });
+  </script>
+</div>
+<div class="chart-section">
+  <h2>DELETE: Throughput vs Total Rows</h2>
+  <div class="chart-container"><canvas id="deleteChart"></canvas></div>
+  <script>
+  new Chart(document.getElementById('deleteChart'), {
+    type: 'line',
+    data: {
+      labels: ['1K', '5K', '10K', '50K', '100K', '500K', '1M'],
+      datasets: [
+        { label: 'Individual DELETE',
+          borderColor: '#ef4444',
+          backgroundColor: '#ef444422',
+          tension: 0,
+          data: [5016, 5457, 5495, 4550, 4247, null, null], spanGaps: true },
+        { label: 'Batch (:batch)',
+          borderColor: '#f97316',
+          backgroundColor: '#f9731622',
+          tension: 0,
+          data: [5997, 6188, 5603, 5983, 4735, null, null], spanGaps: true },
+        { label: 'UNNEST list params',
+          borderColor: '#eab308',
+          backgroundColor: '#eab30822',
+          tension: 0,
+          data: [91474, 320613, 444311, 528407, 520213, 522595, 528756], spanGaps: true },
+        { label: 'Arrow stream join',
+          borderColor: '#22c55e',
+          backgroundColor: '#22c55e22',
+          tension: 0,
+          data: [78130, 343747, 606296, 774737, 766958, 778404, 801192], spanGaps: true },
+        { label: 'Temp table join',
+          borderColor: '#06b6d4',
+          backgroundColor: '#06b6d422',
+          tension: 0,
+          data: [94494, 423315, 783441, 2658112, 3553297, 4922569, 5429384], spanGaps: true },
+        { label: 'Table function',
+          borderColor: '#3b82f6',
+          backgroundColor: '#3b82f622',
+          tension: 0,
+          data: [100844, 442306, 689856, 1993260, 2500696, 3359951, 3308981], spanGaps: true },
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'right' } },
+      scales: {
+        y: { type: 'logarithmic', title: { display: true, text: 'Rows/sec (log scale)' } },
+        x: { title: { display: true, text: 'Total rows' } }
+      }
+    }
+  });
+  </script>
+</div>
+
+
+    <details style="margin-top:2rem">
+<summary style="font-size:1.25rem;font-weight:600;cursor:pointer;padding:0.5rem 0">INSERT results</summary>
+<div class="batch-section">
+  <h3>1,000 rows</h3>
+  <table class="results-table">
+    <thead><tr><th>Method</th><th>Time (ms)</th><th>Rows/sec</th><th>vs Best</th></tr></thead>
+    <tbody>
+      <tr><td>Individual INSERT</td><td class="number">345.9</td><td class="number">2,891</td><td>29.3x slower</td></tr>
+      <tr><td>Batch (:batch)</td><td class="number">216.8</td><td class="number">4,613</td><td>18.3x slower</td></tr>
+      <tr><td>Multi-value INSERT</td><td class="number">53.8</td><td class="number">18,582</td><td>4.6x slower</td></tr>
+      <tr class="winner"><td>Appender (:appender)</td><td class="number">11.8</td><td class="number">84,630</td><td>fastest</td></tr>
+      <tr><td>Arrow stream</td><td class="number">19.2</td><td class="number">51,977</td><td>1.6x slower</td></tr>
+      <tr><td>Table function</td><td class="number">13.6</td><td class="number">73,622</td><td>1.1x slower</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="batch-section">
+  <h3>5,000 rows</h3>
+  <table class="results-table">
+    <thead><tr><th>Method</th><th>Time (ms)</th><th>Rows/sec</th><th>vs Best</th></tr></thead>
+    <tbody>
+      <tr><td>Individual INSERT</td><td class="number">1,582.3</td><td class="number">3,160</td><td>64.4x slower</td></tr>
+      <tr><td>Batch (:batch)</td><td class="number">1,009.2</td><td class="number">4,954</td><td>41.1x slower</td></tr>
+      <tr><td>Multi-value INSERT</td><td class="number">334.5</td><td class="number">14,948</td><td>13.6x slower</td></tr>
+      <tr><td>Appender (:appender)</td><td class="number">35.0</td><td class="number">142,985</td><td>1.4x slower</td></tr>
+      <tr><td>Arrow stream</td><td class="number">26.1</td><td class="number">191,677</td><td>1.1x slower</td></tr>
+      <tr class="winner"><td>Table function</td><td class="number">24.6</td><td class="number">203,537</td><td>fastest</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="batch-section">
+  <h3>10,000 rows</h3>
+  <table class="results-table">
+    <thead><tr><th>Method</th><th>Time (ms)</th><th>Rows/sec</th><th>vs Best</th></tr></thead>
+    <tbody>
+      <tr><td>Individual INSERT</td><td class="number">3,016.6</td><td class="number">3,315</td><td>111.4x slower</td></tr>
+      <tr><td>Batch (:batch)</td><td class="number">1,950.2</td><td class="number">5,128</td><td>72.0x slower</td></tr>
+      <tr><td>Multi-value INSERT</td><td class="number">750.5</td><td class="number">13,325</td><td>27.7x slower</td></tr>
+      <tr><td>Appender (:appender)</td><td class="number">62.3</td><td class="number">160,472</td><td>2.3x slower</td></tr>
+      <tr class="winner"><td>Arrow stream</td><td class="number">27.1</td><td class="number">369,291</td><td>fastest</td></tr>
+      <tr><td>Table function</td><td class="number">39.2</td><td class="number">254,808</td><td>1.4x slower</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="batch-section">
+  <h3>50,000 rows</h3>
+  <table class="results-table">
+    <thead><tr><th>Method</th><th>Time (ms)</th><th>Rows/sec</th><th>vs Best</th></tr></thead>
+    <tbody>
+      <tr><td>Individual INSERT</td><td class="number">15,062.9</td><td class="number">3,319</td><td>106.5x slower</td></tr>
+      <tr><td>Batch (:batch)</td><td class="number">9,805.0</td><td class="number">5,099</td><td>69.3x slower</td></tr>
+      <tr><td>Multi-value INSERT</td><td class="number">3,722.1</td><td class="number">13,433</td><td>26.3x slower</td></tr>
+      <tr><td>Appender (:appender)</td><td class="number">347.8</td><td class="number">143,751</td><td>2.5x slower</td></tr>
+      <tr><td>Arrow stream</td><td class="number">188.1</td><td class="number">265,791</td><td>1.3x slower</td></tr>
+      <tr class="winner"><td>Table function</td><td class="number">141.5</td><td class="number">353,377</td><td>fastest</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="batch-section">
+  <h3>100,000 rows</h3>
+  <table class="results-table">
+    <thead><tr><th>Method</th><th>Time (ms)</th><th>Rows/sec</th><th>vs Best</th></tr></thead>
+    <tbody>
+      <tr><td>Individual INSERT</td><td class="number">30,299.7</td><td class="number">3,300</td><td>128.7x slower</td></tr>
+      <tr><td>Batch (:batch)</td><td class="number">19,854.5</td><td class="number">5,037</td><td>84.3x slower</td></tr>
+      <tr><td>Multi-value INSERT</td><td class="number">7,300.8</td><td class="number">13,697</td><td>31.0x slower</td></tr>
+      <tr><td>Appender (:appender)</td><td class="number">629.1</td><td class="number">158,945</td><td>2.7x slower</td></tr>
+      <tr class="winner"><td>Arrow stream</td><td class="number">235.4</td><td class="number">424,734</td><td>fastest</td></tr>
+      <tr><td>Table function</td><td class="number">250.2</td><td class="number">399,683</td><td>1.1x slower</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="batch-section">
+  <h3>500,000 rows</h3>
+  <table class="results-table">
+    <thead><tr><th>Method</th><th>Time (ms)</th><th>Rows/sec</th><th>vs Best</th></tr></thead>
+    <tbody>
+      <tr><td>Individual INSERT</td><td class="number">-</td><td class="number">-</td><td>skipped</td></tr>
+      <tr><td>Batch (:batch)</td><td class="number">-</td><td class="number">-</td><td>skipped</td></tr>
+      <tr><td>Multi-value INSERT</td><td class="number">-</td><td class="number">-</td><td>skipped</td></tr>
+      <tr><td>Appender (:appender)</td><td class="number">3,120.3</td><td class="number">160,243</td><td>2.6x slower</td></tr>
+      <tr><td>Arrow stream</td><td class="number">1,288.7</td><td class="number">387,994</td><td>1.1x slower</td></tr>
+      <tr class="winner"><td>Table function</td><td class="number">1,179.9</td><td class="number">423,747</td><td>fastest</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="batch-section">
+  <h3>1,000,000 rows</h3>
+  <table class="results-table">
+    <thead><tr><th>Method</th><th>Time (ms)</th><th>Rows/sec</th><th>vs Best</th></tr></thead>
+    <tbody>
+      <tr><td>Individual INSERT</td><td class="number">-</td><td class="number">-</td><td>skipped</td></tr>
+      <tr><td>Batch (:batch)</td><td class="number">-</td><td class="number">-</td><td>skipped</td></tr>
+      <tr><td>Multi-value INSERT</td><td class="number">-</td><td class="number">-</td><td>skipped</td></tr>
+      <tr><td>Appender (:appender)</td><td class="number">6,544.0</td><td class="number">152,812</td><td>2.5x slower</td></tr>
+      <tr><td>Arrow stream</td><td class="number">2,922.8</td><td class="number">342,139</td><td>1.1x slower</td></tr>
+      <tr class="winner"><td>Table function</td><td class="number">2,608.4</td><td class="number">383,377</td><td>fastest</td></tr>
+    </tbody>
+  </table>
+</div>
+</details>
+<details style="margin-top:2rem">
+<summary style="font-size:1.25rem;font-weight:600;cursor:pointer;padding:0.5rem 0">UPDATE results</summary>
+<div class="batch-section">
+  <h3>1,000 rows</h3>
+  <table class="results-table">
+    <thead><tr><th>Method</th><th>Time (ms)</th><th>Rows/sec</th><th>vs Best</th></tr></thead>
+    <tbody>
+      <tr><td>Individual UPDATE</td><td class="number">226.2</td><td class="number">4,421</td><td>20.8x slower</td></tr>
+      <tr><td>Batch (:batch)</td><td class="number">192.0</td><td class="number">5,208</td><td>17.7x slower</td></tr>
+      <tr><td>UNNEST list params</td><td class="number">12.2</td><td class="number">81,756</td><td>1.1x slower</td></tr>
+      <tr><td>Arrow stream join</td><td class="number">11.6</td><td class="number">85,900</td><td>1.1x slower</td></tr>
+      <tr class="winner"><td>Temp table join</td><td class="number">10.9</td><td class="number">91,933</td><td>fastest</td></tr>
+      <tr class="winner"><td>Table function</td><td class="number">11.0</td><td class="number">90,759</td><td>~same</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="batch-section">
+  <h3>5,000 rows</h3>
+  <table class="results-table">
+    <thead><tr><th>Method</th><th>Time (ms)</th><th>Rows/sec</th><th>vs Best</th></tr></thead>
+    <tbody>
+      <tr><td>Individual UPDATE</td><td class="number">1,179.6</td><td class="number">4,239</td><td>95.1x slower</td></tr>
+      <tr><td>Batch (:batch)</td><td class="number">1,052.6</td><td class="number">4,750</td><td>84.8x slower</td></tr>
+      <tr><td>UNNEST list params</td><td class="number">17.0</td><td class="number">294,131</td><td>1.4x slower</td></tr>
+      <tr><td>Arrow stream join</td><td class="number">15.2</td><td class="number">329,765</td><td>1.2x slower</td></tr>
+      <tr class="winner"><td>Temp table join</td><td class="number">12.4</td><td class="number">402,927</td><td>fastest</td></tr>
+      <tr class="winner"><td>Table function</td><td class="number">12.6</td><td class="number">396,662</td><td>~same</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="batch-section">
+  <h3>10,000 rows</h3>
+  <table class="results-table">
+    <thead><tr><th>Method</th><th>Time (ms)</th><th>Rows/sec</th><th>vs Best</th></tr></thead>
+    <tbody>
+      <tr><td>Individual UPDATE</td><td class="number">2,863.7</td><td class="number">3,492</td><td>211.6x slower</td></tr>
+      <tr><td>Batch (:batch)</td><td class="number">2,298.9</td><td class="number">4,350</td><td>169.9x slower</td></tr>
+      <tr><td>UNNEST list params</td><td class="number">24.0</td><td class="number">417,146</td><td>1.8x slower</td></tr>
+      <tr><td>Arrow stream join</td><td class="number">16.7</td><td class="number">597,372</td><td>1.2x slower</td></tr>
+      <tr class="winner"><td>Temp table join</td><td class="number">13.5</td><td class="number">739,041</td><td>fastest</td></tr>
+      <tr><td>Table function</td><td class="number">15.1</td><td class="number">660,487</td><td>1.1x slower</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="batch-section">
+  <h3>50,000 rows</h3>
+  <table class="results-table">
+    <thead><tr><th>Method</th><th>Time (ms)</th><th>Rows/sec</th><th>vs Best</th></tr></thead>
+    <tbody>
+      <tr><td>Individual UPDATE</td><td class="number">14,630.4</td><td class="number">3,418</td><td>688.1x slower</td></tr>
+      <tr><td>Batch (:batch)</td><td class="number">13,578.4</td><td class="number">3,682</td><td>638.6x slower</td></tr>
+      <tr><td>UNNEST list params</td><td class="number">119.9</td><td class="number">417,188</td><td>5.6x slower</td></tr>
+      <tr><td>Arrow stream join</td><td class="number">69.0</td><td class="number">724,504</td><td>3.2x slower</td></tr>
+      <tr class="winner"><td>Temp table join</td><td class="number">21.3</td><td class="number">2,351,675</td><td>fastest</td></tr>
+      <tr><td>Table function</td><td class="number">24.6</td><td class="number">2,033,870</td><td>1.2x slower</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="batch-section">
+  <h3>100,000 rows</h3>
+  <table class="results-table">
+    <thead><tr><th>Method</th><th>Time (ms)</th><th>Rows/sec</th><th>vs Best</th></tr></thead>
+    <tbody>
+      <tr><td>Individual UPDATE</td><td class="number">36,936.2</td><td class="number">2,707</td><td>1199.7x slower</td></tr>
+      <tr><td>Batch (:batch)</td><td class="number">31,714.7</td><td class="number">3,153</td><td>1030.1x slower</td></tr>
+      <tr><td>UNNEST list params</td><td class="number">232.0</td><td class="number">431,070</td><td>7.5x slower</td></tr>
+      <tr><td>Arrow stream join</td><td class="number">138.0</td><td class="number">724,798</td><td>4.5x slower</td></tr>
+      <tr class="winner"><td>Temp table join</td><td class="number">30.8</td><td class="number">3,248,036</td><td>fastest</td></tr>
+      <tr><td>Table function</td><td class="number">36.9</td><td class="number">2,707,682</td><td>1.2x slower</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="batch-section">
+  <h3>500,000 rows</h3>
+  <table class="results-table">
+    <thead><tr><th>Method</th><th>Time (ms)</th><th>Rows/sec</th><th>vs Best</th></tr></thead>
+    <tbody>
+      <tr><td>Individual UPDATE</td><td class="number">-</td><td class="number">-</td><td>skipped</td></tr>
+      <tr><td>Batch (:batch)</td><td class="number">-</td><td class="number">-</td><td>skipped</td></tr>
+      <tr><td>UNNEST list params</td><td class="number">1,223.8</td><td class="number">408,575</td><td>7.6x slower</td></tr>
+      <tr><td>Arrow stream join</td><td class="number">669.7</td><td class="number">746,591</td><td>4.2x slower</td></tr>
+      <tr class="winner"><td>Temp table join</td><td class="number">160.9</td><td class="number">3,106,897</td><td>fastest</td></tr>
+      <tr><td>Table function</td><td class="number">198.9</td><td class="number">2,513,792</td><td>1.2x slower</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="batch-section">
+  <h3>1,000,000 rows</h3>
+  <table class="results-table">
+    <thead><tr><th>Method</th><th>Time (ms)</th><th>Rows/sec</th><th>vs Best</th></tr></thead>
+    <tbody>
+      <tr><td>Individual UPDATE</td><td class="number">-</td><td class="number">-</td><td>skipped</td></tr>
+      <tr><td>Batch (:batch)</td><td class="number">-</td><td class="number">-</td><td>skipped</td></tr>
+      <tr><td>UNNEST list params</td><td class="number">2,340.3</td><td class="number">427,299</td><td>9.1x slower</td></tr>
+      <tr><td>Arrow stream join</td><td class="number">1,321.6</td><td class="number">756,654</td><td>5.1x slower</td></tr>
+      <tr class="winner"><td>Temp table join</td><td class="number">257.3</td><td class="number">3,887,168</td><td>fastest</td></tr>
+      <tr><td>Table function</td><td class="number">330.8</td><td class="number">3,023,035</td><td>1.3x slower</td></tr>
+    </tbody>
+  </table>
+</div>
+</details>
+<details style="margin-top:2rem">
+<summary style="font-size:1.25rem;font-weight:600;cursor:pointer;padding:0.5rem 0">DELETE results</summary>
+<div class="batch-section">
+  <h3>1,000 rows</h3>
+  <table class="results-table">
+    <thead><tr><th>Method</th><th>Time (ms)</th><th>Rows/sec</th><th>vs Best</th></tr></thead>
+    <tbody>
+      <tr><td>Individual DELETE</td><td class="number">199.4</td><td class="number">5,016</td><td>20.1x slower</td></tr>
+      <tr><td>Batch (:batch)</td><td class="number">166.8</td><td class="number">5,997</td><td>16.8x slower</td></tr>
+      <tr><td>UNNEST list params</td><td class="number">10.9</td><td class="number">91,474</td><td>1.1x slower</td></tr>
+      <tr><td>Arrow stream join</td><td class="number">12.8</td><td class="number">78,130</td><td>1.3x slower</td></tr>
+      <tr><td>Temp table join</td><td class="number">10.6</td><td class="number">94,494</td><td>1.1x slower</td></tr>
+      <tr class="winner"><td>Table function</td><td class="number">9.9</td><td class="number">100,844</td><td>fastest</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="batch-section">
+  <h3>5,000 rows</h3>
+  <table class="results-table">
+    <thead><tr><th>Method</th><th>Time (ms)</th><th>Rows/sec</th><th>vs Best</th></tr></thead>
+    <tbody>
+      <tr><td>Individual DELETE</td><td class="number">916.2</td><td class="number">5,457</td><td>81.0x slower</td></tr>
+      <tr><td>Batch (:batch)</td><td class="number">808.0</td><td class="number">6,188</td><td>71.5x slower</td></tr>
+      <tr><td>UNNEST list params</td><td class="number">15.6</td><td class="number">320,613</td><td>1.4x slower</td></tr>
+      <tr><td>Arrow stream join</td><td class="number">14.5</td><td class="number">343,747</td><td>1.3x slower</td></tr>
+      <tr class="winner"><td>Temp table join</td><td class="number">11.8</td><td class="number">423,315</td><td>~same</td></tr>
+      <tr class="winner"><td>Table function</td><td class="number">11.3</td><td class="number">442,306</td><td>fastest</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="batch-section">
+  <h3>10,000 rows</h3>
+  <table class="results-table">
+    <thead><tr><th>Method</th><th>Time (ms)</th><th>Rows/sec</th><th>vs Best</th></tr></thead>
+    <tbody>
+      <tr><td>Individual DELETE</td><td class="number">1,820.0</td><td class="number">5,495</td><td>142.6x slower</td></tr>
+      <tr><td>Batch (:batch)</td><td class="number">1,784.6</td><td class="number">5,603</td><td>139.8x slower</td></tr>
+      <tr><td>UNNEST list params</td><td class="number">22.5</td><td class="number">444,311</td><td>1.8x slower</td></tr>
+      <tr><td>Arrow stream join</td><td class="number">16.5</td><td class="number">606,296</td><td>1.3x slower</td></tr>
+      <tr class="winner"><td>Temp table join</td><td class="number">12.8</td><td class="number">783,441</td><td>fastest</td></tr>
+      <tr><td>Table function</td><td class="number">14.5</td><td class="number">689,856</td><td>1.1x slower</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="batch-section">
+  <h3>50,000 rows</h3>
+  <table class="results-table">
+    <thead><tr><th>Method</th><th>Time (ms)</th><th>Rows/sec</th><th>vs Best</th></tr></thead>
+    <tbody>
+      <tr><td>Individual DELETE</td><td class="number">10,988.2</td><td class="number">4,550</td><td>584.2x slower</td></tr>
+      <tr><td>Batch (:batch)</td><td class="number">8,356.6</td><td class="number">5,983</td><td>444.3x slower</td></tr>
+      <tr><td>UNNEST list params</td><td class="number">94.6</td><td class="number">528,407</td><td>5.0x slower</td></tr>
+      <tr><td>Arrow stream join</td><td class="number">64.5</td><td class="number">774,737</td><td>3.4x slower</td></tr>
+      <tr class="winner"><td>Temp table join</td><td class="number">18.8</td><td class="number">2,658,112</td><td>fastest</td></tr>
+      <tr><td>Table function</td><td class="number">25.1</td><td class="number">1,993,260</td><td>1.3x slower</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="batch-section">
+  <h3>100,000 rows</h3>
+  <table class="results-table">
+    <thead><tr><th>Method</th><th>Time (ms)</th><th>Rows/sec</th><th>vs Best</th></tr></thead>
+    <tbody>
+      <tr><td>Individual DELETE</td><td class="number">23,546.4</td><td class="number">4,247</td><td>836.7x slower</td></tr>
+      <tr><td>Batch (:batch)</td><td class="number">21,117.7</td><td class="number">4,735</td><td>750.4x slower</td></tr>
+      <tr><td>UNNEST list params</td><td class="number">192.2</td><td class="number">520,213</td><td>6.8x slower</td></tr>
+      <tr><td>Arrow stream join</td><td class="number">130.4</td><td class="number">766,958</td><td>4.6x slower</td></tr>
+      <tr class="winner"><td>Temp table join</td><td class="number">28.1</td><td class="number">3,553,297</td><td>fastest</td></tr>
+      <tr><td>Table function</td><td class="number">40.0</td><td class="number">2,500,696</td><td>1.4x slower</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="batch-section">
+  <h3>500,000 rows</h3>
+  <table class="results-table">
+    <thead><tr><th>Method</th><th>Time (ms)</th><th>Rows/sec</th><th>vs Best</th></tr></thead>
+    <tbody>
+      <tr><td>Individual DELETE</td><td class="number">-</td><td class="number">-</td><td>skipped</td></tr>
+      <tr><td>Batch (:batch)</td><td class="number">-</td><td class="number">-</td><td>skipped</td></tr>
+      <tr><td>UNNEST list params</td><td class="number">956.8</td><td class="number">522,595</td><td>9.4x slower</td></tr>
+      <tr><td>Arrow stream join</td><td class="number">642.3</td><td class="number">778,404</td><td>6.3x slower</td></tr>
+      <tr class="winner"><td>Temp table join</td><td class="number">101.6</td><td class="number">4,922,569</td><td>fastest</td></tr>
+      <tr><td>Table function</td><td class="number">148.8</td><td class="number">3,359,951</td><td>1.5x slower</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="batch-section">
+  <h3>1,000,000 rows</h3>
+  <table class="results-table">
+    <thead><tr><th>Method</th><th>Time (ms)</th><th>Rows/sec</th><th>vs Best</th></tr></thead>
+    <tbody>
+      <tr><td>Individual DELETE</td><td class="number">-</td><td class="number">-</td><td>skipped</td></tr>
+      <tr><td>Batch (:batch)</td><td class="number">-</td><td class="number">-</td><td>skipped</td></tr>
+      <tr><td>UNNEST list params</td><td class="number">1,891.2</td><td class="number">528,756</td><td>10.3x slower</td></tr>
+      <tr><td>Arrow stream join</td><td class="number">1,248.1</td><td class="number">801,192</td><td>6.8x slower</td></tr>
+      <tr class="winner"><td>Temp table join</td><td class="number">184.2</td><td class="number">5,429,384</td><td>fastest</td></tr>
+      <tr><td>Table function</td><td class="number">302.2</td><td class="number">3,308,981</td><td>1.6x slower</td></tr>
+    </tbody>
+  </table>
+</div>
+
+
+</details>
+
+    <div class="system-info">
+      <h3>System Information</h3>
+      <table class="system-table">
+                <tr><td>Java</td><td>25 (Eclipse Adoptium)</td></tr>
+        <tr><td>OS</td><td>Linux 6.8.0-107-generic</td></tr>
+        <tr><td>Arch</td><td>amd64</td></tr>
+        <tr><td>CPUs</td><td>24</td></tr>
+        <tr><td>Max Memory</td><td>7,956 MB</td></tr>
+        <tr><td>DuckDB</td><td>v1.5.2</td></tr>
+        <tr><td>Warmup Runs</td><td>1</td></tr>
+        <tr><td>Measurement Runs</td><td>3</td></tr>
+
+      </table>
+    </div>
+  </div>
+</div>
