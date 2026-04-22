@@ -142,19 +142,10 @@ WHERE s.device_id = k.device_id AND s.timestamp = k.timestamp;
 
 <BenchmarkReport file="benchmark-duckdb.html" />
 
-## Which Method Should You Use?
-
-| Scenario | Best method | Throughput (1M rows) | Extra deps |
-|----------|------------|---------------------|------------|
-| Bulk INSERT, simple code | [Appender](https://duckdb.org/docs/current/clients/java#appender) | 160K rows/sec | None |
-| Bulk INSERT, max throughput | [Table Function](https://github.com/duckdb/duckdb-java/blob/main/UDF.MD#table-functions-duckdbtablefunction) | 427K rows/sec | None |
-| Bulk INSERT, columnar data | [Arrow](https://duckdb.org/docs/current/clients/java#arrow-import) | 381K rows/sec | Arrow JARs |
-| Bulk UPDATE or DELETE | Temp table + Appender | 3.8–5.8M rows/sec | None |
-| Portable across DuckDB + PostgreSQL | JDBC Batch | 5K rows/sec | None |
 
 ### Appender: The Simple Default
 
-The [Appender](https://duckdb.org/docs/current/clients/java#appender) is the right starting point for most Java applications. It's simple, has no extra dependencies, and at 160K rows/sec it's **30× faster than JDBC batch**. For batches under 5K rows, it's actually the fastest method. Use it unless you have a measured need for more throughput.
+The [Appender](https://duckdb.org/docs/current/clients/java#appender) is the right starting point for most Java applications. It's simple, has no extra dependencies, and at 160K rows/sec it's **30× faster than JDBC batch**. For batches under 5K rows, it's actually the fastest method.
 
 ### Table Functions and Arrow: For Higher Throughput
 
@@ -214,6 +205,9 @@ From the single [`queries.sql`](https://github.com/sqg-dev/sqg/blob/main/example
 
 The Arrow and Table Function methods are the only hand-written ones — everything else is generated from SQL.
 
+SQG can currently generate DuckDB appender code and also produce Arrow code for reading results (`SELECT`). We are planning to add
+more support for generating code for UDFs and methods which use Arrow as input.
+
 ---
 
-*Have questions or want to challenge the methodology? Open an issue on [GitHub](https://github.com/sqg-dev/sqg/discussions).*
+*Questions or feedback? Join the [discussion on GitHub](https://github.com/sqg-dev/sqg/discussions).*
