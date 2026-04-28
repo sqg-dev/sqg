@@ -264,7 +264,8 @@ export const SQL_SYNTAX_REFERENCE = `
 SQL Annotation Syntax:
   -- QUERY <name> [:one] [:pluck]   Select query (returns rows)
   -- EXEC <name> [:batch]           Execute statement (INSERT/UPDATE/DELETE)
-  -- MIGRATE <number>               Schema migration (run in order)
+  -- BASELINE <name>                Schema created outside SQG (runs before migrations, not tracked)
+  -- MIGRATE <name>                 Schema migration (runs in source order; name is any identifier, e.g. "1" or "add_email")
   -- TESTDATA <name>                Test data setup (not generated)
   -- TABLE <name> :appender         Table for bulk insert appender (DuckDB, PostgreSQL)
 

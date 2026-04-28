@@ -24,11 +24,17 @@ An SQG SQL file contains multiple blocks, each starting with a comment annotatio
 
 <CodeExample id="file-structure" />
 
+### Free-form comments
+
+You can put `--` line comments and `/* ... */` block comments anywhere in the file — at the top of the file, between blocks, or inside a block's SQL body. They are ignored by SQG.
+
+The one caveat: a `--` comment whose **first word** matches a SQG keyword (`QUERY`, `EXEC`, `MIGRATE`, `BASELINE`, `TESTDATA`, `TABLE`) followed by whitespace is treated as an annotation, not a comment. If you want a free-form comment that begins with such a word, rephrase it — e.g. write `-- Tables in this file:` instead of `-- TABLES in this file:`.
+
 ## Block Types
 
 ### MIGRATE
 
-Schema migrations are executed in order to set up the database structure.
+Schema migrations are executed in source order to set up the database structure.
 
 ```sql
 -- MIGRATE 1
@@ -41,15 +47,38 @@ CREATE TABLE users (
 -- MIGRATE 2
 CREATE INDEX idx_users_name ON users(name);
 
--- MIGRATE 3
+-- MIGRATE add_email
 ALTER TABLE users ADD COLUMN email TEXT UNIQUE;
 ```
 
 **Rules:**
-- Migrations must be numbered sequentially starting from 1
-- Each migration is executed once during type introspection
-- Generated code includes a `getMigrations()` static method returning migration SQL strings
-- Use the built-in `applyMigrations()` function (see below) or manage migration tracking yourself
+- The migration name is an arbitrary identifier — `1`, `2`, `add_email`, etc. It is used to track which migrations have been applied; it does **not** control execution order.
+- Migrations run in the order they appear in the source file. If you split migrations across multiple files, list those files in the order you want migrations to run in `sqg.yaml`.
+- Each migration name must be unique within a file.
+- Each migration is executed once during type introspection.
+- Generated code includes a `getMigrations()` static method returning migration SQL strings.
+- Use the built-in `applyMigrations()` function (see below) or manage migration tracking yourself.
+
+### BASELINE
+
+Schema that is created **outside** SQG (for example by an ETL job, a sibling service, or a third-party tool) but that your queries need to type-check against.
+
+```sql
+-- BASELINE schema
+CREATE TABLE clusters (id INTEGER PRIMARY KEY);
+
+-- MIGRATE 1
+ALTER TABLE clusters ADD COLUMN list_uri TEXT;
+
+-- QUERY getCluster :one
+@set id = 1
+SELECT id, list_uri FROM clusters WHERE id = ${id};
+```
+
+**Rules:**
+- BASELINE blocks run **before** MIGRATE blocks during type introspection, so MIGRATE statements can reference baseline tables.
+- BASELINE blocks are **not** included in the generated `getMigrations()` array — your application is expected to obtain the baseline schema from elsewhere.
+- Use BASELINE when SQG is not the owner of (part of) the schema, but still needs to know the schema to validate queries.
 
 ### Built-in Migration Runner
 

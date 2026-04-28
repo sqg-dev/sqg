@@ -26,8 +26,11 @@ export interface InitOptions {
  * Generate example SQL content based on engine
  */
 function getExampleSql(engine: DbEngine): string {
-  // Note: File must start with a valid query block (MIGRATE, QUERY, EXEC, or TESTDATA)
-  // Regular comments at the start of the file will cause parsing errors
+  // Note: free-form -- and /* */ comments are allowed at the top of the file and between blocks.
+  // The only constraint is that a comment line whose first word is a SQG keyword
+  // (QUERY/EXEC/MIGRATE/BASELINE/TESTDATA/TABLE) followed by whitespace is treated as an
+  // annotation. To write a free-form comment that begins with such a word, rephrase it
+  // (e.g. "-- TABLEs in this file:" -> "-- Tables in this file:").
 
   const migrations: Record<DbEngine, string> = {
     sqlite: `-- MIGRATE 1

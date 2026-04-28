@@ -164,9 +164,13 @@ SELECT COUNT(*) FROM users;
 -- TABLE users :appender
 ```
 
-**Query types:** `QUERY`, `EXEC`, `MIGRATE`, `TESTDATA`, `TABLE`
+**Query types:** `QUERY`, `EXEC`, `MIGRATE`, `BASELINE`, `TESTDATA`, `TABLE`
 **Modifiers:** `:one` (single row), `:pluck` (single column), `:all` (default), `:appender` (generate bulk insert appender)
 **Variables:** `@set varName = value` to define, `${varName}` to reference
+
+**MIGRATE ordering:** MIGRATE blocks run in source order (within and across files in the order listed in `sqg.yaml`). The name after `-- MIGRATE` is an arbitrary identifier used to track applied migrations — `1`, `2`, `add_email`, `2026_01_users`, etc. It does **not** control execution order.
+
+**BASELINE:** Use `-- BASELINE <name>` for schema that is created outside SQG (ETL job, sibling service, third-party tool). BASELINE blocks run before MIGRATE blocks during type introspection but are **not** emitted in the generated `getMigrations()` array. The application is expected to obtain that schema from elsewhere.
 
 ### TABLE Annotation (Appenders)
 

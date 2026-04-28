@@ -1,4 +1,6 @@
 // {{generatedComment}}
+/* eslint-disable */
+// biome-ignore-all lint: generated code
 import { DatabaseSync, StatementSync } from 'node:sqlite';
 
 interface RunResult {
@@ -111,7 +113,7 @@ any
 {{#if isOne~}}
 {{> rowType}} | undefined
 {{~else~}}
-{{> rowType}}[]
+({{> rowType}})[]
 {{/if~}}
 {{~else~}}
 RunResult
@@ -132,7 +134,7 @@ return stmt.get({{> params}}) as {{> rowType}} | undefined;
 const rows = stmt.all({{> params}}) as Record<string, {{> rowType}}>[];
 return rows.map(row => Object.values(row)[0]);
 {{else}}
-return stmt.all({{> params}}) as {{> rowType}}[];
+return stmt.all({{> params}}) as ({{> rowType}})[];
 {{/if}}
 {{/if}}
 {{else}}

@@ -152,8 +152,8 @@ async function generateCode(
 const GENERATE_CODE_DESCRIPTION = `Generate type-safe database access code from annotated SQL queries.
 
 CRITICAL REQUIREMENTS:
-1. MIGRATE statements MUST come BEFORE any QUERY/EXEC that references those tables
-2. Each query block needs a unique name
+1. MIGRATE (or BASELINE) statements MUST come BEFORE any QUERY/EXEC that references those tables. MIGRATE blocks run in source order; the name is an arbitrary identifier (e.g. "1", "add_email"), not a sort key.
+2. Each query block needs a unique name within its kind (QUERY/EXEC/TABLE share one namespace; MIGRATE/BASELINE/TESTDATA each have their own)
 3. Parameters require @set declarations with sample values
 
 ${SQL_SYNTAX_REFERENCE}

@@ -1,4 +1,6 @@
 // {{generatedComment}}
+/* eslint-disable */
+// biome-ignore-all lint: generated code
 import { connect, type Database } from '@tursodatabase/database';
 
 interface RunResult {
@@ -112,7 +114,7 @@ unknown
 {{#if isOne~}}
 {{> rowType}} | undefined
 {{~else~}}
-{{> rowType}}[]
+({{> rowType}})[]
 {{/if~}}
 {{~else~}}
 RunResult
@@ -133,7 +135,7 @@ return await stmt.get({{> params}}) as {{> rowType}} | undefined;
 const rows = await stmt.all({{> params}}) as Record<string, {{> rowType}}>[];
 return rows.map(row => Object.values(row)[0]);
 {{else}}
-return await stmt.all({{> params}}) as {{> rowType}}[];
+return await stmt.all({{> params}}) as ({{> rowType}})[];
 {{/if}}
 {{/if}}
 {{else}}

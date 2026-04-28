@@ -1,0 +1,13 @@
+version: 1
+
+name: test-sqlite-safe-integers
+
+sql:
+  - files:
+      - test-sqlite.sql
+    gen:
+        - generator: typescript/sqlite
+          output: /tmp/safe-integers/
+          config:
+            migrations: true
+            safeIntegers: true

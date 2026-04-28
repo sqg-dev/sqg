@@ -88,7 +88,7 @@ export class SQLQuery {
     public queryNamed: SqlQueryStatement,
     public queryPositional: SqlQueryStatement,
 
-    public type: "EXEC" | "QUERY" | "MIGRATE" | "TESTDATA",
+    public type: "EXEC" | "QUERY" | "MIGRATE" | "TESTDATA" | "BASELINE",
     public isOne: boolean,
     public isPluck: boolean,
     public isBatch: boolean,
@@ -116,8 +116,12 @@ export class SQLQuery {
     return this.type === "TESTDATA";
   }
 
+  get isBaseline(): boolean {
+    return this.type === "BASELINE";
+  }
+
   get skipGenerateFunction(): boolean {
-    return this.isTestdata || this.isMigrate || this.id.startsWith("_");
+    return this.isTestdata || this.isMigrate || this.isBaseline || this.id.startsWith("_");
   }
 
   validateVariables(): string[] {
@@ -203,7 +207,27 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
     return content.slice(node.from, node.to);
   }
 
-  const queryNames = new Set<string>();
+  const namesByKind = new Map<string, Set<string>>();
+  // QUERY, EXEC and TABLE all emit methods on the generated class, so they share a namespace.
+  // MIGRATE (migration IDs), TESTDATA (schema labels) and BASELINE (pre-migration schema)
+  // each have their own.
+  const namespaceFor = (kind: string) =>
+    kind === "MIGRATE" || kind === "TESTDATA" || kind === "BASELINE" ? kind : "METHOD";
+  const checkDuplicate = (kind: string, n: string) => {
+    const ns = namespaceFor(kind);
+    let set = namesByKind.get(ns);
+    if (!set) {
+      set = new Set<string>();
+      namesByKind.set(ns, set);
+    }
+    if (set.has(n)) {
+      const label = ns === "METHOD" ? "query/table name" : `${ns} name`;
+      throw SqgError.inFile(`Duplicate ${label} '${n}'`, "DUPLICATE_QUERY", filePath, {
+        suggestion: `Rename one of the ${ns === "METHOD" ? "queries/tables" : ns.toLowerCase() + " blocks"} to have a unique name`,
+      });
+    }
+    set.add(n);
+  };
 
   do {
     if (cursor.name === "QueryBlock") {
@@ -459,12 +483,7 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
 
         const table = new TableInfo(filePath, name, tableName, includeColumns, hasAppender, annotationLine);
 
-        if (queryNames.has(name)) {
-          throw SqgError.inFile(`Duplicate name '${name}'`, "DUPLICATE_QUERY", filePath, {
-            suggestion: "Rename one of the tables/queries to have a unique name",
-          });
-        }
-        queryNames.add(name);
+        checkDuplicate("TABLE", name);
 
         tables.push(table);
         consola.debug(`Added table: ${name} -> ${tableName} (appender: ${hasAppender})`);
@@ -488,7 +507,7 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
         sql.toSqlWithAnonymousPlaceholders(),
         sql.toSqlWithNamedPlaceholders(),
         sql.toSqlWithPositionalPlaceholders(),
-        queryType as "EXEC" | "QUERY" | "MIGRATE" | "TESTDATA",
+        queryType as "EXEC" | "QUERY" | "MIGRATE" | "TESTDATA" | "BASELINE",
         isOne,
         isPluck,
         isBatch,
@@ -497,12 +516,7 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
         annotationLine,
       );
 
-      if (queryNames.has(name)) {
-        throw SqgError.inFile(`Duplicate query name '${name}'`, "DUPLICATE_QUERY", filePath, {
-          suggestion: "Rename one of the queries to have a unique name",
-        });
-      }
-      queryNames.add(name);
+      checkDuplicate(queryType, name);
 
       queries.push(query);
 

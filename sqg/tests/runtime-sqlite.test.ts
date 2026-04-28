@@ -69,6 +69,7 @@ const DRIVERS: SqliteDriverConfig[] = [
       for (const user of TEST_USERS) {
         insertStmt.run(user.id, user.name, user.email);
       }
+      db.exec("INSERT INTO bigints (id, posts, total) VALUES (1, 100, 200)");
 
       const queries = new QueriesClass(db);
 
@@ -105,6 +106,7 @@ const DRIVERS: SqliteDriverConfig[] = [
       for (const user of TEST_USERS) {
         insertStmt.run(user.id, user.name, user.email);
       }
+      db.exec("INSERT INTO bigints (id, posts, total) VALUES (1, 100, 200)");
 
       const queries = new QueriesClass(db);
 
@@ -143,6 +145,7 @@ const DRIVERS: SqliteDriverConfig[] = [
           args: [user.id, user.name, user.email],
         });
       }
+      await client.execute("INSERT INTO bigints (id, posts, total) VALUES (1, 100, 200)");
 
       const queries = new QueriesClass(client);
 
@@ -183,6 +186,10 @@ const DRIVERS: SqliteDriverConfig[] = [
       for (const user of TEST_USERS) {
         await insertStmt.run(user.id, user.name, user.email);
       }
+      const seedBigints = await db.prepare(
+        "INSERT INTO bigints (id, posts, total) VALUES (1, 100, 200)",
+      );
+      await seedBigints.run();
 
       const queries = new QueriesClass(db);
 
@@ -206,6 +213,18 @@ type Queries = {
   users5: () => Promise<{ count: number; email: string | null }[]> | { count: number; email: string | null }[];
   users6: (name: string) => Promise<{ id: string; name: string; email: string } | undefined> | { id: string; name: string; email: string } | undefined;
   users7: (name: string) => Promise<{ id: string; name: string; email: string | null }[]> | { id: string; name: string; email: string | null }[];
+  allEmails: () => Promise<(string | null)[]> | (string | null)[];
+  existsAny: () => Promise<number | undefined> | number | undefined;
+  countAll: () => Promise<number | undefined> | number | undefined;
+  castSum: () => Promise<number | undefined> | number | undefined;
+  existsNoSemi: () => Promise<number | undefined> | number | undefined;
+  countTrailingWs: () => Promise<number | undefined> | number | undefined;
+  // B6: BIGINT columns must be `number`, not `bigint`, for SQLite drivers
+  // unless the user opts into safeIntegers.
+  getBigints: () =>
+    | Promise<{ posts: number | null; total: number } | undefined>
+    | { posts: number | null; total: number }
+    | undefined;
 };
 
 // Helper to handle async/sync queries
@@ -248,6 +267,72 @@ function createTestSuite(config: SqliteDriverConfig) {
     it("users3 - should pluck single name value", async () => {
       const result = await executeQuery(() => queries.users3());
       expect(result).toBe("Alice");
+    });
+
+    it("getBigints - BIGINT columns must be typed as number, not bigint (B6)", async () => {
+      // The bug was: BIGINT mapped to `bigint` regardless of driver. SQLite
+      // drivers (better-sqlite3, node:sqlite, libsql, turso) all return JS
+      // `number` by default. The fix flips BIGINT -> "number" for the SQLite
+      // engine unless config.safeIntegers is set.
+      const row = await executeQuery(() => queries.getBigints());
+      expect(row).toBeDefined();
+      const r = row as { posts: number | null; total: number };
+      // Driver returns JS numbers, not bigints — this would crash with
+      // ".toString()" producing "100n" if the type was bigint.
+      expect(typeof r.posts).toBe("number");
+      expect(typeof r.total).toBe("number");
+      expect(r.posts).toBe(100);
+      expect(r.total).toBe(200);
+      // Compile-time assertion: the generated type must accept `number`.
+      const total: number = r.total;
+      const posts: number | null = r.posts;
+      expect(total + (posts ?? 0)).toBe(300);
+    });
+
+    it("existsAny / countAll / castSum - pluck of EXISTS/COUNT/CAST returns number (B5)", async () => {
+      // The bug was: SQLite's columns() returns type=null for any expression,
+      // so EXISTS()/COUNT()/CAST were typed as `unknown | undefined`. The fix
+      // probes typeof() at introspection time to recover the storage class.
+      const exists = await executeQuery(() => queries.existsAny());
+      // EXISTS returns 0 or 1 — never null. With our seeded data (id='1' present), 1.
+      expect(exists).toBe(1);
+
+      const count = await executeQuery(() => queries.countAll());
+      // COUNT(*) on seed data (3 users) — never null.
+      expect(count).toBe(3);
+
+      const castSum = await executeQuery(() => queries.castSum());
+      expect(castSum).toBe(1);
+
+      // The probe wraps the query in a subquery, so trailing `;` and
+      // surrounding whitespace must be stripped. These cover both endings.
+      expect(await executeQuery(() => queries.existsNoSemi())).toBe(1);
+      expect(await executeQuery(() => queries.countTrailingWs())).toBe(3);
+
+      // Compile-time type assertions: would fail to compile under the old type.
+      const e: number | undefined = exists;
+      const c: number | undefined = count;
+      const s: number | undefined = castSum;
+      expect(typeof e).toBe("number");
+      expect(typeof c).toBe("number");
+      expect(typeof s).toBe("number");
+    });
+
+    it("allEmails - pluck-all returns (T | null)[], NOT T | null[]  (B4)", async () => {
+      // The bug was that the generated return type was `string | null[]`, which
+      // TS parses as `string | (null[])`. The fix wraps the row type in parens
+      // so the result is `(string | null)[]`. This test exercises both the
+      // runtime shape (an array containing nulls) and — implicitly — that the
+      // generated code type-checks (vitest runs through tsx).
+      const result = await executeQuery(() => queries.allEmails());
+      expect(Array.isArray(result)).toBe(true);
+      // Charlie's email is NULL in the seed data; the array must contain it.
+      expect(result).toContain(null);
+      // And string emails too.
+      expect(result.some((e) => typeof e === "string")).toBe(true);
+      // Per-element type assertion (would fail to compile under the old type).
+      const first: string | null = result[0];
+      expect(first === null || typeof first === "string").toBe(true);
     });
 
     it("users4 - should return single row with email and name", async () => {

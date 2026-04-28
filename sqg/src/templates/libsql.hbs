@@ -1,4 +1,6 @@
 // {{generatedComment}}
+/* eslint-disable */
+// biome-ignore-all lint: generated code
 import type { Client, InArgs } from '@libsql/client';
 
 interface RunResult {
@@ -109,7 +111,7 @@ unknown
 {{#if isOne~}}
 {{> rowType}} | undefined
 {{~else~}}
-{{> rowType}}[]
+({{> rowType}})[]
 {{/if~}}
 {{~else~}}
 RunResult
@@ -129,7 +131,7 @@ return (result.rows as unknown[])[0] as {{> rowType}} | undefined;
 {{#if isPluck}}
 return result.rows.map(row => Object.values(row)[0] as {{> rowType}});
 {{else}}
-return (result.rows as unknown[]) as {{> rowType}}[];
+return (result.rows as unknown[]) as ({{> rowType}})[];
 {{/if}}
 {{/if}}
 {{else}}

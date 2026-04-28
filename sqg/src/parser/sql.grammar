@@ -9,7 +9,7 @@
 // https://github.com/lezer-parser/java/blob/main/src/java.grammar
 
 
-@top File { QueryBlock+ }
+@top File { (LineComment | BlockComment | BR)* QueryBlock+ }
 
 QueryBlock {
   header
@@ -62,20 +62,25 @@ Value {
   Modifiers { ":" nameChar+ }
 
   QueryType {
-    "EXEC" | "QUERY" | "MIGRATE" | "TESTDATA" | "TABLE"
+    "EXEC" | "QUERY" | "MIGRATE" | "TESTDATA" | "TABLE" | "BASELINE"
   }
 
   lineCommentStart {  "--" }
   
   LineCommentStartSpecial {
-    lineCommentStart  $[ \t]*  QueryType
+    // Require whitespace after the keyword so things like "-- TABLE-like helper"
+    // do NOT match: the lexer otherwise eagerly grabs "-- TABLE" as a special
+    // start, even when it's just part of a free-form comment.
+    lineCommentStart  $[ \t]*  QueryType  $[ \t]
   }
 
   LineComment {
     lineCommentStart ![\n]*
   }
   BlockCommentStartSpecial {
-    blockCommentStart  (space | br )* QueryType 
+    // See note on LineCommentStartSpecial: require whitespace/newline after
+    // the keyword so it doesn't eat into adjacent identifiers.
+    blockCommentStart  (space | br )* QueryType (space | br)
   }
   blockCommentStart { "/*" } 
   BlockComment {  blockCommentStart blockCommentRest }

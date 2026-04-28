@@ -48,6 +48,9 @@ describe("sqg", () => {
     it("handle sqlite correctly", async () => {
       await handleProject("tests/test-sqlite.yaml", ["test-sqlite.ts", "TestSqlite.java", "test_sqlite.py"]);
     });
+    it("handle sqlite with safeIntegers config (B6)", async () => {
+      await handleProject("tests/test-sqlite-safe-integers.yaml", ["test-sqlite.ts"]);
+    });
   });
 
   describe("processProjectNodeSqlite", () => {

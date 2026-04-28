@@ -108,6 +108,56 @@ SELECT * FROM users;
     expect(result.queries[1].line).toBe(4);
   });
 
+  it("allows free-form comments and blank lines before the first annotation", () => {
+    // B3a: a file starting with -- comments or /* */ blocks must not crash the parser.
+    const result = parseSQL(`-- A short note about this file.
+-- It can span multiple lines.
+
+/* and a block comment too */
+
+-- MIGRATE 1
+CREATE TABLE foo(id INTEGER);
+`);
+    expect(result.queries.map((q) => [q.id, q.line])).toEqual([["1", 6]]);
+  });
+
+  it("treats comments between blocks as comments, not annotations", () => {
+    // B3a/B3b: comments that don't start with a SQG keyword should be ignored
+    // and not consumed as part of an annotation header.
+    const result = parseSQL(`-- TESTDATA 1
+-- This table is created externally; we mirror the schema here.
+CREATE TABLE foo(id INTEGER);
+
+-- and another note
+-- spanning lines
+
+-- QUERY getAll
+SELECT id FROM foo;
+`);
+    expect(result.queries.map((q) => [q.id, q.type])).toEqual([
+      ["1", "TESTDATA"],
+      ["getAll", "QUERY"],
+    ]);
+  });
+
+  it("does not eagerly match a SQG keyword that is part of a longer word", () => {
+    // B3b: "-- TABLE-like" must not be tokenized as the TABLE annotation.
+    // Requires the lexer to demand whitespace after the keyword.
+    const result = parseSQL(`-- TESTDATA 1
+-- TABLE-like helper structure
+CREATE TABLE foo(id INTEGER);
+
+-- QUERY getAll
+SELECT id FROM foo;
+`);
+    expect(result.queries.map((q) => [q.id, q.type])).toEqual([
+      ["1", "TESTDATA"],
+      ["getAll", "QUERY"],
+    ]);
+    // Important: nothing was misparsed as a TABLE annotation.
+    expect(result.tables).toHaveLength(0);
+  });
+
   it("handles real-world file with mixed annotation types", () => {
     const result = parseSQL(`-- MIGRATE 1
 

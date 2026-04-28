@@ -44,8 +44,8 @@ export function resolveElementType(baseType: ColumnType): string {
 }
 
 export class TsGenerator extends BaseGenerator {
-  constructor(template: string) {
-    super(template, new TypeScriptTypeMapper());
+  constructor(template: string, engine?: DbEngine) {
+    super(template, new TypeScriptTypeMapper(engine));
   }
 
   getFunctionName(id: string): string {
@@ -64,10 +64,15 @@ export class TsGenerator extends BaseGenerator {
 
   async beforeGenerate(
     _projectDir: string,
-    _gen: GeneratorConfig,
+    gen: GeneratorConfig,
     _queries: SQLQuery[],
     _tables: TableInfo[],
   ): Promise<void> {
+    // Apply per-generation config to the type mapper.
+    // safeIntegers (SQLite-only) flips BIGINT/INT8 from `number` to `bigint`.
+    if (this.typeMapper instanceof TypeScriptTypeMapper) {
+      this.typeMapper.safeIntegers = !!gen.config?.safeIntegers;
+    }
     Handlebars.registerHelper("quote", (value: string) => this.quote(value));
 
     // Map SQL types to DuckDB appender method suffixes

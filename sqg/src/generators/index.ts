@@ -38,7 +38,7 @@ export function getGenerator(generator: string): Generator {
       case "typescript/node":
       case "typescript/libsql":
       case "typescript/turso":
-        return new TsGenerator(`templates/${info.template}`);
+        return new TsGenerator(`templates/${info.template}`, info.engine);
       case "typescript/node-api":
         return new TsDuckDBGenerator(`templates/${info.template}`);
       case "java/jdbc":

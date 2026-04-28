@@ -21,7 +21,7 @@ import { resolveElementType, TsGenerator } from "./typescript-generator.js";
  */
 export class TsDuckDBGenerator extends TsGenerator {
   constructor(template: string) {
-    super(template);
+    super(template, "duckdb");
   }
 
   override supportsAppenders(_engine: DbEngine): boolean {

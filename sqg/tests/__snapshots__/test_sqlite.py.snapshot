@@ -12,6 +12,11 @@ class Users1Row:
     email: str | None
 
 @dataclass(frozen=True)
+class GetBigintsRow:
+    posts: int | None
+    total: int
+
+@dataclass(frozen=True)
 class Users4Row:
     email: str | None
     name: str
@@ -52,6 +57,12 @@ create table  users (
     name text not null,
     email text unique
 ) strict;""",
+            """\
+create table bigints (
+  id integer primary key,
+  posts bigint,
+  total bigint not null
+);""",
         ]
 
     @staticmethod
@@ -77,6 +88,12 @@ create table  users (
     name text not null,
     email text unique
 ) strict;"""),
+            ("2", """\
+create table bigints (
+  id integer primary key,
+  posts bigint,
+  total bigint not null
+);"""),
         ]
         for mid, sql in migrations:
             if mid not in applied:
@@ -126,6 +143,101 @@ select name from users where id = '1';""", ()
         return self._conn.execute(
             """\
 select name from users where id = '1';""", ()
+        ).fetchone()
+
+    def all_emails(self) -> list[str | None]:
+        rows = self._conn.execute(
+            "select email from users;", ()
+        ).fetchall()
+        return [r[0] for r in rows]
+
+    def all_emails_raw(self) -> list[tuple[Any, ...]]:
+        return self._conn.execute(
+            "select email from users;", ()
+        ).fetchall()
+
+    def exists_any(self) -> int | None:
+        row = self._conn.execute(
+            """\
+select exists(select 1 from users where id = '1');""", ()
+        ).fetchone()
+        if row is None:
+            return None
+        return row[0]
+
+    def exists_any_raw(self) -> tuple[Any, ...] | None:
+        return self._conn.execute(
+            """\
+select exists(select 1 from users where id = '1');""", ()
+        ).fetchone()
+
+    def count_all(self) -> int | None:
+        row = self._conn.execute(
+            "select count(*) from users;", ()
+        ).fetchone()
+        if row is None:
+            return None
+        return row[0]
+
+    def count_all_raw(self) -> tuple[Any, ...] | None:
+        return self._conn.execute(
+            "select count(*) from users;", ()
+        ).fetchone()
+
+    def cast_sum(self) -> int | None:
+        row = self._conn.execute(
+            """\
+select cast(count(*) as integer) as n from users where id = '1';""", ()
+        ).fetchone()
+        if row is None:
+            return None
+        return row[0]
+
+    def cast_sum_raw(self) -> tuple[Any, ...] | None:
+        return self._conn.execute(
+            """\
+select cast(count(*) as integer) as n from users where id = '1';""", ()
+        ).fetchone()
+
+    def exists_no_semi(self) -> int | None:
+        row = self._conn.execute(
+            """\
+select exists(select 1 from users where id = '1')""", ()
+        ).fetchone()
+        if row is None:
+            return None
+        return row[0]
+
+    def exists_no_semi_raw(self) -> tuple[Any, ...] | None:
+        return self._conn.execute(
+            """\
+select exists(select 1 from users where id = '1')""", ()
+        ).fetchone()
+
+    def count_trailing_ws(self) -> int | None:
+        row = self._conn.execute(
+            "select count(*) from users ;", ()
+        ).fetchone()
+        if row is None:
+            return None
+        return row[0]
+
+    def count_trailing_ws_raw(self) -> tuple[Any, ...] | None:
+        return self._conn.execute(
+            "select count(*) from users ;", ()
+        ).fetchone()
+
+    def get_bigints(self) -> GetBigintsRow | None:
+        row = self._conn.execute(
+            "select posts, total from bigints where id = 1;", ()
+        ).fetchone()
+        if row is None:
+            return None
+        return GetBigintsRow(posts=row[0], total=row[1])
+
+    def get_bigints_raw(self) -> tuple[Any, ...] | None:
+        return self._conn.execute(
+            "select posts, total from bigints where id = 1;", ()
         ).fetchone()
 
     def users_4(self) -> Users4Row | None:

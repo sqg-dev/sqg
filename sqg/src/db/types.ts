@@ -1,5 +1,4 @@
 import consola from "consola";
-import { sortBy } from "es-toolkit";
 import type { SQLQuery, TableInfo } from "../sql-query.js";
 import type { ProgressReporter } from "../ui.js";
 
@@ -17,10 +16,28 @@ export async function initializeDatabase(
   execQueries: (query: SQLQuery) => Promise<void>,
   reporter?: ProgressReporter,
 ) {
-  // Find and run the setup query
-  const migrationQueries = queries.filter((q) => q.isMigrate);
+  // BASELINE blocks describe schema owned outside SQG (e.g. created by an ETL job
+  // or sibling service). They run first so that subsequent MIGRATE blocks can
+  // reference those tables, and they are not tracked or emitted as migrations.
+  const baselineQueries = queries.filter((q) => q.isBaseline);
+  for (const query of baselineQueries) {
+    try {
+      await execQueries(query);
+    } catch (error) {
+      consola.error(
+        "Failed to apply baseline:" +
+          (error as Error).message +
+          " when running query:\n\n " +
+          query.rawQuery,
+      );
+      throw error;
+    }
+  }
 
-  sortBy(migrationQueries, [(q) => Number(q.id.split("_")[1])]);
+  // MIGRATE blocks run in source order. The migration name is an arbitrary
+  // identifier (e.g. "1", "initial", "add_column") used for tracking which
+  // migrations have been applied; it does not control execution order.
+  const migrationQueries = queries.filter((q) => q.isMigrate);
   for (const query of migrationQueries) {
     try {
       await execQueries(query);
@@ -51,8 +68,8 @@ export async function initializeDatabase(
     }
   }
 
-  if (migrationQueries.length + testdataQueries.length === 0) {
-    consola.warn("No migration or testdata queries found");
+  if (baselineQueries.length + migrationQueries.length + testdataQueries.length === 0) {
+    consola.warn("No baseline, migration or testdata queries found");
   }
 
   reporter?.onDatabaseInitialized?.();

@@ -1,4 +1,5 @@
 import { camelCase, pascalCase, snakeCase } from "es-toolkit/string";
+import type { DbEngine } from "./constants.js";
 import { TypeMappingError } from "./errors.js";
 import type { ColumnInfo } from "./sql-query";
 import { EnumType, ListType, MapType, StructType } from "./sql-query";
@@ -408,6 +409,20 @@ export class JavaTypeMapper extends TypeMapper {
  */
 export class TypeScriptTypeMapper extends TypeMapper {
   /**
+   * SQLite drivers (better-sqlite3, node:sqlite, libsql, turso) return JS
+   * `number` for INTEGER/BIGINT columns by default. They each offer a "safe
+   * integers" mode that returns `bigint` instead — opt in via
+   * `config.safeIntegers: true` in the yaml. Other engines (DuckDB,
+   * PostgreSQL) continue to use `bigint` for BIGINT/INT8.
+   */
+  constructor(
+    private readonly engine?: DbEngine,
+    public safeIntegers = false,
+  ) {
+    super();
+  }
+
+  /**
    * Returns the TypeScript type name for a given SQL column.
    * Overrides base to handle DuckDB's map type with key-value entry arrays.
    */
@@ -484,7 +499,17 @@ export class TypeScriptTypeMapper extends TypeMapper {
   // Language-specific implementations
   protected mapPrimitiveType(type: string, nullable: boolean): string {
     const upperType = type.toUpperCase();
-    const mappedType = this.typeMap[upperType];
+    // SQLite drivers return number for 64-bit integer columns unless safe-integer
+    // mode is enabled. Override the shared BIGINT/INT8 -> "bigint" mapping.
+    let mappedType = this.typeMap[upperType];
+    if (
+      mappedType === "bigint" &&
+      this.engine === "sqlite" &&
+      !this.safeIntegers &&
+      (upperType === "BIGINT" || upperType === "INT8")
+    ) {
+      mappedType = "number";
+    }
     if (mappedType) {
       return nullable ? `${mappedType} | null` : mappedType;
     }

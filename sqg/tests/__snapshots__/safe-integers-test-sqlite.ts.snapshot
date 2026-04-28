@@ -38,7 +38,10 @@ export class TestSqlite {
     ];
   }
 
-  static applyMigrations(db: Database, projectName = "test-sqlite"): void {
+  static applyMigrations(
+    db: Database,
+    projectName = "test-sqlite-safe-integers",
+  ): void {
     db.exec(`CREATE TABLE IF NOT EXISTS _sqg_migrations (
             project TEXT NOT NULL,
             migration_id TEXT NOT NULL,
@@ -173,8 +176,8 @@ export class TestSqlite {
     );
     return stmt.get();
   }
-  getBigints(): { posts: number | null; total: number } | undefined {
-    const stmt = this.prepare<[], { posts: number | null; total: number }>(
+  getBigints(): { posts: bigint | null; total: bigint } | undefined {
+    const stmt = this.prepare<[], { posts: bigint | null; total: bigint }>(
       "getBigints",
       "select posts, total from bigints where id = 1;",
     );

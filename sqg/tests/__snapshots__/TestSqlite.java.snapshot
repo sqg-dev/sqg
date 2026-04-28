@@ -164,10 +164,16 @@ public class TestSqlite {
             id text primary key,
             name text not null,
             email text unique
-        ) strict;"""
+        ) strict;""",
+        """
+        create table bigints (
+          id integer primary key,
+          posts bigint,
+          total bigint not null
+        );"""
     );
 
-    private static final List<String> migrationIds = List.of("1");
+    private static final List<String> migrationIds = List.of("1", "2");
 
     public static List<String> getMigrations() {
         return migrations;
@@ -326,6 +332,146 @@ public class TestSqlite {
         ) {
             try (var rs = stmt.executeQuery()) {
                 return rs.next() ? rs.getString(1) : null;
+            }
+        }
+    }
+
+    public List<String> allEmails() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement("select email from users;")
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<String>();
+                while (rs.next()) {
+                    results.add(rs.getString(1));
+                }
+                return results;
+            }
+        }
+    }
+
+    public Stream<String> allEmailsStream() throws SQLException {
+        return allEmailsStream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<String> allEmailsStream(StreamOptions options)
+        throws SQLException {
+        var stmt = connection.prepareStatement("select email from users;");
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
+
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<String>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public String next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return rs.getString(1);
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    public Integer existsAny() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select exists(select 1 from users where id = '1');"
+            )
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                return rs.next() ? rs.getObject(1, Integer.class) : null;
+            }
+        }
+    }
+
+    public Integer countAll() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select count(*) from users;"
+            )
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                return rs.next() ? rs.getObject(1, Integer.class) : null;
+            }
+        }
+    }
+
+    public Integer castSum() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select cast(count(*) as integer) as n from users where id = '1';"
+            )
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                return rs.next() ? rs.getObject(1, Integer.class) : null;
+            }
+        }
+    }
+
+    public Integer existsNoSemi() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select exists(select 1 from users where id = '1')"
+            )
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                return rs.next() ? rs.getObject(1, Integer.class) : null;
+            }
+        }
+    }
+
+    public Integer countTrailingWs() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select count(*) from users ;"
+            )
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                return rs.next() ? rs.getObject(1, Integer.class) : null;
+            }
+        }
+    }
+
+    public record GetBigintsResult(Long posts, Long total) {}
+
+    public GetBigintsResult getBigints() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "select posts, total from bigints where id = 1;"
+            )
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                return rs.next()
+                    ? new GetBigintsResult(
+                          rs.getObject(1, Long.class),
+                          rs.getObject(2, Long.class)
+                      )
+                    : null;
             }
         }
     }

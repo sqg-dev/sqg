@@ -53,8 +53,20 @@ sql:
       - generator: typescript/sqlite
         output: ./src/generated/
         config:
-          migrations: true  # generates applyMigrations() function
+          migrations: true     # generates applyMigrations() function
+          # safeIntegers: true # opt in to bigint for INTEGER/BIGINT columns
 ```
+
+### `config.safeIntegers`
+
+By default, BIGINT columns are typed as `number` for SQLite generators because all SQLite drivers (better-sqlite3, node:sqlite, libsql, turso) return JS numbers for INTEGER/BIGINT values out of the box. JS numbers are safe up to `Number.MAX_SAFE_INTEGER` (≈ 9×10¹⁵).
+
+If your application enables the driver's safe-integer mode (e.g. `db.defaultSafeIntegers(true)` in better-sqlite3), set `config.safeIntegers: true` so that generated types use `bigint` instead. The generated code will then expect bigints throughout.
+
+| `config.safeIntegers` | BIGINT type | When to use |
+|---|---|---|
+| `false` (default) | `number` | Driver returns JS numbers (default for every SQLite driver) |
+| `true` | `bigint` | Driver returns BigInt (you've called `defaultSafeIntegers(true)` or equivalent) |
 
 ## Quick Start
 

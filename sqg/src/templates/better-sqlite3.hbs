@@ -1,4 +1,6 @@
 // {{generatedComment}}
+/* eslint-disable */
+// biome-ignore-all lint: generated code
 import type { Database, RunResult, Statement } from 'better-sqlite3';
 
 export class {{className}} {
@@ -106,7 +108,7 @@ any
 {{#if isOne~}}
 {{> rowType}} | undefined
 {{~else~}}
-{{> rowType}}[]
+({{> rowType}})[]
 {{/if~}}
 {{~else~}}
 RunResult
