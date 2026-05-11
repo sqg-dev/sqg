@@ -9,6 +9,14 @@ packages:
   - sqg-ui/server
   - sqg-ui/shared
 
+allowBuilds:
+  better-sqlite3: true
+  cpu-features: true
+  esbuild: true
+  protobufjs: true
+  sharp: true
+  ssh2: true
+
 catalog:
   '@astrojs/check': ^0.9.8
   '@astrojs/node': ^10.0.3
@@ -85,7 +93,7 @@ catalog:
   yocto-spinner: ^1.1.0
   zod: ^4.3.6
 
-injectWorkspacePackages: true
+injectWorkspacePackages: false
 
 onlyBuiltDependencies:
   - '@parcel/watcher'

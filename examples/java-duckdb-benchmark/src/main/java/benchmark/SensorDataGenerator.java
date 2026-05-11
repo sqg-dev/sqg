@@ -39,11 +39,11 @@ public class SensorDataGenerator {
     public record RowData(
         UUID deviceId,
         OffsetDateTime timestamp,
-        Double temperature,
-        Double humidity,
+        double temperature,
+        double humidity,
         BigDecimal pressure,
-        Short batteryLevel,
-        Boolean isAnomaly,
+        short batteryLevel,
+        boolean isAnomaly,
         String location,
         List<String> tags
     ) {}

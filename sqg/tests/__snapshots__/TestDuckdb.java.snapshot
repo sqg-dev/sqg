@@ -2828,7 +2828,7 @@ public class TestDuckdb {
     }
 
     /** Row type for users appender */
-    public record UsersRow(Integer id, String name, String email) {}
+    public record UsersRow(int id, String name, String email) {}
 
     /** Appender for bulk inserts into users */
     public static class UsersAppender implements AutoCloseable {
@@ -2855,7 +2855,7 @@ public class TestDuckdb {
         }
 
         /** Append a single row with individual values */
-        public UsersAppender append(Integer id, String name, String email)
+        public UsersAppender append(int id, String name, String email)
             throws SQLException {
             appender.beginRow();
             appender.append(id);
@@ -2883,11 +2883,11 @@ public class TestDuckdb {
 
     /** Row type for actions appender */
     public record ActionsRow(
-        Integer id,
+        int id,
         String action,
         Double value,
-        Integer userId,
-        Integer timestamp
+        int userId,
+        int timestamp
     ) {}
 
     /** Appender for bulk inserts into actions */
@@ -2918,11 +2918,11 @@ public class TestDuckdb {
 
         /** Append a single row with individual values */
         public ActionsAppender append(
-            Integer id,
+            int id,
             String action,
             Double value,
-            Integer userId,
-            Integer timestamp
+            int userId,
+            int timestamp
         ) throws SQLException {
             appender.beginRow();
             appender.append(id);
@@ -2951,7 +2951,7 @@ public class TestDuckdb {
     }
 
     /** Row type for events appender */
-    public record EventsRow(Integer id, String name, List<String> tags) {}
+    public record EventsRow(int id, String name, List<String> tags) {}
 
     /** Appender for bulk inserts into events */
     public static class EventsAppender implements AutoCloseable {
@@ -2978,7 +2978,7 @@ public class TestDuckdb {
         }
 
         /** Append a single row with individual values */
-        public EventsAppender append(Integer id, String name, List<String> tags)
+        public EventsAppender append(int id, String name, List<String> tags)
             throws SQLException {
             appender.beginRow();
             appender.append(id);
@@ -3006,7 +3006,7 @@ public class TestDuckdb {
 
     /** Row type for log_entries appender */
     public record LogEntriesRow(
-        Integer id,
+        int id,
         String message,
         OffsetDateTime createdAt
     ) {}
@@ -3038,7 +3038,7 @@ public class TestDuckdb {
 
         /** Append a single row with individual values */
         public LogEntriesAppender append(
-            Integer id,
+            int id,
             String message,
             OffsetDateTime createdAt
         ) throws SQLException {

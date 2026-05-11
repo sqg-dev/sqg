@@ -129,6 +129,39 @@ class DuckDbTest {
     }
 
     @Test
+    void appenderHandlesNullableColumn() throws SQLException {
+        // ActionsRow has primitive int for NOT NULL columns and boxed Double
+        // for the nullable `value` column. Verify both shapes round-trip and
+        // that null flows through the appender for the nullable column.
+        Connection conn = DriverManager.getConnection("jdbc:duckdb:");
+        TestDuckdb duckdb = new TestDuckdb(conn);
+        TestDuckdb.applyMigrations(conn);
+
+        // actions.user_id has a FK to users(id); seed a user first.
+        duckdb.insert("alice", "alice@example.com");
+
+        try (var appender = duckdb.createActionsAppender()) {
+            appender.append(1, "click", 3.14, 1, 100);
+            appender.append(new TestDuckdb.ActionsRow(2, "scroll", null, 1, 200));
+            appender.append(3, "hover", null, 1, 300);
+        }
+
+        var rows = duckdb.actionsByUserId(1);
+        assertThat(rows).hasSize(3);
+
+        assertThat(rows.get(0).id()).isEqualTo(1);
+        assertThat(rows.get(0).action()).isEqualTo("click");
+        assertThat(rows.get(0).value()).isEqualTo(3.14);
+
+        assertThat(rows.get(1).id()).isEqualTo(2);
+        assertThat(rows.get(1).action()).isEqualTo("scroll");
+        assertThat(rows.get(1).value()).isNull();
+
+        assertThat(rows.get(2).id()).isEqualTo(3);
+        assertThat(rows.get(2).value()).isNull();
+    }
+
+    @Test
     void queryTimestamptzReturnsOffsetDateTime() throws SQLException {
         Connection conn = DriverManager.getConnection("jdbc:duckdb:");
         TestDuckdb duckdb = new TestDuckdb(conn);

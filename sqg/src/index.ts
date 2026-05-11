@@ -5,103 +5,96 @@
  * For CLI usage, use the `sqg` binary directly.
  */
 
-// Configuration & project management
-export {
-  parseProjectConfig,
-  validateProject,
-  validateProjectFromConfig,
-  processProject,
-  processProjectFromConfig,
-  buildProjectFromCliOptions,
-  createExtraVariables,
-  validateQueries,
-  getOutputPath,
-  writeGeneratedFile,
-  GENERATED_FILE_COMMENT,
-  Config,
-  SqlQueryHelper,
-  TableHelper,
-  ExtraVariable,
-} from "./sqltool.js";
-export type {
-  Project,
-  GeneratorConfig,
-  ValidationResult,
-  CliProjectOptions,
-  SqlQueryPart,
-  SqlQueryStatement,
-  ParameterEntry,
-} from "./sqltool.js";
-
-// SQL parsing
-export {
-  SQLQuery,
-  TableInfo,
-  parseSQLQueries,
-  ListType,
-  StructType,
-  MapType,
-  EnumType,
-} from "./sql-query.js";
-export type { ColumnInfo, ColumnType, IsColumnType, ParseResult } from "./sql-query.js";
-
+export type { DbEngine, GeneratorInfo, Language } from "./constants.js";
 // Constants & generator definitions
 export {
   DB_ENGINES,
-  LANGUAGES,
-  GENERATORS,
   DEFAULT_DRIVERS,
-  GENERATOR_NAMES,
-  SHORT_GENERATOR_NAMES,
-  resolveGenerator,
-  parseGenerator,
-  isValidGenerator,
-  getGeneratorEngine,
-  getGeneratorLanguage,
   findSimilarGenerators,
   formatGeneratorsHelp,
   formatGeneratorsList,
+  GENERATOR_NAMES,
+  GENERATORS,
+  getGeneratorEngine,
+  getGeneratorLanguage,
+  isValidGenerator,
+  LANGUAGES,
+  parseGenerator,
+  resolveGenerator,
+  SHORT_GENERATOR_NAMES,
 } from "./constants.js";
-export type { DbEngine, Language, GeneratorInfo } from "./constants.js";
-
 // Database adapters
 export { getDatabaseEngine } from "./db/index.js";
 export type { DatabaseEngine } from "./db/types.js";
 export { initializeDatabase } from "./db/types.js";
-
-// Generators
-export {
-  getGenerator,
-  BaseGenerator,
-  TsGenerator,
-  TsDuckDBGenerator,
-  JavaGenerator,
-  JavaDuckDBArrowGenerator,
-  PythonGenerator,
-} from "./generators/index.js";
-export type { Generator } from "./generators/types.js";
-
-// Type mapping
-export {
-  TypeMapper,
-  JavaTypeMapper,
-  TypeScriptTypeMapper,
-  PythonTypeMapper,
-} from "./type-mapping.js";
-
+export type { ErrorContext, SqgErrorCode } from "./errors.js";
 // Error handling
 export {
-  SqgError,
   ConfigError,
-  InvalidGeneratorError,
   DatabaseError,
-  SqlExecutionError,
-  TypeMappingError,
   FileNotFoundError,
   formatErrorForOutput,
+  InvalidGeneratorError,
+  SqgError,
+  SqlExecutionError,
+  TypeMappingError,
 } from "./errors.js";
-export type { SqgErrorCode, ErrorContext } from "./errors.js";
-
+// Generators
+export {
+  BaseGenerator,
+  getGenerator,
+  JavaDuckDBArrowGenerator,
+  JavaGenerator,
+  PythonGenerator,
+  TsDuckDBGenerator,
+  TsGenerator,
+} from "./generators/index.js";
+export type { Generator } from "./generators/types.js";
+export type { InitOptions } from "./init.js";
 // Project scaffolding
 export { initProject } from "./init.js";
-export type { InitOptions } from "./init.js";
+export type { ColumnInfo, ColumnType, IsColumnType, ParseResult } from "./sql-query.js";
+// SQL parsing
+export {
+  EnumType,
+  ListType,
+  MapType,
+  parseSQLQueries,
+  SQLQuery,
+  StructType,
+  TableInfo,
+} from "./sql-query.js";
+export type {
+  CliProjectOptions,
+  GeneratorConfig,
+  ParameterEntry,
+  Project,
+  SqlQueryPart,
+  SqlQueryStatement,
+  ValidationResult,
+} from "./sqltool.js";
+// Configuration & project management
+export {
+  buildProjectFromCliOptions,
+  Config,
+  createExtraVariables,
+  ExtraVariable,
+  GENERATED_FILE_COMMENT,
+  getOutputPath,
+  parseProjectConfig,
+  processProject,
+  processProjectFromConfig,
+  SqlQueryHelper,
+  TableHelper,
+  validateProject,
+  validateProjectFromConfig,
+  validateQueries,
+  writeGeneratedFile,
+} from "./sqltool.js";
+// Type mapping
+export {
+  JavaTypeMapper,
+  PythonTypeMapper,
+  TypeMapper,
+  TypeScriptTypeMapper,
+} from "./type-mapping.js";

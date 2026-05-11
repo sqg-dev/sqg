@@ -39,6 +39,15 @@ public class QueriesDuckdb {
         this.connection = connection;
     }
 
+    /** Options for streaming queries. fetchSize hints at the JDBC driver's batch size; 0 means driver default. */
+    public record StreamOptions(int fetchSize) {
+        public static final StreamOptions DEFAULT = new StreamOptions(0);
+
+        public StreamOptions withFetchSize(int fetchSize) {
+            return new StreamOptions(fetchSize);
+        }
+    }
+
     private static Object[] getObjectArray(Array array) {
         if (array == null) {
             return null;

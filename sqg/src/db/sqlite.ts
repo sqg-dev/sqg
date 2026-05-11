@@ -116,9 +116,7 @@ export const sqlite = new (class implements DatabaseEngine {
     // each output column by ordinal. Aliasing to sqg_c<i> first sidesteps
     // having to escape arbitrary expression-derived column names like
     // `EXISTS(...)` or `COUNT(*)`.
-    const aliased = info
-      .map((c, i) => `"${c.name.replace(/"/g, '""')}" AS sqg_c${i}`)
-      .join(", ");
+    const aliased = info.map((c, i) => `"${c.name.replace(/"/g, '""')}" AS sqg_c${i}`).join(", ");
     const typeofExprs = info.map((_, i) => `typeof(sqg_c${i}) AS sqg_t${i}`).join(", ");
     // Strip trailing semicolon(s)/whitespace — they're not allowed inside a
     // subquery and would make the probe fail silently.
@@ -192,9 +190,7 @@ export const sqlite = new (class implements DatabaseEngine {
             // even though SQLite technically allows it). For expression columns,
             // use the probe's observation: a non-null sample means non-null
             // (e.g. COUNT/EXISTS), a null sample or no rows means nullable.
-            nullable: col.table
-              ? colInfo?.pk === 0 && colInfo?.notnull === 0
-              : probed.nullable,
+            nullable: col.table ? colInfo?.pk === 0 && colInfo?.notnull === 0 : probed.nullable,
           };
         });
       }

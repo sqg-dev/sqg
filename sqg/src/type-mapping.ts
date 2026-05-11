@@ -240,6 +240,28 @@ export class JavaTypeMapper extends TypeMapper {
     return super.getTypeName(column, path);
   }
 
+  /**
+   * Returns the primitive Java type for a column when it's non-nullable and
+   * its mapped type has a primitive equivalent (Integer→int, Long→long, etc.).
+   * Falls back to {@link getTypeName} otherwise. Used for appender row types
+   * to avoid auto-boxing on hot bulk-insert paths.
+   */
+  getUnboxedTypeName(column: ColumnInfo, path = ""): string {
+    const typeName = this.getTypeName(column, path);
+    if (column.nullable) return typeName;
+    return JavaTypeMapper.boxedToPrimitive[typeName] ?? typeName;
+  }
+
+  static readonly boxedToPrimitive: Record<string, string> = {
+    Integer: "int",
+    Long: "long",
+    Short: "short",
+    Byte: "byte",
+    Boolean: "boolean",
+    Double: "double",
+    Float: "float",
+  };
+
   // Language-specific implementations
   protected mapPrimitiveType(type: string, _nullable: boolean): string {
     const upperType = type.toString().toUpperCase();

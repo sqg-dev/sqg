@@ -1,10 +1,11 @@
 update:
   #!/usr/bin/env bash
   set -e
-  for dir in java-duckdb typescript-duckdb typescript-sqlite; do
+  while IFS= read -r yaml; do
+    dir=$(dirname "$yaml")
     echo "Updating $dir..."
-    d=$(realpath $dir)
-    (cd ../sqg && pnpm sqg $d/sqg.yaml)
-  done
+    d=$(realpath "$dir")
+    (cd ../sqg && pnpm sqg "$d/sqg.yaml")
+  done < <(find . -maxdepth 2 -name sqg.yaml -type f | sort)
   echo "All examples updated"
 

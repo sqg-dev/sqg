@@ -232,8 +232,11 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
   do {
     if (cursor.name === "QueryBlock") {
       const annotationNode =
-        cursor.node.getChild("LineCommentStartSpecial") ?? cursor.node.getChild("BlockCommentStartSpecial");
-      const annotationLine = annotationNode ? getLineNumber(annotationNode.from) : getLineNumber(cursor.node.from);
+        cursor.node.getChild("LineCommentStartSpecial") ??
+        cursor.node.getChild("BlockCommentStartSpecial");
+      const annotationLine = annotationNode
+        ? getLineNumber(annotationNode.from)
+        : getLineNumber(cursor.node.from);
       const queryTypeRaw =
         getStr("LineCommentStartSpecial", true) ?? getStr("BlockCommentStartSpecial");
       const queryType = queryTypeRaw.replace("--", "").replace("/*", "").trim();
@@ -469,7 +472,10 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
         const hasAppender = modifiers.includes(":appender");
         // For TABLE, only the first non-empty line is used as the optional table name override.
         // Everything else (subsequent comments, blank lines) is ignored.
-        const firstLine = sqlContentStr.split("\n").map((l) => l.trim()).find((l) => l.length > 0);
+        const firstLine = sqlContentStr
+          .split("\n")
+          .map((l) => l.trim())
+          .find((l) => l.length > 0);
         const tableName = firstLine || name;
 
         // Parse column list from modifiers like :appender(col1,col2)
@@ -481,7 +487,14 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
           }
         }
 
-        const table = new TableInfo(filePath, name, tableName, includeColumns, hasAppender, annotationLine);
+        const table = new TableInfo(
+          filePath,
+          name,
+          tableName,
+          includeColumns,
+          hasAppender,
+          annotationLine,
+        );
 
         checkDuplicate("TABLE", name);
 

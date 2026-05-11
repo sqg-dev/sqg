@@ -14,7 +14,10 @@ import { BaseGenerator } from "./base-generator.js";
 export class JavaGenerator extends BaseGenerator {
   private engine: DbEngine;
 
-  constructor(public template: string, engine: DbEngine = "duckdb") {
+  constructor(
+    public template: string,
+    engine: DbEngine = "duckdb",
+  ) {
     super(template, new JavaTypeMapper());
     this.engine = engine;
   }
@@ -91,7 +94,7 @@ export class JavaGenerator extends BaseGenerator {
       return pgBulkInsertType(column.type.toString().toUpperCase());
     });
     Handlebars.registerHelper("pgBulkAccessor", (column: ColumnInfo) => {
-      return pgBulkInsertAccessor(column.type.toString().toUpperCase());
+      return pgBulkInsertAccessor(column);
     });
     Handlebars.registerHelper("javaVarName", (name: string) => {
       const n = camelCase(name);
@@ -106,9 +109,7 @@ export class JavaGenerator extends BaseGenerator {
       (javaType: string, index: number, expr: string) =>
         new Handlebars.SafeString(jdbcSetterStatement(javaType, index, expr)),
     );
-    Handlebars.registerHelper("concat", (...args: unknown[]) =>
-      args.slice(0, -1).join(""),
-    );
+    Handlebars.registerHelper("concat", (...args: unknown[]) => args.slice(0, -1).join(""));
     Handlebars.registerHelper("declareTypes", (queryHelper: SqlQueryHelper) => {
       const query = queryHelper.query;
       if (queryHelper.isPluck) {
@@ -117,7 +118,7 @@ export class JavaGenerator extends BaseGenerator {
       return queryHelper.typeMapper.getDeclarations(query.allColumns);
     });
     Handlebars.registerHelper("appenderType", (column: ColumnInfo) => {
-      return this.mapType(column);
+      return (this.typeMapper as JavaTypeMapper).getUnboxedTypeName(column);
     });
     Handlebars.registerHelper("declareEnums", (queryHelpers: SqlQueryHelper[]) => {
       const enumTypes = new Map<string, EnumType>();
@@ -346,9 +347,20 @@ function pgBulkInsertType(sqlType: string): string {
   return PG_BULK_TYPE_MAP[sqlType] || "TEXT";
 }
 
+// PostgresTypes that expose a primitive(...) overload alongside from(...).
+// PgBulkInsert offers ToIntFunction/ToLongFunction/etc. variants for these to
+// avoid auto-boxing on hot bulk-insert paths.
+const PG_BULK_PRIMITIVE_TYPES = new Set(["INT2", "INT4", "INT8", "FLOAT4", "FLOAT8", "BOOLEAN"]);
+
 // PgBulkInsert uses different accessor methods for some types
-// (e.g., TIMESTAMPTZ needs .offsetDateTime() instead of .from())
-function pgBulkInsertAccessor(sqlType: string): string {
+// (e.g., TIMESTAMPTZ needs .offsetDateTime() instead of .from(), and
+// non-nullable numeric/boolean columns can use .primitive() to skip boxing).
+function pgBulkInsertAccessor(column: ColumnInfo): string {
+  const sqlType = column.type.toString().toUpperCase();
   if (sqlType === "TIMESTAMPTZ") return "offsetDateTime";
+  if (!column.nullable) {
+    const pgType = PG_BULK_TYPE_MAP[sqlType];
+    if (pgType && PG_BULK_PRIMITIVE_TYPES.has(pgType)) return "primitive";
+  }
   return "from";
 }

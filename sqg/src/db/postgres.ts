@@ -393,8 +393,7 @@ export const postgres = new (class implements DatabaseEngine {
           nullable: row.is_nullable === "YES",
           // Mark SERIAL (nextval default) and IDENTITY columns as auto-generated
           generated:
-            row.is_identity === "YES" ||
-            (row.column_default?.startsWith("nextval") ?? false),
+            row.is_identity === "YES" || (row.column_default?.startsWith("nextval") ?? false),
         }));
         reporter?.onTableComplete?.(table.tableName, table.columns.length);
       } catch (error) {

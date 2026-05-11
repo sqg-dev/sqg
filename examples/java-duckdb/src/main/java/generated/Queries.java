@@ -39,6 +39,15 @@ public class Queries {
         this.connection = connection;
     }
 
+    /** Options for streaming queries. fetchSize hints at the JDBC driver's batch size; 0 means driver default. */
+    public record StreamOptions(int fetchSize) {
+        public static final StreamOptions DEFAULT = new StreamOptions(0);
+
+        public StreamOptions withFetchSize(int fetchSize) {
+            return new StreamOptions(fetchSize);
+        }
+    }
+
     private static Object[] getObjectArray(Array array) {
         if (array == null) {
             return null;
@@ -61,22 +70,30 @@ public class Queries {
         }
     }
 
-    private static LocalDateTime toLocalDateTime(java.sql.Timestamp ts) {
-        return ts != null ? ts.toLocalDateTime() : null;
+    private static LocalDateTime toLocalDateTime(Object ts) {
+        if (ts == null) return null;
+        if (ts instanceof LocalDateTime ldt) return ldt;
+        return ((java.sql.Timestamp) ts).toLocalDateTime();
     }
 
-    private static LocalDate toLocalDate(java.sql.Date d) {
-        return d != null ? d.toLocalDate() : null;
+    private static LocalDate toLocalDate(Object d) {
+        if (d == null) return null;
+        if (d instanceof LocalDate ld) return ld;
+        return ((java.sql.Date) d).toLocalDate();
     }
 
-    private static LocalTime toLocalTime(java.sql.Time t) {
-        return t != null ? t.toLocalTime() : null;
+    private static LocalTime toLocalTime(Object t) {
+        if (t == null) return null;
+        if (t instanceof LocalTime lt) return lt;
+        return ((java.sql.Time) t).toLocalTime();
     }
 
-    private static OffsetDateTime toOffsetDateTime(java.sql.Timestamp ts) {
-        return ts != null
-            ? ts.toInstant().atOffset(java.time.ZoneOffset.UTC)
-            : null;
+    private static OffsetDateTime toOffsetDateTime(Object ts) {
+        if (ts == null) return null;
+        if (ts instanceof OffsetDateTime odt) return odt;
+        return ((java.sql.Timestamp) ts).toInstant().atOffset(
+            java.time.ZoneOffset.UTC
+        );
     }
 
     private static <K> List<K> arrayToList(
@@ -258,12 +275,10 @@ public class Queries {
                 while (rs.next()) {
                     results.add(
                         new GetTopicsResult(
-                            (Integer) rs.getObject(1),
-                            (String) rs.getObject(2),
-                            (String) rs.getObject(3),
-                            toLocalDateTime(
-                                (java.sql.Timestamp) rs.getObject(4)
-                            )
+                            rs.getObject(1, Integer.class),
+                            rs.getString(2),
+                            rs.getString(3),
+                            toLocalDateTime(rs.getObject(4))
                         )
                     );
                 }
@@ -273,7 +288,13 @@ public class Queries {
     }
 
     public Stream<GetTopicsResult> getTopicsStream() throws SQLException {
+        return getTopicsStream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<GetTopicsResult> getTopicsStream(StreamOptions options)
+        throws SQLException {
         var stmt = connection.prepareStatement("SELECT * from topics;");
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<GetTopicsResult>() {
@@ -295,10 +316,10 @@ public class Queries {
                 hasNext = null;
                 try {
                     return new GetTopicsResult(
-                        (Integer) rs.getObject(1),
-                        (String) rs.getObject(2),
-                        (String) rs.getObject(3),
-                        toLocalDateTime((java.sql.Timestamp) rs.getObject(4))
+                        rs.getObject(1, Integer.class),
+                        rs.getString(2),
+                        rs.getString(3),
+                        toLocalDateTime(rs.getObject(4))
                     );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
@@ -324,8 +345,8 @@ public class Queries {
                 "INSERT INTO users (name, email) VALUES (?,?);"
             )
         ) {
-            stmt.setObject(1, name);
-            stmt.setObject(2, email);
+            stmt.setString(1, name);
+            stmt.setString(2, email);
 
             return stmt.executeUpdate();
         }
@@ -349,12 +370,10 @@ public class Queries {
                 while (rs.next()) {
                     results.add(
                         new GetUsersResult(
-                            (Integer) rs.getObject(1),
-                            (String) rs.getObject(2),
-                            (String) rs.getObject(3),
-                            toLocalDateTime(
-                                (java.sql.Timestamp) rs.getObject(4)
-                            )
+                            rs.getObject(1, Integer.class),
+                            rs.getString(2),
+                            rs.getString(3),
+                            toLocalDateTime(rs.getObject(4))
                         )
                     );
                 }
@@ -364,9 +383,15 @@ public class Queries {
     }
 
     public Stream<GetUsersResult> getUsersStream() throws SQLException {
+        return getUsersStream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<GetUsersResult> getUsersStream(StreamOptions options)
+        throws SQLException {
         var stmt = connection.prepareStatement(
             "SELECT id, name, email, created_at FROM users;"
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<GetUsersResult>() {
@@ -388,10 +413,10 @@ public class Queries {
                 hasNext = null;
                 try {
                     return new GetUsersResult(
-                        (Integer) rs.getObject(1),
-                        (String) rs.getObject(2),
-                        (String) rs.getObject(3),
-                        toLocalDateTime((java.sql.Timestamp) rs.getObject(4))
+                        rs.getObject(1, Integer.class),
+                        rs.getString(2),
+                        rs.getString(3),
+                        toLocalDateTime(rs.getObject(4))
                     );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
@@ -424,15 +449,16 @@ public class Queries {
                 "SELECT id, name, email, created_at FROM users WHERE id =?;"
             )
         ) {
-            stmt.setObject(1, id);
+            if (id != null) stmt.setInt(1, id);
+            else stmt.setNull(1, java.sql.Types.INTEGER);
 
             try (var rs = stmt.executeQuery()) {
                 return rs.next()
                     ? new GetUserByIdResult(
-                          (Integer) rs.getObject(1),
-                          (String) rs.getObject(2),
-                          (String) rs.getObject(3),
-                          toLocalDateTime((java.sql.Timestamp) rs.getObject(4))
+                          rs.getObject(1, Integer.class),
+                          rs.getString(2),
+                          rs.getString(3),
+                          toLocalDateTime(rs.getObject(4))
                       )
                     : null;
             }
@@ -446,7 +472,7 @@ public class Queries {
             )
         ) {
             try (var rs = stmt.executeQuery()) {
-                return rs.next() ? (Long) rs.getObject(1) : null;
+                return rs.next() ? rs.getObject(1, Long.class) : null;
             }
         }
     }
@@ -464,10 +490,12 @@ public class Queries {
                 VALUES (?,?,?,?, ['general']);"""
             )
         ) {
-            stmt.setObject(1, userId);
-            stmt.setObject(2, title);
-            stmt.setObject(3, content);
-            stmt.setObject(4, published);
+            if (userId != null) stmt.setInt(1, userId);
+            else stmt.setNull(1, java.sql.Types.INTEGER);
+            stmt.setString(2, title);
+            stmt.setString(3, content);
+            if (published != null) stmt.setBoolean(4, published);
+            else stmt.setNull(4, java.sql.Types.BOOLEAN);
 
             return stmt.executeUpdate();
         }
@@ -492,25 +520,24 @@ public class Queries {
                 FROM posts WHERE user_id =?;"""
             )
         ) {
-            stmt.setObject(1, userId);
+            if (userId != null) stmt.setInt(1, userId);
+            else stmt.setNull(1, java.sql.Types.INTEGER);
 
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<GetPostsByUserResult>();
                 while (rs.next()) {
                     results.add(
                         new GetPostsByUserResult(
-                            (Integer) rs.getObject(1),
-                            (Integer) rs.getObject(2),
-                            (String) rs.getObject(3),
-                            (String) rs.getObject(4),
-                            (Boolean) rs.getObject(5),
+                            rs.getObject(1, Integer.class),
+                            rs.getObject(2, Integer.class),
+                            rs.getString(3),
+                            rs.getString(4),
+                            rs.getObject(5, Boolean.class),
                             arrayToList(
                                 (Array) rs.getObject(6),
                                 String[].class
                             ),
-                            toLocalDateTime(
-                                (java.sql.Timestamp) rs.getObject(7)
-                            )
+                            toLocalDateTime(rs.getObject(7))
                         )
                     );
                 }
@@ -521,12 +548,21 @@ public class Queries {
 
     public Stream<GetPostsByUserResult> getPostsByUserStream(Integer userId)
         throws SQLException {
+        return getPostsByUserStream(userId, StreamOptions.DEFAULT);
+    }
+
+    public Stream<GetPostsByUserResult> getPostsByUserStream(
+        Integer userId,
+        StreamOptions options
+    ) throws SQLException {
         var stmt = connection.prepareStatement(
             """
             SELECT id, user_id, title, content, published, tags, created_at
             FROM posts WHERE user_id =?;"""
         );
-        stmt.setObject(1, userId);
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
+        if (userId != null) stmt.setInt(1, userId);
+        else stmt.setNull(1, java.sql.Types.INTEGER);
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<GetPostsByUserResult>() {
@@ -548,13 +584,13 @@ public class Queries {
                 hasNext = null;
                 try {
                     return new GetPostsByUserResult(
-                        (Integer) rs.getObject(1),
-                        (Integer) rs.getObject(2),
-                        (String) rs.getObject(3),
-                        (String) rs.getObject(4),
-                        (Boolean) rs.getObject(5),
+                        rs.getObject(1, Integer.class),
+                        rs.getObject(2, Integer.class),
+                        rs.getString(3),
+                        rs.getString(4),
+                        rs.getObject(5, Boolean.class),
                         arrayToList((Array) rs.getObject(6), String[].class),
-                        toLocalDateTime((java.sql.Timestamp) rs.getObject(7))
+                        toLocalDateTime(rs.getObject(7))
                     );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
@@ -598,13 +634,11 @@ public class Queries {
                 while (rs.next()) {
                     results.add(
                         new GetPublishedPostsResult(
-                            (Integer) rs.getObject(1),
-                            (String) rs.getObject(2),
-                            (String) rs.getObject(3),
-                            toLocalDateTime(
-                                (java.sql.Timestamp) rs.getObject(4)
-                            ),
-                            (String) rs.getObject(5)
+                            rs.getObject(1, Integer.class),
+                            rs.getString(2),
+                            rs.getString(3),
+                            toLocalDateTime(rs.getObject(4)),
+                            rs.getString(5)
                         )
                     );
                 }
@@ -615,6 +649,12 @@ public class Queries {
 
     public Stream<GetPublishedPostsResult> getPublishedPostsStream()
         throws SQLException {
+        return getPublishedPostsStream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<GetPublishedPostsResult> getPublishedPostsStream(
+        StreamOptions options
+    ) throws SQLException {
         var stmt = connection.prepareStatement(
             """
             SELECT p.id, p.title, p.content, p.created_at, u.name as author_name
@@ -622,6 +662,7 @@ public class Queries {
             JOIN users u ON p.user_id = u.id
             WHERE p.published = true;"""
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<GetPublishedPostsResult>() {
@@ -643,11 +684,11 @@ public class Queries {
                 hasNext = null;
                 try {
                     return new GetPublishedPostsResult(
-                        (Integer) rs.getObject(1),
-                        (String) rs.getObject(2),
-                        (String) rs.getObject(3),
-                        toLocalDateTime((java.sql.Timestamp) rs.getObject(4)),
-                        (String) rs.getObject(5)
+                        rs.getObject(1, Integer.class),
+                        rs.getString(2),
+                        rs.getString(3),
+                        toLocalDateTime(rs.getObject(4)),
+                        rs.getString(5)
                     );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
@@ -681,10 +722,10 @@ public class Queries {
 
     /** Row type for topics appender */
     public record TopicsRow(
-        Integer id,
+        int id,
         String name,
         String description,
-        LocalDateTime created_at
+        LocalDateTime createdAt
     ) {}
 
     /** Appender for bulk inserts into topics */
@@ -707,23 +748,23 @@ public class Queries {
             appender.append(row.id());
             appender.append(row.name());
             appender.append(row.description());
-            appender.append(row.created_at());
+            appender.append(row.createdAt());
             appender.endRow();
             return this;
         }
 
         /** Append a single row with individual values */
         public TopicsAppender append(
-            Integer id,
+            int id,
             String name,
             String description,
-            LocalDateTime created_at
+            LocalDateTime createdAt
         ) throws SQLException {
             appender.beginRow();
             appender.append(id);
             appender.append(name);
             appender.append(description);
-            appender.append(created_at);
+            appender.append(createdAt);
             appender.endRow();
             return this;
         }

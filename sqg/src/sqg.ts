@@ -1,8 +1,8 @@
 import { exit } from "node:process";
 import { Command } from "commander";
 import consola, { LogLevels } from "consola";
-import updateNotifier from "update-notifier";
 import pc from "picocolors";
+import updateNotifier from "update-notifier";
 import { formatGeneratorsHelp, SHORT_GENERATOR_NAMES, SQL_SYNTAX_REFERENCE } from "./constants.js";
 import { formatErrorForOutput, SqgError } from "./errors.js";
 import { initProject } from "./init.js";
@@ -268,7 +268,7 @@ program
   .option("-p, --port <port>", "Server port", "3000")
   .action(async (project: string | undefined, options: { port: string }) => {
     const { startUi } = await import("./start-ui.js");
-    await startUi({ project, port: parseInt(options.port, 10) });
+    await startUi({ project, port: Number.parseInt(options.port, 10) });
   });
 
 // MCP server command

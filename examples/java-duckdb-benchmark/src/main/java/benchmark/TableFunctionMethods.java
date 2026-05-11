@@ -76,11 +76,11 @@ public class TableFunctionMethods {
                         var r = iter.next();
                         vDeviceId.setString(written, r.deviceId().toString());
                         vTimestamp.setOffsetDateTime(written, r.timestamp());
-                        if (r.temperature() != null) vTemp.setDouble(written, r.temperature()); else vTemp.setNull(written);
-                        if (r.humidity() != null) vHumidity.setDouble(written, r.humidity()); else vHumidity.setNull(written);
-                        if (r.pressure() != null) vPressure.setBigDecimal(written, r.pressure()); else vPressure.setNull(written);
-                        if (r.batteryLevel() != null) vBattery.setShort(written, r.batteryLevel()); else vBattery.setNull(written);
-                        if (r.isAnomaly() != null) vAnomaly.setBoolean(written, r.isAnomaly()); else vAnomaly.setNull(written);
+                        vTemp.setDouble(written, r.temperature());
+                        vHumidity.setDouble(written, r.humidity());
+                        vPressure.setBigDecimal(written, r.pressure());
+                        vBattery.setShort(written, r.batteryLevel());
+                        vAnomaly.setBoolean(written, r.isAnomaly());
                         vLocation.setString(written, r.location());
                         vTags.setString(written, formatDuckDBList(r.tags()));
                         written++;

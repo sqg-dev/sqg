@@ -44,13 +44,13 @@ public class InsertMethods implements AutoCloseable {
     static final Schema FULL_ARROW_SCHEMA = new Schema(List.of(
         new Field("device_id", FieldType.notNullable(new ArrowType.Utf8()), null),
         new Field("timestamp", FieldType.notNullable(new ArrowType.Timestamp(TimeUnit.MICROSECOND, "UTC")), null),
-        new Field("temperature", FieldType.nullable(new ArrowType.FloatingPoint(FloatingPointPrecision.DOUBLE)), null),
-        new Field("humidity", FieldType.nullable(new ArrowType.FloatingPoint(FloatingPointPrecision.DOUBLE)), null),
-        new Field("pressure", FieldType.nullable(new ArrowType.Decimal(10, 2, 128)), null),
-        new Field("battery_level", FieldType.nullable(new ArrowType.Int(16, true)), null),
-        new Field("is_anomaly", FieldType.nullable(new ArrowType.Bool()), null),
-        new Field("location", FieldType.nullable(new ArrowType.Utf8()), null),
-        new Field("tags", FieldType.nullable(new ArrowType.List()),
+        new Field("temperature", FieldType.notNullable(new ArrowType.FloatingPoint(FloatingPointPrecision.DOUBLE)), null),
+        new Field("humidity", FieldType.notNullable(new ArrowType.FloatingPoint(FloatingPointPrecision.DOUBLE)), null),
+        new Field("pressure", FieldType.notNullable(new ArrowType.Decimal(10, 2, 128)), null),
+        new Field("battery_level", FieldType.notNullable(new ArrowType.Int(16, true)), null),
+        new Field("is_anomaly", FieldType.notNullable(new ArrowType.Bool()), null),
+        new Field("location", FieldType.notNullable(new ArrowType.Utf8()), null),
+        new Field("tags", FieldType.notNullable(new ArrowType.List()),
             List.of(new Field("item", FieldType.nullable(new ArrowType.Utf8()), null)))
     ));
 
@@ -218,11 +218,11 @@ public class InsertMethods implements AutoCloseable {
             var r = chunk.get(i);
             deviceIdVec.setSafe(i, r.deviceId().toString().getBytes(StandardCharsets.UTF_8));
             tsVec.setSafe(i, r.timestamp().toInstant().toEpochMilli() * 1000);
-            if (r.temperature() != null) tempVec.setSafe(i, r.temperature()); else tempVec.setNull(i);
-            if (r.humidity() != null) humidVec.setSafe(i, r.humidity()); else humidVec.setNull(i);
-            if (r.pressure() != null) pressureVec.setSafe(i, r.pressure()); else pressureVec.setNull(i);
-            if (r.batteryLevel() != null) batteryVec.setSafe(i, r.batteryLevel()); else batteryVec.setNull(i);
-            if (r.isAnomaly() != null) anomalyVec.setSafe(i, r.isAnomaly() ? 1 : 0); else anomalyVec.setNull(i);
+            tempVec.setSafe(i, r.temperature());
+            humidVec.setSafe(i, r.humidity());
+            pressureVec.setSafe(i, r.pressure());
+            batteryVec.setSafe(i, r.batteryLevel());
+            anomalyVec.setSafe(i, r.isAnomaly() ? 1 : 0);
             locationVec.setSafe(i, r.location().getBytes(StandardCharsets.UTF_8));
 
             tagsWriter.setPosition(i);

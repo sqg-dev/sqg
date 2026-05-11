@@ -1494,17 +1494,17 @@ public class TestPg {
 
     /** Row type for bigint_test appender */
     public record BigintTestRow(
-        Long id,
+        long id,
         Short smallId,
         Integer regularId,
-        Long amount,
+        long amount,
         String name
     ) {}
 
     private static final PgBulkInsert.PgMapper<
         BigintTestRow
     > BIGINT_TEST_MAPPER = PgBulkInsert.PgMapper.forClass(BigintTestRow.class)
-        .map("id", PgBulkInsert.PostgresTypes.INT8.from(BigintTestRow::id))
+        .map("id", PgBulkInsert.PostgresTypes.INT8.primitive(BigintTestRow::id))
         .map(
             "small_id",
             PgBulkInsert.PostgresTypes.INT2.from(BigintTestRow::smallId)
@@ -1515,7 +1515,7 @@ public class TestPg {
         )
         .map(
             "amount",
-            PgBulkInsert.PostgresTypes.INT8.from(BigintTestRow::amount)
+            PgBulkInsert.PostgresTypes.INT8.primitive(BigintTestRow::amount)
         )
         .map("name", PgBulkInsert.PostgresTypes.TEXT.from(BigintTestRow::name));
 

@@ -40,6 +40,15 @@ public class Queries {
         this.connection = connection;
     }
 
+    /** Options for streaming queries. fetchSize hints at the JDBC driver's batch size; 0 means driver default. */
+    public record StreamOptions(int fetchSize) {
+        public static final StreamOptions DEFAULT = new StreamOptions(1000);
+
+        public StreamOptions withFetchSize(int fetchSize) {
+            return new StreamOptions(fetchSize);
+        }
+    }
+
     private static Object[] getObjectArray(Array array) {
         if (array == null) {
             return null;
@@ -243,7 +252,7 @@ public class Queries {
             )
         ) {
             try (var rs = stmt.executeQuery()) {
-                return rs.next() ? (Long) rs.getObject(1) : null;
+                return rs.next() ? rs.getObject(1, Long.class) : null;
             }
         }
     }
@@ -268,8 +277,8 @@ public class Queries {
                     ? new FirstReadingResult(
                           (UUID) rs.getObject(1),
                           toOffsetDateTime(rs.getObject(2)),
-                          (Double) rs.getObject(3),
-                          (String) rs.getObject(4)
+                          rs.getObject(3, Double.class),
+                          rs.getString(4)
                       )
                     : null;
             }
@@ -298,8 +307,8 @@ public class Queries {
                         new LastReadingsResult(
                             (UUID) rs.getObject(1),
                             toOffsetDateTime(rs.getObject(2)),
-                            (Double) rs.getObject(3),
-                            (String) rs.getObject(4)
+                            rs.getObject(3, Double.class),
+                            rs.getString(4)
                         )
                     );
                 }
@@ -309,11 +318,19 @@ public class Queries {
     }
 
     public Stream<LastReadingsResult> lastReadingsStream() throws SQLException {
+        return lastReadingsStream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<LastReadingsResult> lastReadingsStream(StreamOptions options)
+        throws SQLException {
+        boolean wasAutoCommit = connection.getAutoCommit();
+        if (wasAutoCommit) connection.setAutoCommit(false);
         var stmt = connection.prepareStatement(
             """
             SELECT device_id, timestamp, temperature, location
             FROM sensor_readings ORDER BY timestamp DESC LIMIT 10;"""
         );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
         var iter = new Iterator<LastReadingsResult>() {
@@ -337,8 +354,8 @@ public class Queries {
                     return new LastReadingsResult(
                         (UUID) rs.getObject(1),
                         toOffsetDateTime(rs.getObject(2)),
-                        (Double) rs.getObject(3),
-                        (String) rs.getObject(4)
+                        rs.getObject(3, Double.class),
+                        rs.getString(4)
                     );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
@@ -352,6 +369,7 @@ public class Queries {
             try {
                 rs.close();
                 stmt.close();
+                if (wasAutoCommit) connection.setAutoCommit(true);
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
@@ -378,12 +396,16 @@ public class Queries {
         ) {
             stmt.setObject(1, device_id);
             stmt.setObject(2, timestamp);
-            stmt.setObject(3, temperature);
-            stmt.setObject(4, humidity);
+            if (temperature != null) stmt.setDouble(3, temperature);
+            else stmt.setNull(3, java.sql.Types.DOUBLE);
+            if (humidity != null) stmt.setDouble(4, humidity);
+            else stmt.setNull(4, java.sql.Types.DOUBLE);
             stmt.setObject(5, pressure);
-            stmt.setObject(6, battery_level);
-            stmt.setObject(7, is_anomaly);
-            stmt.setObject(8, location);
+            if (battery_level != null) stmt.setShort(6, battery_level);
+            else stmt.setNull(6, java.sql.Types.SMALLINT);
+            if (is_anomaly != null) stmt.setBoolean(7, is_anomaly);
+            else stmt.setNull(7, java.sql.Types.BOOLEAN);
+            stmt.setString(8, location);
             stmt.setArray(9, connection.createArrayOf("TEXT", tags.toArray()));
 
             return stmt.executeUpdate();

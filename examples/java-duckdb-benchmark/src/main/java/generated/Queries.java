@@ -165,13 +165,13 @@ public class Queries {
         CREATE TABLE sensor_readings (
             device_id UUID NOT NULL,
             timestamp TIMESTAMPTZ NOT NULL,
-            temperature DOUBLE,
-            humidity DOUBLE,
-            pressure DECIMAL(10, 2),
-            battery_level SMALLINT,
-            is_anomaly BOOLEAN,
-            location VARCHAR,
-            tags VARCHAR[]
+            temperature DOUBLE NOT NULL,
+            humidity DOUBLE NOT NULL,
+            pressure DECIMAL(10, 2) NOT NULL,
+            battery_level SMALLINT NOT NULL,
+            is_anomaly BOOLEAN NOT NULL,
+            location VARCHAR NOT NULL,
+            tags VARCHAR[] NOT NULL
         );"""
     );
 
@@ -712,11 +712,11 @@ public class Queries {
     public record SensorReadingsRow(
         UUID deviceId,
         OffsetDateTime timestamp,
-        Double temperature,
-        Double humidity,
+        double temperature,
+        double humidity,
         BigDecimal pressure,
-        Short batteryLevel,
-        Boolean isAnomaly,
+        short batteryLevel,
+        boolean isAnomaly,
         String location,
         List<String> tags
     ) {}
@@ -756,11 +756,11 @@ public class Queries {
         public SensorReadingsAppender append(
             UUID deviceId,
             OffsetDateTime timestamp,
-            Double temperature,
-            Double humidity,
+            double temperature,
+            double humidity,
             BigDecimal pressure,
-            Short batteryLevel,
-            Boolean isAnomaly,
+            short batteryLevel,
+            boolean isAnomaly,
             String location,
             List<String> tags
         ) throws SQLException {

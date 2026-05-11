@@ -2,13 +2,13 @@
 CREATE TABLE sensor_readings (
     device_id UUID NOT NULL,
     timestamp TIMESTAMPTZ NOT NULL,
-    temperature DOUBLE,
-    humidity DOUBLE,
-    pressure DECIMAL(10, 2),
-    battery_level SMALLINT,
-    is_anomaly BOOLEAN,
-    location VARCHAR,
-    tags VARCHAR[]
+    temperature DOUBLE NOT NULL,
+    humidity DOUBLE NOT NULL,
+    pressure DECIMAL(10, 2) NOT NULL,
+    battery_level SMALLINT NOT NULL,
+    is_anomaly BOOLEAN NOT NULL,
+    location VARCHAR NOT NULL,
+    tags VARCHAR[] NOT NULL
 );
 
 -- TABLE sensor_readings :appender
