@@ -669,12 +669,7 @@ export function assignResultTypeNames(
     });
   }
 
-  const claim = (
-    name: string,
-    shape: string,
-    representative: SQLQuery,
-    source: string,
-  ): void => {
+  const claim = (name: string, shape: string, representative: SQLQuery, source: string): void => {
     const canonical = pascalCase(name);
     const existing = claims.get(canonical);
     if (existing && existing.shape !== shape) {
@@ -732,7 +727,7 @@ export function assignResultTypeNames(
     // No override. Auto-share only via full-table match against a known TABLE.
     const fullMatch = tryFullTableMatch(group.queries[0], tablesByName);
     if (fullMatch) {
-      claim(fullMatch, shape, group.queries[0], `full-table match`);
+      claim(fullMatch, shape, group.queries[0], "full-table match");
       for (const q of group.queries) {
         q.resultTypeName = fullMatch;
       }

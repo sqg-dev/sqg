@@ -1,0 +1,11 @@
+{
+  "version": "0.20.0",
+  "organization": "sqg-dev",
+  "date": "May 2026",
+  "abstract": "Generate type-safe database access code from annotated SQL files using SQG (SQL Query Generator). Covers the annotation syntax (-- QUERY, -- EXEC, -- MIGRATE, -- BASELINE, -- TABLE :appender, @set, ${var}, modifiers :one / :pluck / :all / :result=), sqg.yaml configuration, all supported generators (TypeScript / Java / Python across SQLite / DuckDB / PostgreSQL, plus DuckDB Arrow), the CLI surface (sqg, sqg init, sqg syntax, sqg --validate, sqg mcp, sqg ui), error codes with remediation, and common workflows (adding queries, bulk-insert appenders, BASELINE + MIGRATE, shared Java result types).",
+  "references": [
+    "https://sqg.dev",
+    "https://github.com/sqg-dev/sqg",
+    "https://github.com/sqg-dev/sqg/tree/main/examples"
+  ]
+}
