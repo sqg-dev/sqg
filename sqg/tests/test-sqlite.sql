@@ -81,3 +81,11 @@ SELECT * FROM users WHERE name = ${name}
 
 -- QUERY reserved_word_test :one
 SELECT name as class, email as type FROM users WHERE id = '1'
+
+-- QUERY userSummaryOne :result=UserSummary
+SELECT name, email FROM users WHERE id = '1';
+
+-- :result= on one query in a same-shape group is enough — userSummaryAll
+-- automatically picks up UserSummary too.
+-- QUERY userSummaryAll
+SELECT name, email FROM users;

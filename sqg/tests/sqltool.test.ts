@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { basename, dirname } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
-import { processProject } from "../src/sqltool";
+import { SQLQuery, TableInfo } from "../src/sql-query";
+import { assignResultTypeNames, processProject, validateQueries } from "../src/sqltool";
 
 function getSnapshotName(file: string): string {
   const dir = dirname(file);
@@ -77,6 +78,146 @@ describe("sqg", () => {
     });
     it("handle python-duckdb correctly", async () => {
       await handleProject("tests/test-python-duckdb.yaml", ["test_duckdb.py"]);
+    });
+  });
+
+  describe("assignResultTypeNames", () => {
+    function makeQuery(
+      id: string,
+      columns: { name: string; type: string; nullable?: boolean; sourceTable?: string }[],
+      opts?: { override?: string; isOne?: boolean },
+    ): SQLQuery {
+      const emptyStmt = { sql: "", sqlParts: [], parameters: [] };
+      const q = new SQLQuery(
+        "test.sql",
+        id,
+        "SELECT ...",
+        emptyStmt,
+        emptyStmt,
+        emptyStmt,
+        "QUERY",
+        opts?.isOne ?? false,
+        false,
+        false,
+        new Map(),
+        null,
+        1,
+      );
+      q.columns = columns.map((c) => ({
+        name: c.name,
+        type: c.type,
+        nullable: c.nullable ?? true,
+        sourceTable: c.sourceTable,
+      }));
+      if (opts?.override !== undefined) q.resultTypeOverride = opts.override;
+      return q;
+    }
+
+    it("default: same shape, no override → each query keeps its own row type", () => {
+      const a = makeQuery("users1", [{ name: "id", type: "TEXT" }]);
+      const b = makeQuery("users7", [{ name: "id", type: "TEXT" }]);
+      validateQueries([a, b]);
+      assignResultTypeNames([a, b], []);
+      expect(a.resultTypeName).toBeUndefined();
+      expect(b.resultTypeName).toBeUndefined();
+    });
+
+    it("override on one query in a same-shape group propagates to the group", () => {
+      const a = makeQuery("one", [{ name: "email", type: "TEXT" }], { override: "UserSummary" });
+      const b = makeQuery("two", [{ name: "email", type: "TEXT" }]);
+      validateQueries([a, b]);
+      assignResultTypeNames([a, b], []);
+      expect(a.resultTypeName).toBe("UserSummary");
+      expect(b.resultTypeName).toBe("UserSummary");
+    });
+
+    it("full-table match auto-shares to the TABLE row type", () => {
+      const t = new TableInfo("test.sql", "users", "users", [], false, 1);
+      t.columns = [
+        { name: "id", type: "TEXT", nullable: false },
+        { name: "email", type: "TEXT", nullable: true },
+      ];
+      const a = makeQuery("u1", [
+        { name: "id", type: "TEXT", nullable: false, sourceTable: "users" },
+        { name: "email", type: "TEXT", sourceTable: "users" },
+      ]);
+      const b = makeQuery("u2", [
+        { name: "id", type: "TEXT", nullable: false, sourceTable: "users" },
+        { name: "email", type: "TEXT", sourceTable: "users" },
+      ]);
+      validateQueries([a, b]);
+      assignResultTypeNames([a, b], [t]);
+      expect(a.resultTypeName).toBe("users_row");
+      expect(b.resultTypeName).toBe("users_row");
+    });
+
+    it("conflicting :result= overrides on same-shape queries → error", () => {
+      const a = makeQuery("one", [{ name: "x", type: "TEXT" }], { override: "Foo" });
+      const b = makeQuery("two", [{ name: "x", type: "TEXT" }], { override: "Bar" });
+      validateQueries([a, b]);
+      expect(() => assignResultTypeNames([a, b], [])).toThrowError(/Conflicting ':result='/);
+    });
+
+    it("same :result= name on incompatible shapes → error", () => {
+      // Two groups (different shapes), both want the name "MyResultType".
+      const a = makeQuery("one", [{ name: "id", type: "TEXT" }], { override: "MyResultType" });
+      const b = makeQuery("two", [{ name: "id", type: "INTEGER" }], { override: "MyResultType" });
+      validateQueries([a, b]);
+      expect(() => assignResultTypeNames([a, b], [])).toThrowError(
+        /'MyResultType' would be emitted with two incompatible shapes/,
+      );
+    });
+
+    it("hints when multiple queries with the same shape could share a row type", () => {
+      const a = makeQuery("byId", [
+        { name: "id", type: "INTEGER", sourceTable: "users" },
+        { name: "name", type: "TEXT", sourceTable: "users" },
+      ]);
+      const b = makeQuery("byName", [
+        { name: "id", type: "INTEGER", sourceTable: "users" },
+        { name: "name", type: "TEXT", sourceTable: "users" },
+      ]);
+      validateQueries([a, b]);
+      const hints = assignResultTypeNames([a, b], []);
+      expect(hints).toHaveLength(1);
+      expect(hints[0].queryIds).toEqual(["byId", "byName"]);
+      expect(hints[0].message).toMatch(/'byId'/);
+      expect(hints[0].message).toMatch(/'byName'/);
+      expect(hints[0].message).toMatch(/:result=Name/);
+    });
+
+    it("does NOT hint when queries already share via override or full-table match", () => {
+      const a = makeQuery("u1", [{ name: "id", type: "INTEGER" }], { override: "Foo" });
+      const b = makeQuery("u2", [{ name: "id", type: "INTEGER" }]);
+      validateQueries([a, b]);
+      const hints = assignResultTypeNames([a, b], []);
+      expect(hints).toEqual([]);
+    });
+
+    it("does NOT hint for groups with a single query (no sharing possible)", () => {
+      const a = makeQuery("only", [{ name: "id", type: "INTEGER" }]);
+      validateQueries([a]);
+      const hints = assignResultTypeNames([a], []);
+      expect(hints).toEqual([]);
+    });
+
+    it("end-to-end: conflicting :result= in a SQL file rejects processProject", async () => {
+      await expect(processProject("tests/test-result-conflict.yaml")).rejects.toThrow(
+        /'Foo' would be emitted with two incompatible shapes/,
+      );
+    });
+
+    it("override colliding with a TABLE appender row type at a different shape → error", () => {
+      const t = new TableInfo("test.sql", "users", "users", [], true, 1);
+      t.columns = [
+        { name: "id", type: "TEXT", nullable: false },
+        { name: "email", type: "TEXT", nullable: true },
+      ];
+      // `:result=UsersRow` on a query whose shape doesn't match the appender's
+      // emitted UsersRow → compile-time collision.
+      const a = makeQuery("only_id", [{ name: "id", type: "TEXT" }], { override: "UsersRow" });
+      validateQueries([a]);
+      expect(() => assignResultTypeNames([a], [t])).toThrowError(/incompatible shapes/);
     });
   });
 

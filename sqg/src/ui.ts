@@ -154,6 +154,13 @@ export class UI {
     this.log(` ${pc.green("done")} ${pc.dim(`in ${formatMs(totalMs)}`)}`);
   }
 
+  /** Display an info-level hint (e.g. "these queries could share a row type") */
+  hint(message: string) {
+    if (this.silent) return;
+    this.stopSpinner();
+    this.log(` ${pc.cyan(pc.bold("hint"))}  ${message}`);
+  }
+
   /** Display a formatted error */
   error(err: SqgError | Error) {
     if (this.silent) return;

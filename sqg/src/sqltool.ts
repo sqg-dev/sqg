@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { basename, dirname, extname, join, resolve } from "node:path";
+import { basename, dirname, extname, join, relative, resolve } from "node:path";
 import consola, { LogLevels } from "consola";
 import { pascalCase } from "es-toolkit/string";
 import Handlebars from "handlebars";
@@ -586,6 +586,212 @@ export function getOutputPath(
   return outputPath;
 }
 
+/**
+ * Assign shared result-type identifiers across queries.
+ *
+ * The defaults are deliberately conservative:
+ *   1. A query whose columns exactly match a `-- TABLE <name>` annotation's
+ *      introspected schema (same count, order, name, type) automatically uses
+ *      that table's row-type id (e.g. `UsersRow`). Skipped if the table has
+ *      any auto-generated columns (the appender row type omits them).
+ *   2. Two or more queries with the same shape share a row type **only** when
+ *      at least one of them carries `:result=Name`. The override name then
+ *      applies to every query in the group. Conflicting overrides → error.
+ *   3. Otherwise each query keeps its own per-query name (`${id}_Result`),
+ *      preserving the pre-feature default. Generators see `resultTypeName`
+ *      as `undefined` and fall back to that name.
+ *
+ * Shape equality means same (name, type, nullable, sourceTable) for every
+ * column — sourceTable disambiguates `users.email` vs `blocked_emails.email`
+ * where the driver reports per-column source-table (SQLite, Postgres).
+ */
+/** A hint message produced by assignResultTypeNames — surfaced via consola.info to the user. */
+export interface ResultTypeHint {
+  /** Query ids that could share a row type. */
+  queryIds: string[];
+  /** Human-readable message, suitable for direct emission to the user. */
+  message: string;
+}
+
+export function assignResultTypeNames(
+  queries: SQLQuery[],
+  tables: TableInfo[],
+  /** Project root for relativizing paths in hints — defaults to cwd. */
+  projectDir: string = process.cwd(),
+): ResultTypeHint[] {
+  const hints: ResultTypeHint[] = [];
+  const tablesByName = new Map<string, TableInfo>();
+  for (const t of tables) {
+    tablesByName.set(t.tableName, t);
+  }
+
+  type Group = { queries: SQLQuery[] };
+  const groups = new Map<string, Group>();
+
+  const eligible = queries.filter(
+    (q) => q.isQuery && !q.isPluck && !q.skipGenerateFunction && q.columns.length > 0,
+  );
+
+  for (const q of eligible) {
+    const cols = effectiveColumns(q);
+    const key = JSON.stringify(
+      cols.map((c) => ({
+        n: c.name,
+        t: c.type.toString(),
+        nu: c.nullable,
+        s: c.sourceTable ?? null,
+      })),
+    );
+    let g = groups.get(key);
+    if (!g) {
+      g = { queries: [] };
+      groups.set(key, g);
+    }
+    g.queries.push(q);
+  }
+
+  // Record-shape key for collision detection — emitted fields only
+  // (name, type, nullable). sourceTable is irrelevant once a name is chosen.
+  const recordShape = (cols: ColumnInfo[]) =>
+    JSON.stringify(cols.map((c) => ({ n: c.name, t: c.type.toString(), nu: c.nullable })));
+  // canonical name → { shape, sample query for error messages }.
+  // Pre-seed with TABLE appender row types: they emit `public record UsersRow`
+  // independently, so a query that targets the same name with a different
+  // shape would collide at compile time.
+  const claims = new Map<string, { shape: string; offenderId: string; source: string }>();
+  for (const t of tables) {
+    if (!t.hasAppender) continue;
+    const cols = t.columns.filter((c) => !c.generated);
+    claims.set(pascalCase(`${t.id}_row`), {
+      shape: recordShape(cols),
+      offenderId: t.id,
+      source: `TABLE ${t.tableName}`,
+    });
+  }
+
+  const claim = (
+    name: string,
+    shape: string,
+    representative: SQLQuery,
+    source: string,
+  ): void => {
+    const canonical = pascalCase(name);
+    const existing = claims.get(canonical);
+    if (existing && existing.shape !== shape) {
+      throw SqgError.inQuery(
+        `Result type '${name}' would be emitted with two incompatible shapes: ` +
+          `${source} ('${representative.id}') vs ${existing.source} ('${existing.offenderId}')`,
+        "VALIDATION_ERROR",
+        representative.id,
+        representative.filename,
+        {
+          suggestion:
+            "Use a different `:result=` name for one of the queries, " +
+            "or change the queries so their result columns match",
+        },
+      );
+    }
+    if (!existing) {
+      claims.set(canonical, { shape, offenderId: representative.id, source });
+    }
+  };
+
+  for (const group of groups.values()) {
+    const overrides = group.queries
+      .map((q) => q.resultTypeOverride)
+      .filter((v): v is string => !!v);
+    const uniqueOverrides = new Set(overrides);
+    if (uniqueOverrides.size > 1) {
+      const offenders = group.queries.filter((q) => q.resultTypeOverride);
+      throw SqgError.inQuery(
+        `Conflicting ':result=' names for queries with identical result shapes: ${offenders
+          .map((q) => `'${q.id}' uses '${q.resultTypeOverride}'`)
+          .join(", ")}`,
+        "VALIDATION_ERROR",
+        offenders[0].id,
+        offenders[0].filename,
+        {
+          suggestion:
+            "Pick a single name for this row type or change the queries so their shapes differ",
+        },
+      );
+    }
+
+    const shape = recordShape(effectiveColumns(group.queries[0]));
+
+    if (uniqueOverrides.size === 1) {
+      const resolved = [...uniqueOverrides][0];
+      const offender = group.queries.find((q) => q.resultTypeOverride === resolved)!;
+      claim(resolved, shape, offender, `:result=${resolved}`);
+      for (const q of group.queries) {
+        q.resultTypeName = resolved;
+      }
+      continue;
+    }
+
+    // No override. Auto-share only via full-table match against a known TABLE.
+    const fullMatch = tryFullTableMatch(group.queries[0], tablesByName);
+    if (fullMatch) {
+      claim(fullMatch, shape, group.queries[0], `full-table match`);
+      for (const q of group.queries) {
+        q.resultTypeName = fullMatch;
+      }
+      continue;
+    }
+
+    // No override, no full-table match → leave resultTypeName undefined and
+    // let each generator fall back to `${query.id}_Result` per-query naming.
+    // If multiple queries fell into the same group, hint that they could be
+    // sharing — the user just needs to add `:result=Name` to any one of them.
+    if (group.queries.length >= 2) {
+      const list = group.queries
+        .map((q) => `'${q.id}' (${displayPath(q.filename, projectDir)}:${q.line})`)
+        .join(", ");
+      hints.push({
+        queryIds: group.queries.map((q) => q.id),
+        message:
+          `${group.queries.length} queries return the same row shape: ${list}. ` +
+          "Add `:result=Name` to any one of them to share a single row type.",
+      });
+    }
+  }
+
+  return hints;
+}
+
+/** Show paths relative to the project root when it's inside the tree; otherwise fall back to absolute. */
+function displayPath(fullPath: string, projectDir: string): string {
+  const rel = relative(projectDir, fullPath);
+  return rel && !rel.startsWith("..") ? rel : fullPath;
+}
+
+/** Resolve config-overridden column info, mirroring what validateQueries does for allColumns. */
+function effectiveColumns(query: SQLQuery): ColumnInfo[] {
+  return query.columns.map((col) => query.config?.getColumnInfo(col.name) ?? col);
+}
+
+function tryFullTableMatch(
+  query: SQLQuery,
+  tablesByName: Map<string, TableInfo>,
+): string | undefined {
+  const cols = effectiveColumns(query);
+  const firstSource = cols[0]?.sourceTable;
+  if (!firstSource) return undefined;
+  if (!cols.every((c) => c.sourceTable === firstSource)) return undefined;
+  const table = tablesByName.get(firstSource);
+  if (!table) return undefined;
+  // Tables with auto-generated columns (SERIAL/IDENTITY) emit appender row
+  // types that exclude those columns — using that row type for SELECT *
+  // results would produce an arity mismatch. Skip the match in that case.
+  if (table.columns.some((c) => c.generated)) return undefined;
+  if (table.columns.length !== cols.length) return undefined;
+  for (let i = 0; i < cols.length; i++) {
+    if (cols[i].name !== table.columns[i].name) return undefined;
+    if (cols[i].type.toString() !== table.columns[i].type.toString()) return undefined;
+  }
+  return `${table.id}_row`;
+}
+
 export function validateQueries(queries: SQLQuery[]) {
   for (const query of queries) {
     if (query.isQuery && query.isPluck && query.columns.length !== 1) {
@@ -875,6 +1081,11 @@ export async function processProjectFromConfig(
             ui?.succeedPhase(`Introspected ${executableQueries.length} queries`);
 
             validateQueries(queries);
+            const hints = assignResultTypeNames(queries, tables, projectDir);
+            for (const hint of hints) {
+              if (ui) ui.hint(hint.message);
+              else consola.info(hint.message);
+            }
             await dbEngine.close();
           } catch (e) {
             ui?.failPhase(`Failed to process ${sqlFile}`);

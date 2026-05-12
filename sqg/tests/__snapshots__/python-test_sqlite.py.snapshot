@@ -43,6 +43,16 @@ class ReservedWordTestRow:
     class_: str
     type: str
 
+@dataclass(frozen=True)
+class UserSummaryOneRow:
+    name: str
+    email: str | None
+
+@dataclass(frozen=True)
+class UserSummaryAllRow:
+    name: str
+    email: str | None
+
 
 class TestSqlite:
     def __init__(self, conn: sqlite3.Connection) -> None:
@@ -306,6 +316,36 @@ SELECT name as class, email as type FROM users WHERE id = '1'""", ()
             """\
 SELECT name as class, email as type FROM users WHERE id = '1'""", ()
         ).fetchone()
+
+    def user_summary_one(self) -> list[UserSummaryOneRow]:
+        rows = self._conn.execute(
+            """\
+SELECT name, email FROM users WHERE id = '1';
+
+ 
+ """, ()
+        ).fetchall()
+        return [UserSummaryOneRow(name=row[0], email=row[1]) for row in rows]
+
+    def user_summary_one_raw(self) -> list[tuple[Any, ...]]:
+        return self._conn.execute(
+            """\
+SELECT name, email FROM users WHERE id = '1';
+
+ 
+ """, ()
+        ).fetchall()
+
+    def user_summary_all(self) -> list[UserSummaryAllRow]:
+        rows = self._conn.execute(
+            "SELECT name, email FROM users;", ()
+        ).fetchall()
+        return [UserSummaryAllRow(name=row[0], email=row[1]) for row in rows]
+
+    def user_summary_all_raw(self) -> list[tuple[Any, ...]]:
+        return self._conn.execute(
+            "SELECT name, email FROM users;", ()
+        ).fetchall()
 
 
 

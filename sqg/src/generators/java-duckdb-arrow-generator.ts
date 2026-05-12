@@ -1,4 +1,5 @@
 import consola from "consola";
+import Handlebars from "handlebars";
 import type { DbEngine } from "../constants.js";
 import {
   type ColumnInfo,
@@ -9,7 +10,7 @@ import {
   StructType,
   type TableInfo,
 } from "../sql-query.js";
-import { type GeneratorConfig, writeGeneratedFile } from "../sqltool.js";
+import { type GeneratorConfig, type SqlQueryHelper, writeGeneratedFile } from "../sqltool.js";
 import { JavaTypeMapper } from "../type-mapping.js";
 import { BaseGenerator } from "./base-generator.js";
 import { JavaGenerator } from "./java-generator.js";
@@ -33,7 +34,7 @@ export class JavaDuckDBArrowGenerator extends BaseGenerator {
   ): Promise<void> {
     const q = queries.filter((q) => (q.isQuery && q.isOne) || q.isMigrate);
     const name = `${gen.name}-jdbc`;
-    writeGeneratedFile(
+    await writeGeneratedFile(
       projectDir,
       {
         name,
@@ -47,6 +48,28 @@ export class JavaDuckDBArrowGenerator extends BaseGenerator {
       q,
       tables,
       "duckdb",
+    );
+
+    // The Arrow template emits its own stream-wrapper records for !isOne
+    // queries. Re-register shouldDeclareType for this generator so multiple
+    // queries that share a `resultTypeName` (via dedup) only emit the record
+    // once. The jdbc sub-render above also registered this helper, but its
+    // owner set was for the jdbc context — we override it here for ours.
+    const owners = new Set<string>();
+    const seen = new Set<string>();
+    for (const q of queries) {
+      if (q.skipGenerateFunction) continue;
+      // Arrow emits stream-wrapper records for every !isOne query (including
+      // pluck — they wrap a single-column vector stream).
+      if (!q.isQuery || q.isOne) continue;
+      if (q.columns.length === 0) continue;
+      const rowTypeName = this.rowType(q);
+      if (seen.has(rowTypeName)) continue;
+      seen.add(rowTypeName);
+      owners.add(q.id);
+    }
+    Handlebars.registerHelper("shouldDeclareType", (queryHelper: SqlQueryHelper) =>
+      owners.has(queryHelper.id),
     );
   }
 
@@ -126,6 +149,8 @@ export class JavaDuckDBArrowGenerator extends BaseGenerator {
     if (query.isOne) {
       return this.javaGenerator.rowType(query);
     }
-    return this.getClassName(`${query.id}_Result`);
+    // !isOne queries (including pluck) get an Arrow stream-wrapper record.
+    // Honor `resultTypeName` so deduped queries share the wrapper class name.
+    return this.getClassName(query.resultTypeName ?? `${query.id}_Result`);
   }
 }

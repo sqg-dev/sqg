@@ -691,4 +691,29 @@ class PostgresTest {
             stream.close();
         }
     }
+
+    @Test
+    void testResultTypeDeduplication() throws SQLException {
+        try (Connection conn = postgres.createConnection("")) {
+            TestPg pg = new TestPg(conn);
+            TestPg.applyMigrations(conn);
+
+            // Default behaviour: each query keeps its own per-query row type
+            // even when shapes match. users1 and users7 both `SELECT * FROM users`
+            // but get distinct records (Users1Result vs Users7Result) — verified
+            // by the fact that this code compiles against those names.
+            List<TestPg.Users1Result> us1 = pg.users1();
+            List<TestPg.Users7Result> us7 = pg.users7("anyone");
+            assertThat(us1).isNotNull();
+            assertThat(us7).isNotNull();
+
+            // Opt-in sharing: `:result=UserSummary` on user_summary_one is
+            // enough to make user_summary_all share the same record (the
+            // annotation only needs to appear on one query in the group).
+            TestPg.UserSummary one = pg.userSummaryOne();
+            List<TestPg.UserSummary> all = pg.userSummaryAll();
+            assertThat(all).isNotNull();
+            assertThat(one == null || one instanceof TestPg.UserSummary).isTrue();
+        }
+    }
 }

@@ -156,6 +156,7 @@ export const postgres = new (class implements DatabaseEngine {
   private mode!: ConnectionMode;
   private dynamicTypeCache = new Map<number, string>();
   private enumTypeCache = new Map<number, EnumType>();
+  private tableOidCache = new Map<number, string>();
 
   private async startContainer(
     reporter?: ProgressReporter,
@@ -231,10 +232,23 @@ export const postgres = new (class implements DatabaseEngine {
     return this.getTypeName(dataTypeID);
   }
 
+  private async resolveTableOids(db: Client, oids: number[]): Promise<void> {
+    const missing = oids.filter((oid) => !this.tableOidCache.has(oid));
+    if (missing.length === 0) return;
+    const res = await db.query(
+      "SELECT oid::int AS oid, relname FROM pg_class WHERE oid = ANY($1)",
+      [missing],
+    );
+    for (const row of res.rows) {
+      this.tableOidCache.set(Number(row.oid), row.relname);
+    }
+  }
+
   async initializeDatabase(queries: SQLQuery[], reporter?: ProgressReporter) {
     const externalUrl = process.env.SQG_POSTGRES_URL;
     this.dynamicTypeCache = new Map();
     this.enumTypeCache = new Map();
+    this.tableOidCache = new Map();
 
     if (externalUrl) {
       this.mode = new ExternalDbMode(externalUrl);
@@ -345,11 +359,21 @@ export const postgres = new (class implements DatabaseEngine {
           "Types:",
           columnTypes.map((t) => t.toString()),
         );
-        query.columns = columnNames.map((name, index) => ({
-          name,
-          type: columnTypes[index],
-          nullable: true,
-        }));
+        const tableOids = Array.from(
+          new Set(result.fields.map((f) => f.tableID).filter((oid) => oid && oid > 0)),
+        );
+        await this.resolveTableOids(db, tableOids);
+        query.columns = columnNames.map((name, index) => {
+          const field = result.fields[index];
+          const sourceTable =
+            field.tableID && field.tableID > 0 ? this.tableOidCache.get(field.tableID) : undefined;
+          return {
+            name,
+            type: columnTypes[index],
+            nullable: true,
+            sourceTable,
+          };
+        });
       }
 
       if (query.isQuery) {
@@ -407,5 +431,6 @@ export const postgres = new (class implements DatabaseEngine {
     await this.mode.close(this.db);
     this.dynamicTypeCache = new Map();
     this.enumTypeCache = new Map();
+    this.tableOidCache = new Map();
   }
 })();

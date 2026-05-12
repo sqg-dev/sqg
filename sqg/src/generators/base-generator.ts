@@ -47,7 +47,7 @@ export abstract class BaseGenerator implements Generator {
     if (query.isPluck) {
       return this.mapType({ ...query.columns[0], name: query.id });
     }
-    return this.getClassName(`${query.id}_Result`);
+    return this.getClassName(query.resultTypeName ?? `${query.id}_Result`);
   }
   getStatement(q: SQLQuery): SqlQueryStatement {
     return q.queryAnonymous;

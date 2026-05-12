@@ -1466,6 +1466,96 @@ public class TestPg {
         }
     }
 
+    public record UserSummary(String name, String email) {}
+
+    public UserSummary userSummaryOne() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                """
+                SELECT name, email FROM users WHERE id = 'test';
+
+
+                 """
+            )
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                return rs.next()
+                    ? new UserSummary(rs.getString(1), rs.getString(2))
+                    : null;
+            }
+        }
+    }
+
+    public List<UserSummary> userSummaryAll() throws SQLException {
+        try (
+            var stmt = connection.prepareStatement(
+                "SELECT name, email FROM users;"
+            )
+        ) {
+            try (var rs = stmt.executeQuery()) {
+                var results = new ArrayList<UserSummary>();
+                while (rs.next()) {
+                    results.add(
+                        new UserSummary(rs.getString(1), rs.getString(2))
+                    );
+                }
+                return results;
+            }
+        }
+    }
+
+    public Stream<UserSummary> userSummaryAllStream() throws SQLException {
+        return userSummaryAllStream(StreamOptions.DEFAULT);
+    }
+
+    public Stream<UserSummary> userSummaryAllStream(StreamOptions options)
+        throws SQLException {
+        boolean wasAutoCommit = connection.getAutoCommit();
+        if (wasAutoCommit) connection.setAutoCommit(false);
+        var stmt = connection.prepareStatement(
+            "SELECT name, email FROM users;"
+        );
+        if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
+
+        var rs = stmt.executeQuery();
+        var iter = new Iterator<UserSummary>() {
+            private Boolean hasNext = null;
+
+            public boolean hasNext() {
+                if (hasNext == null) {
+                    try {
+                        hasNext = rs.next();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                return hasNext;
+            }
+
+            public UserSummary next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                hasNext = null;
+                try {
+                    return new UserSummary(rs.getString(1), rs.getString(2));
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        return StreamSupport.stream(
+            Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED),
+            false
+        ).onClose(() -> {
+            try {
+                rs.close();
+                stmt.close();
+                if (wasAutoCommit) connection.setAutoCommit(true);
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     // ==================== Appenders ====================
 
     /** Bulk insert rows into bigint_test using PostgreSQL COPY BINARY (via PgBulkInsert). */

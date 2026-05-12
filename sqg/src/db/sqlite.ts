@@ -191,6 +191,7 @@ export const sqlite = new (class implements DatabaseEngine {
             // use the probe's observation: a non-null sample means non-null
             // (e.g. COUNT/EXISTS), a null sample or no rows means nullable.
             nullable: col.table ? colInfo?.pk === 0 && colInfo?.notnull === 0 : probed.nullable,
+            sourceTable: col.table ?? undefined,
           };
         });
       }

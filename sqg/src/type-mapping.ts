@@ -55,14 +55,15 @@ export abstract class TypeMapper {
    * @param path - Optional prefix path for nested type references
    * @returns Generated type declaration code, or empty string for primitive types
    */
-  getDeclarations(column: ColumnInfo, path = ""): string {
+  getDeclarations(column: ColumnInfo, path = "", nameOverride?: string): string {
     if (column.type instanceof StructType) {
-      return this.generateStructDeclaration(column, path);
+      return this.generateStructDeclaration(column, path, nameOverride);
     }
     if (column.type instanceof ListType) {
       return this.getDeclarations(
         { name: column.name, type: column.type.baseType, nullable: true },
         path,
+        nameOverride,
       );
     }
     return "";
@@ -96,7 +97,11 @@ export abstract class TypeMapper {
    * @param path - Prefix path for nested struct references
    * @returns The full type declaration code (e.g., Java record or TypeScript interface)
    */
-  protected abstract generateStructDeclaration(column: ColumnInfo, path: string): string;
+  protected abstract generateStructDeclaration(
+    column: ColumnInfo,
+    path: string,
+    nameOverride?: string,
+  ): string;
 
   /**
    * Generates the type name for a map type based on its field name.
@@ -304,11 +309,15 @@ export class JavaTypeMapper extends TypeMapper {
     return `${pascalCase(fieldName)}Result`;
   }
 
-  protected generateStructDeclaration(column: ColumnInfo, path = ""): string {
+  protected generateStructDeclaration(
+    column: ColumnInfo,
+    path = "",
+    nameOverride?: string,
+  ): string {
     if (!(column.type instanceof StructType)) {
       throw new Error(`Expected StructType ${column}`);
     }
-    const structName = this.formatStructTypeName(column.name);
+    const structName = nameOverride ?? this.formatStructTypeName(column.name);
     const newPath = `${path}${structName}.`;
     const children = column.type.fields
       .map((field) => {
@@ -593,7 +602,11 @@ export class TypeScriptTypeMapper extends TypeMapper {
     return "Map";
   }
 
-  protected generateStructDeclaration(column: ColumnInfo): string {
+  protected generateStructDeclaration(
+    column: ColumnInfo,
+    _path?: string,
+    _nameOverride?: string,
+  ): string {
     if (!(column.type instanceof StructType)) {
       throw new Error("Expected StructType");
     }
@@ -789,7 +802,11 @@ export class PythonTypeMapper extends TypeMapper {
     return "dict";
   }
 
-  protected generateStructDeclaration(column: ColumnInfo, path = ""): string {
+  protected generateStructDeclaration(
+    column: ColumnInfo,
+    path = "",
+    _nameOverride?: string,
+  ): string {
     if (!(column.type instanceof StructType)) {
       throw new Error(`Expected StructType ${column}`);
     }

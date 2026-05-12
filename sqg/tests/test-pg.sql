@@ -209,3 +209,11 @@ SELECT * FROM identity_test ORDER BY id;
 -- QUERY get_all_types_record :one
 @set id = 1
 SELECT * FROM all_types_test WHERE id = ${id};
+
+-- QUERY user_summary_one :one :result=UserSummary
+SELECT name, email FROM users WHERE id = 'test';
+
+-- :result= on one query in a same-shape group is enough — user_summary_all
+-- automatically picks up UserSummary too.
+-- QUERY user_summary_all
+SELECT name, email FROM users;

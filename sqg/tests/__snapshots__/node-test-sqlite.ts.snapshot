@@ -100,6 +100,8 @@ export class TestSqlite {
       ["users6", "users6"],
       ["users7", "users7"],
       ["reserved_word_test", "reservedWordTest"],
+      ["userSummaryOne", "userSummaryOne"],
+      ["userSummaryAll", "userSummaryAll"],
     ]);
   }
 
@@ -205,5 +207,22 @@ export class TestSqlite {
       `SELECT name as class, email as type FROM users WHERE id = '1'`,
     );
     return stmt.get() as { class: string; type: string } | undefined;
+  }
+  userSummaryOne(): { name: string; email: string | null }[] {
+    const stmt = this.prepare(
+      "userSummaryOne",
+      `SELECT name, email FROM users WHERE id = '1';
+
+ 
+ `,
+    );
+    return stmt.all() as { name: string; email: string | null }[];
+  }
+  userSummaryAll(): { name: string; email: string | null }[] {
+    const stmt = this.prepare(
+      "userSummaryAll",
+      "SELECT name, email FROM users;",
+    );
+    return stmt.all() as { name: string; email: string | null }[];
   }
 }

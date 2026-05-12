@@ -11,6 +11,8 @@ export interface ColumnInfo {
   nullable: boolean;
   /** Whether this column is auto-generated (SERIAL, IDENTITY, etc.) — excluded from bulk insert appenders */
   generated?: boolean;
+  /** Source table name when the column comes from a real table column (SQLite/Postgres only); undefined for expressions. */
+  sourceTable?: string;
 }
 
 export type ColumnType = string | IsColumnType;
@@ -78,6 +80,12 @@ export class SQLQuery {
 
   /** Database-reported parameter types (variable name → SQL type), set by database adapters */
   parameterTypes?: Map<string, ColumnType>;
+
+  /** Explicit row-type name from `:result=Name` modifier, when present. */
+  resultTypeOverride?: string;
+
+  /** Final row-type identifier assigned by assignResultTypeNames (after introspection). */
+  resultTypeName?: string;
 
   constructor(
     public filename: string,
@@ -247,6 +255,8 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
       const isOne = modifiers.includes(":one");
       const isPluck = modifiers.includes(":pluck");
       const isBatch = modifiers.includes(":batch");
+      const resultModifier = modifiers.find((m) => m.startsWith(":result="));
+      const resultTypeOverride = resultModifier?.slice(":result=".length);
 
       let configStr = getStr("Config", true);
       if (configStr?.endsWith("*/")) {
@@ -528,6 +538,7 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
         config,
         annotationLine,
       );
+      query.resultTypeOverride = resultTypeOverride;
 
       checkDuplicate(queryType, name);
 

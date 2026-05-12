@@ -165,7 +165,7 @@ SELECT COUNT(*) FROM users;
 ```
 
 **Query types:** `QUERY`, `EXEC`, `MIGRATE`, `BASELINE`, `TESTDATA`, `TABLE`
-**Modifiers:** `:one` (single row), `:pluck` (single column), `:all` (default), `:appender` (generate bulk insert appender)
+**Modifiers:** `:one` (single row), `:pluck` (single column), `:all` (default), `:appender` (generate bulk insert appender), `:result=Name` (name the row type — Java only; annotating ONE query in a same-shape group is enough, the rest share it. Without `:result=`, queries keep per-query types except for `SELECT *` matching a TABLE)
 **Variables:** `@set varName = value` to define, `${varName}` to reference
 
 **MIGRATE ordering:** MIGRATE blocks run in source order (within and across files in the order listed in `sqg.yaml`). The name after `-- MIGRATE` is an arbitrary identifier used to track applied migrations — `1`, `2`, `add_email`, `2026_01_users`, etc. It does **not** control execution order.

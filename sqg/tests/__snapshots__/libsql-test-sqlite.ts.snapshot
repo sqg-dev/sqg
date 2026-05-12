@@ -97,6 +97,8 @@ export class TestSqlite {
       ["users6", "users6"],
       ["users7", "users7"],
       ["reserved_word_test", "reservedWordTest"],
+      ["userSummaryOne", "userSummaryOne"],
+      ["userSummaryAll", "userSummaryAll"],
     ]);
   }
 
@@ -240,5 +242,22 @@ export class TestSqlite {
     return (result.rows as unknown[])[0] as
       | { class: string; type: string }
       | undefined;
+  }
+  async userSummaryOne(): Promise<{ name: string; email: string | null }[]> {
+    const result = await this.client.execute({
+      sql: `SELECT name, email FROM users WHERE id = '1';
+
+ 
+ `,
+      args: [] as InArgs,
+    });
+    return result.rows as unknown[] as { name: string; email: string | null }[];
+  }
+  async userSummaryAll(): Promise<{ name: string; email: string | null }[]> {
+    const result = await this.client.execute({
+      sql: "SELECT name, email FROM users;",
+      args: [] as InArgs,
+    });
+    return result.rows as unknown[] as { name: string; email: string | null }[];
   }
 }

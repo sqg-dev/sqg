@@ -1,0 +1,12 @@
+version: 1
+
+name: test-result-conflict
+
+sql:
+  - files:
+      - test-result-conflict.sql
+    gen:
+      - generator: java/sqlite
+        output: /tmp/
+        config:
+          package: com.test.db

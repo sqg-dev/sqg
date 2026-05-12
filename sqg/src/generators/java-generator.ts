@@ -13,6 +13,8 @@ import { BaseGenerator } from "./base-generator.js";
 
 export class JavaGenerator extends BaseGenerator {
   private engine: DbEngine;
+  /** Query ids that should emit their row-type record declaration (set per render). */
+  private declareTypeOwners = new Set<string>();
 
   constructor(
     public template: string,
@@ -85,9 +87,36 @@ export class JavaGenerator extends BaseGenerator {
   async beforeGenerate(
     _projectDir: string,
     _gen: GeneratorConfig,
-    _queries: SQLQuery[],
-    _tables: TableInfo[],
+    queries: SQLQuery[],
+    tables: TableInfo[],
   ): Promise<void> {
+    // Decide which query "owns" the emission of each row-type record. With
+    // result-type deduplication multiple queries can share a `rowType()`
+    // string — only the first occurrence should emit the `public record`
+    // declaration. Also skip names that the appender section already emits.
+    this.declareTypeOwners = new Set<string>();
+    const seenRowTypes = new Set<string>();
+    // Names already emitted by the appender section — only counts when this
+    // generator/engine combo actually renders that section.
+    const tableRowTypes = new Set(
+      this.supportsAppenders(this.engine)
+        ? tables.filter((t) => t.hasAppender).map((t) => this.getClassName(`${t.id}_row`))
+        : [],
+    );
+    for (const q of queries) {
+      if (q.skipGenerateFunction) continue;
+      if (!q.isQuery || q.isPluck) continue;
+      if (q.columns.length === 0) continue;
+      const rowTypeName = this.rowType(q);
+      if (tableRowTypes.has(rowTypeName)) continue;
+      if (seenRowTypes.has(rowTypeName)) continue;
+      seenRowTypes.add(rowTypeName);
+      this.declareTypeOwners.add(q.id);
+    }
+
+    Handlebars.registerHelper("shouldDeclareType", (queryHelper: SqlQueryHelper) =>
+      this.declareTypeOwners.has(queryHelper.id),
+    );
     Handlebars.registerHelper("isDuckDB", () => this.engine === "duckdb");
     Handlebars.registerHelper("isPostgres", () => this.engine === "postgres");
     Handlebars.registerHelper("pgBulkType", (column: ColumnInfo) => {
@@ -115,7 +144,14 @@ export class JavaGenerator extends BaseGenerator {
       if (queryHelper.isPluck) {
         return queryHelper.typeMapper.getDeclarations({ ...query.columns[0], name: query.id }, " ");
       }
-      return queryHelper.typeMapper.getDeclarations(query.allColumns);
+      // Skip when a different query already declares this row type (dedup).
+      if (!this.declareTypeOwners.has(query.id)) {
+        return "";
+      }
+      // Use the deduped class name so the emitted record matches what callers
+      // expect (e.g. `:result=UserSummary` → `public record UserSummary(...)`).
+      const structName = this.rowType(query);
+      return queryHelper.typeMapper.getDeclarations(query.allColumns, "", structName);
     });
     Handlebars.registerHelper("appenderType", (column: ColumnInfo) => {
       return (this.typeMapper as JavaTypeMapper).getUnboxedTypeName(column);

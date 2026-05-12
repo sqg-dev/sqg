@@ -273,11 +273,18 @@ SQL Annotation Syntax:
   \${varName}                        Reference a variable in SQL
 
 Modifiers:
-  :one      Return single row (or null) instead of array
-  :pluck    Return single column value (requires exactly 1 column)
-  :all      Return all rows (default)
-  :batch    Generate a JDBC batch method for an EXEC (Java only)
-  :appender Generate bulk insert appender for TABLE annotation
+  :one          Return single row (or null) instead of array
+  :pluck        Return single column value (requires exactly 1 column)
+  :all          Return all rows (default)
+  :batch        Generate a JDBC batch method for an EXEC (Java only)
+  :appender     Generate bulk insert appender for TABLE annotation
+  :result=Name  Name (and share) the row type (Java only). Annotate ONE query
+                with :result=Name — every other query in the same file with the
+                same column shape automatically gets the same name; you do NOT
+                need to repeat the modifier on each query.
+                Without :result=, each query keeps its own per-query row type.
+                Exception: SELECT * matching a -- TABLE schema (same columns,
+                same order) auto-uses the table's row type with no annotation.
 
 Example:
   -- MIGRATE 1

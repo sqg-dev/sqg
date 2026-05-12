@@ -120,6 +120,7 @@ console.log(user?.name);
 | `-- QUERY name` | SELECT query returning rows |
 | `-- QUERY name :one` | Query returning single row or undefined |
 | `-- QUERY name :pluck` | Return single (first) column value |
+| `-- QUERY name :result=Foo` | Name the row type (Java). Add it to ONE query and every same-shape query shares it. Full-table `SELECT *` reuses the `TABLE` row type without annotation. |
 | `-- EXEC name` | INSERT/UPDATE/DELETE (no result rows) |
 | `-- TESTDATA name` | Test data, runs after migrations |
 | `@set var = value` | Define parameter with sample value |

@@ -59,7 +59,7 @@ Value {
   Name { nameChar+ }
   VarRef { "${" Name "}" }
 
-  Modifiers { ":" nameChar+ }
+  Modifiers { ":" nameChar+ ("=" nameChar+)? }
 
   QueryType {
     "EXEC" | "QUERY" | "MIGRATE" | "TESTDATA" | "TABLE" | "BASELINE"

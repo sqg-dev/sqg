@@ -75,6 +75,7 @@ public class {{className}} {
 
 {{#*inline "columnTypesRecord"}}
 {{#if isQuery}}
+{{#if (shouldDeclareType this)}}
 {{#if isOne}}
 public record {{rowType}}({{#each columns}}{{type}} {{name}}{{#unless @last}}, {{/unless}}{{/each}}) {}
 {{else}}
@@ -83,7 +84,7 @@ public record {{rowType}}(PreparedStatement statement, RootAllocator allocator, 
     public boolean loadNextBatch() throws IOException {
         return reader.loadNextBatch();
     }
-    
+
     public int getRowCount() throws IOException {
         return reader.getVectorSchemaRoot().getRowCount();
     }
@@ -94,6 +95,7 @@ public record {{rowType}}(PreparedStatement statement, RootAllocator allocator, 
         statement.close();
     }
 }
+{{/if}}
 {{/if}}
 {{/if}}
 {{/inline}}

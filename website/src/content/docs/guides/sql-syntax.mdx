@@ -276,6 +276,57 @@ SELECT id FROM users;
 getUserIds(): (number | null)[]
 ```
 
+### :result=Name
+
+Names the row type returned by a query so multiple queries can share a single
+record/class. **Java only** in the current implementation — Python keeps its
+per-query row classes and TypeScript inlines anonymous types regardless.
+
+**Annotate one query, not all of them.** Putting `:result=Name` on *one*
+query is enough — every other query in the same file with the same column
+shape automatically picks up the same name. You do not need to repeat the
+modifier:
+
+```sql
+-- QUERY get_user_summary :one :result=UserSummary
+@set id = 1
+SELECT name, email FROM users WHERE id = ${id};
+
+-- :result= on get_user_summary is enough; list_user_summaries shares the
+-- same record because its shape matches.
+-- QUERY list_user_summaries
+SELECT name, email FROM users;
+```
+
+```java
+// Both methods return the same record
+public record UserSummary(String name, String email) {}
+public UserSummary getUserSummary(Integer id) throws SQLException { ... }
+public List<UserSummary> listUserSummaries() throws SQLException { ... }
+```
+
+**Defaults.** Without `:result=`, each query keeps its own per-query row type
+(e.g. `GetUserByIdResult`, `ListUsersResult`) — SQG does not invent a shared
+auto-name. The one exception is a **full-table match**: a `SELECT *` whose
+result columns exactly match a `-- TABLE <name>` annotation's introspected
+schema (same count, order, name, type) automatically uses that table's
+row type (e.g. `UsersRow`), with no annotation needed. Skipped when the table
+has SERIAL/IDENTITY columns (the appender row type omits them).
+
+**Provenance safety.** When two queries have the same shape but read from
+different tables (e.g. `email FROM users` vs `email FROM blocked_emails`),
+they are considered distinct groups on SQLite and PostgreSQL — SQG tracks
+each column's source table from the driver. On DuckDB the driver does not
+expose per-column source-table, so the two queries look identical to SQG; if
+that matters for you, use different `:result=` names to keep them apart.
+
+**Conflicts.** Code generation fails with a `VALIDATION_ERROR` when:
+- Two queries with the same shape carry *different* `:result=` names —
+  there's no single name to pick.
+- Two queries with *different* shapes carry the *same* `:result=` name (or
+  one matches a TABLE appender's row type at a different shape) — one record
+  cannot represent both.
+
 ### :batch
 
 Applies to `EXEC` statements only. Generates an additional `<name>Batch(...)` method that uses JDBC's `addBatch()` / `executeBatch()` to send many rows in one round trip. The regular single-row method is still generated alongside it.
