@@ -1,6 +1,6 @@
 ---
 name: sqg
-description: Generate type-safe database access code from annotated SQL files using SQG (SQL Query Generator). Use this skill whenever the user wants to generate TypeScript, Java, or Python code from .sql files; write or maintain a sqg.yaml config; add annotated queries (`-- QUERY`, `-- EXEC`, `-- MIGRATE`, `-- BASELINE`, `-- TABLE`, `:one`, `:pluck`, `:appender`, `:result=`); produce typed wrappers for better-sqlite3, @duckdb/node-api, JDBC, DuckDB Arrow, sqlite3, duckdb (Python), or psycopg; design migrations and baselines; build DuckDB bulk appenders; or debug SQG error codes like `INVALID_GENERATOR`, `SQL_PARSE_ERROR`, `DUPLICATE_QUERY`, `MISSING_VARIABLE`. Also use when the user mentions SQG, sqg.dev, sqg.yaml, `sqg init`, `sqg --validate`, type-safe SQL, generated query types, or asks how to introspect query result types at build time against a real database.
+description: Generate type-safe TypeScript, Java, or Python code from annotated SQL files using SQG (SQL Query Generator). Use whenever the user works with `.sql` files containing `-- QUERY`, `-- EXEC`, `-- MIGRATE`, `-- BASELINE`, or `-- TABLE :appender` annotations, edits a `sqg.yaml`, wants typed wrappers for better-sqlite3, @duckdb/node-api, DuckDB Arrow, JDBC, or psycopg, builds DuckDB bulk appenders, or mentions SQG, sqg.dev, type-safe SQL, or generated query types.
 license: MIT
 metadata:
   author: sqg-dev
