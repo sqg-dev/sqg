@@ -56,6 +56,23 @@ insert into foo(id, bar) values (1, 'a');
     ]);
   });
 
+  it("parses a :source= modifier on BASELINE into sourceTarget", () => {
+    const result = parseSQL(`-- BASELINE prod_orders :source=prod
+create table orders(id bigint, customer text);
+`);
+    const baseline = result.queries[0];
+    expect(baseline.type).toBe("BASELINE");
+    expect(baseline.sourceTarget).toBe("prod");
+  });
+
+  it("rejects :source= on a non-BASELINE block", () => {
+    expect(() =>
+      parseSQL(`-- QUERY getOne :source=prod
+select 1;
+`),
+    ).toThrow(/':source=' modifier is only valid on BASELINE/);
+  });
+
   it("still rejects duplicate names within the BASELINE namespace", () => {
     expect(() =>
       parseSQL(`-- BASELINE schema

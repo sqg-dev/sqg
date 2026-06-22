@@ -12,7 +12,7 @@ import { DatabaseError, SqlExecutionError } from "../errors.js";
 import type { SQLQuery, TableInfo } from "../sql-query.js";
 import { type ColumnType, EnumType, ListType, MapType, StructType } from "../sql-query.js";
 import type { ProgressReporter } from "../ui.js";
-import { type DatabaseEngine, initializeDatabase } from "./types.js";
+import { type DatabaseEngine, type InitDatabaseOptions, initializeDatabase } from "./types.js";
 
 /** Cache of enum type names, keyed by stringified sorted values for lookup */
 let enumNameCache = new Map<string, string>();
@@ -60,9 +60,28 @@ export const duckdb = new (class implements DatabaseEngine {
   db!: DuckDBInstance;
   connection!: DuckDBConnection;
 
-  async initializeDatabase(queries: SQLQuery[], reporter?: ProgressReporter) {
+  async initializeDatabase(
+    queries: SQLQuery[],
+    reporter?: ProgressReporter,
+    options?: InitDatabaseOptions,
+  ) {
     this.db = await DuckDBInstance.create(":memory:");
     this.connection = await this.db.connect();
+
+    // ATTACH external catalogs (e.g. postgres sources) before any
+    // BASELINE/MIGRATE/TESTDATA blocks run, so queries can reference them.
+    for (const attachment of options?.attachments ?? []) {
+      const sql = `ATTACH '${attachment.connectionUri}' AS ${attachment.alias} (TYPE postgres)`;
+      try {
+        await this.connection.run(sql);
+      } catch (e) {
+        throw new DatabaseError(
+          `Failed to attach source '${attachment.alias}': ${(e as Error).message}`,
+          "duckdb",
+          "Check that the postgres source container started and is reachable.",
+        );
+      }
+    }
 
     await initializeDatabase(
       queries,

@@ -16,6 +16,7 @@ import {
   SHORT_GENERATOR_NAMES,
 } from "./constants.js";
 import { getDatabaseEngine } from "./db/index.js";
+import type { Attachment } from "./db/types.js";
 import {
   ConfigError,
   type ErrorContext,
@@ -24,6 +25,7 @@ import {
   SqgError,
 } from "./errors.js";
 import { type Generator, getGenerator } from "./generators/index.js";
+import { type PreparedSources, preparePostgresSources } from "./sources.js";
 import type { ColumnInfo, SQLQuery, TableInfo } from "./sql-query.js";
 import { EnumType, ListType, parseSQLQueries, StructType } from "./sql-query.js";
 import type { TypeMapper } from "./type-mapping.js";
@@ -308,6 +310,7 @@ function generateSourceFile(
   engine: DbEngine,
   projectName: string,
   config?: any,
+  postgresSourceNames: string[] = [],
 ): string {
   const templateSrc = readFileSync(templatePath, "utf-8");
 
@@ -324,12 +327,24 @@ function generateSourceFile(
     ? tables.filter((t) => !t.skipGenerateFunction).map((t) => new TableHelper(t, generator))
     : [];
 
+  // Runtime ATTACH helpers for postgres sources (DuckDB only). At generation
+  // time SQG attaches a managed container; at runtime the application calls
+  // these to attach the real database under the same alias.
+  const attachers =
+    engine === "duckdb"
+      ? postgresSourceNames.map((sourceName) => ({
+          alias: sourceName,
+          functionName: generator.getFunctionName(`attach_${sourceName}`),
+        }))
+      : [];
+
   const result = template(
     {
       generatedComment: GENERATED_FILE_COMMENT,
       migrations,
       queries: queries.map((q) => new SqlQueryHelper(q, generator, generator.getStatement(q))),
       tables: tableHelpers,
+      attachers,
       className: generator.getClassName(name),
       projectName,
       config,
@@ -388,13 +403,33 @@ const ProjectSchema = z.object({
     .describe("SQL file configurations"),
   sources: z
     .array(
-      z.object({
-        path: z.string().describe("Path to source file (supports $HOME)"),
-        name: z.string().optional().describe("Variable name override"),
-      }),
+      z
+        .object({
+          type: z
+            .enum(["file", "postgres"])
+            .optional()
+            .describe("Source type: 'file' (default) or 'postgres'"),
+          path: z
+            .string()
+            .optional()
+            .describe("Path to source file for file sources (supports $HOME)"),
+          name: z
+            .string()
+            .optional()
+            .describe("Variable name (file sources) or DuckDB attach alias (postgres sources)"),
+          image: z
+            .string()
+            .optional()
+            .describe("Docker image for postgres sources (default: postgres:16-alpine)"),
+        })
+        .refine((s) => (s.type === "postgres" ? !!s.name : !!s.path), {
+          message: "file sources require 'path'; postgres sources require 'name'",
+        }),
     )
     .optional()
-    .describe("External source files to include as variables"),
+    .describe(
+      "External sources: files inlined as variables, or postgres databases attached for introspection",
+    ),
 });
 
 export type Project = z.infer<typeof ProjectSchema>;
@@ -408,16 +443,30 @@ export class ExtraVariable {
 }
 
 export function createExtraVariables(sources: Source[], suppressLogging = false): ExtraVariable[] {
-  return sources.map((source) => {
-    const path = source.path;
-    const resolvedPath = path.replace("$HOME", homedir());
-    const name = source.name ?? basename(path, extname(resolvedPath));
-    const varName = `sources_${name.replace(/\s+/g, "_")}`;
-    if (!suppressLogging) {
-      consola.debug("Extra variable:", varName, resolvedPath);
-    }
-    return new ExtraVariable(varName, `'${resolvedPath}'`);
-  });
+  // Only file sources become inlined `${sources_x}` variables. Postgres sources
+  // are attached as catalogs and are not referenced through variables.
+  return sources
+    .filter((source) => source.type !== "postgres")
+    .map((source) => {
+      const path = source.path!;
+      const resolvedPath = path.replace("$HOME", homedir());
+      const name = source.name ?? basename(path, extname(resolvedPath));
+      const varName = `sources_${name.replace(/\s+/g, "_")}`;
+      if (!suppressLogging) {
+        consola.debug("Extra variable:", varName, resolvedPath);
+      }
+      return new ExtraVariable(varName, `'${resolvedPath}'`);
+    });
+}
+
+/** Postgres sources resolved from the project config (with image defaulted). */
+export function getPostgresSources(sources: Source[]): { name: string; image: string }[] {
+  return sources
+    .filter((source) => source.type === "postgres")
+    .map((source) => ({
+      name: source.name!,
+      image: source.image ?? "postgres:16-alpine",
+    }));
 }
 
 /**
@@ -827,6 +876,7 @@ export async function writeGeneratedFile(
   tables: TableInfo[],
   engine: DbEngine,
   writeToStdout = false,
+  postgresSourceNames: string[] = [],
 ): Promise<string | null> {
   await generator.beforeGenerate(projectDir, gen, queries, tables);
   const templateDir = dirname(new URL(import.meta.url).pathname);
@@ -842,6 +892,7 @@ export async function writeGeneratedFile(
     engine,
     projectName,
     { migrations: true, ...gen.config },
+    postgresSourceNames,
   );
 
   if (writeToStdout) {
@@ -1009,6 +1060,23 @@ export async function processProjectFromConfig(
 
   try {
     const extraVariables = createExtraVariables(project.sources ?? [], writeToStdout);
+    const pgSources = getPostgresSources(project.sources ?? []);
+    const pgSourceNames = new Set(pgSources.map((s) => s.name));
+
+    // Postgres sources are attached into the DuckDB introspection connection, so
+    // they only make sense when at least one generator targets the duckdb engine.
+    if (pgSources.length > 0) {
+      const usesDuckDB = project.sql.some((sql) =>
+        sql.gen.some((gen) => getGeneratorEngine(gen.generator) === "duckdb"),
+      );
+      if (!usesDuckDB) {
+        throw new SqgError(
+          "Postgres sources require a DuckDB generator (they are attached into DuckDB for introspection)",
+          "CONFIG_VALIDATION_ERROR",
+          "Add a 'typescript/duckdb' or 'java/duckdb' generator, or remove the postgres sources",
+        );
+      }
+    }
 
     const files = [] as string[];
 
@@ -1038,6 +1106,19 @@ export async function processProjectFromConfig(
           const parseResult = parseSQLQueries(fullPath, extraVariables);
           queries = parseResult.queries;
           tables = parseResult.tables;
+          for (const q of queries) {
+            if (q.sourceTarget && !pgSourceNames.has(q.sourceTarget)) {
+              throw SqgError.inQuery(
+                `BASELINE block targets unknown postgres source '${q.sourceTarget}'`,
+                "CONFIG_VALIDATION_ERROR",
+                q.id,
+                sqlFile,
+                {
+                  suggestion: `Declare a source with 'type: postgres, name: ${q.sourceTarget}' in sqg.yaml`,
+                },
+              );
+            }
+          }
         } catch (e) {
           if (e instanceof SqgError) {
             throw e;
@@ -1060,11 +1141,21 @@ export async function processProjectFromConfig(
             reporterAny.setQueryTotal(executableQueries.length);
           }
 
+          let preparedSources: PreparedSources | undefined;
           try {
             const dbEngine = getDatabaseEngine(engine);
 
+            // Start postgres-source containers and apply their schema natively,
+            // then attach them into the DuckDB introspection connection.
+            let attachments: Attachment[] | undefined;
+            if (engine === "duckdb" && pgSources.length > 0) {
+              ui?.startPhase("Starting postgres source containers...");
+              preparedSources = await preparePostgresSources(pgSources, queries, reporter);
+              attachments = preparedSources.attachments;
+            }
+
             ui?.startPhase(`Initializing ${engine} database...`);
-            await dbEngine.initializeDatabase(queries, reporter);
+            await dbEngine.initializeDatabase(queries, reporter, { attachments });
 
             ui?.startPhase(`Introspecting ${executableQueries.length} queries...`);
             await dbEngine.executeQueries(queries, reporter);
@@ -1093,6 +1184,10 @@ export async function processProjectFromConfig(
               `Check that the SQL is valid for engine '${engine}'`,
               { file: sqlFile, engine },
             );
+          } finally {
+            if (preparedSources) {
+              await preparedSources.teardown();
+            }
           }
 
           ui?.startPhase("Generating code...");
@@ -1110,6 +1205,7 @@ export async function processProjectFromConfig(
               tables,
               engine,
               writeToStdout,
+              pgSources.map((s) => s.name),
             );
             if (outputPath !== null) {
               files.push(outputPath);

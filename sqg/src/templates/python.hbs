@@ -135,6 +135,12 @@ class {{className}}:
 {{/if}}
 {{/if}}
 
+{{#each attachers}}
+    def {{functionName}}(self, connection_string: str) -> None:
+        """Attach the "{{alias}}" postgres source under the same alias used during generation."""
+        self._conn.execute(f"ATTACH '{connection_string}' AS {{alias}} (TYPE postgres)")
+
+{{/each}}
 {{#each queries}}
 {{#unless skipGenerateFunction}}
 {{#if isQuery}}
@@ -142,7 +148,7 @@ class {{className}}:
 {{#if isOne}}
     def {{functionName}}(self{{#each variables}}, {{name}}: {{{type}}}{{/each}}) -> {{{pyTypeOrNone (lookup columns 0)}}}:
         row = self._conn.execute(
-            {{{quote sqlQuery}}}, {{> params}}
+            {{{sqlExpr this}}}, {{> params}}
         ).fetchone()
         if row is None:
             return None
@@ -150,19 +156,19 @@ class {{className}}:
 
     def {{functionName}}_raw(self{{#each variables}}, {{name}}: {{{type}}}{{/each}}) -> tuple[Any, ...] | None:
         return self._conn.execute(
-            {{{quote sqlQuery}}}, {{> params}}
+            {{{sqlExpr this}}}, {{> params}}
         ).fetchone()
 
 {{else}}
     def {{functionName}}(self{{#each variables}}, {{name}}: {{{type}}}{{/each}}) -> list[{{{pyType (lookup columns 0)}}}]:
         rows = self._conn.execute(
-            {{{quote sqlQuery}}}, {{> params}}
+            {{{sqlExpr this}}}, {{> params}}
         ).fetchall()
         return [r[0] for r in rows]
 
     def {{functionName}}_raw(self{{#each variables}}, {{name}}: {{{type}}}{{/each}}) -> list[tuple[Any, ...]]:
         return self._conn.execute(
-            {{{quote sqlQuery}}}, {{> params}}
+            {{{sqlExpr this}}}, {{> params}}
         ).fetchall()
 
 {{/if}}
@@ -170,7 +176,7 @@ class {{className}}:
 {{#if isOne}}
     def {{functionName}}(self{{#each variables}}, {{name}}: {{{type}}}{{/each}}) -> {{{rowType}}} | None:
         row = self._conn.execute(
-            {{{quote sqlQuery}}}, {{> params}}
+            {{{sqlExpr this}}}, {{> params}}
         ).fetchone()
         if row is None:
             return None
@@ -178,19 +184,19 @@ class {{className}}:
 
     def {{functionName}}_raw(self{{#each variables}}, {{name}}: {{{type}}}{{/each}}) -> tuple[Any, ...] | None:
         return self._conn.execute(
-            {{{quote sqlQuery}}}, {{> params}}
+            {{{sqlExpr this}}}, {{> params}}
         ).fetchone()
 
 {{else}}
     def {{functionName}}(self{{#each variables}}, {{name}}: {{{type}}}{{/each}}) -> list[{{{rowType}}}]:
         rows = self._conn.execute(
-            {{{quote sqlQuery}}}, {{> params}}
+            {{{sqlExpr this}}}, {{> params}}
         ).fetchall()
         return [{{{constructRow this}}} for row in rows]
 
     def {{functionName}}_raw(self{{#each variables}}, {{name}}: {{{type}}}{{/each}}) -> list[tuple[Any, ...]]:
         return self._conn.execute(
-            {{{quote sqlQuery}}}, {{> params}}
+            {{{sqlExpr this}}}, {{> params}}
         ).fetchall()
 
 {{/if}}
@@ -198,7 +204,7 @@ class {{className}}:
 {{else}}
     def {{functionName}}(self{{#each variables}}, {{name}}: {{{type}}}{{/each}}) -> None:
         self._conn.execute(
-            {{{quote sqlQuery}}}, {{> params}}
+            {{{sqlExpr this}}}, {{> params}}
         )
 
 {{/if}}

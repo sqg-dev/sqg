@@ -74,6 +74,9 @@ export class TsGenerator extends BaseGenerator {
       this.typeMapper.safeIntegers = !!gen.config?.safeIntegers;
     }
     Handlebars.registerHelper("quote", (value: string) => this.quote(value));
+    Handlebars.registerHelper("sqlExpr", (queryHelper: SqlQueryHelper) =>
+      this.sqlExpr(queryHelper),
+    );
 
     // Map SQL types to DuckDB appender method suffixes
     // Note: DuckDB Node.js appender API uses type-specific methods
@@ -344,5 +347,32 @@ export class TsGenerator extends BaseGenerator {
 
   quote(value: string): string {
     return value.includes("\n") || value.includes("'") ? `\`${value}\`` : `'${value}'`;
+  }
+
+  /**
+   * Build the SQL expression for a query. Without file `sources`, this is the
+   * plain quoted SQL string (unchanged). When a `${sources_x}` reference is
+   * present it is interpolated into a template literal as a runtime argument
+   * (the value is supplied by the caller, not bound), mirroring the Java
+   * generator — `ATTACH '` + arg + `'` style.
+   */
+  sqlExpr(queryHelper: SqlQueryHelper): string {
+    const parts = queryHelper.sqlQueryParts;
+    const hasSources = parts.some((p) => typeof p !== "string" && p.name.startsWith("sources_"));
+    if (!hasSources) {
+      return this.quote(queryHelper.sqlQuery);
+    }
+    let out = "`";
+    for (const part of parts) {
+      if (typeof part === "string") {
+        out += part.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$\{/g, "\\${");
+      } else if (part.name.startsWith("sources_")) {
+        // Quoted runtime value (matches the Java generator's ' + arg + ')
+        out += ` '\${${part.name}}'`;
+      } else {
+        out += "?";
+      }
+    }
+    return `${out}\``;
   }
 }

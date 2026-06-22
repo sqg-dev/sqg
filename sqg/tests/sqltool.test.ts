@@ -43,6 +43,22 @@ describe("sqg", () => {
     it("handle sources correctly", async () => {
       await handleProject("tests/test-sources.yaml", ["TestSources.java"]);
     });
+
+    it("handle sources interpolation in ts/python", async () => {
+      // sources_ variables are interpolated as runtime parameters into the SQL
+      // (matching the Java generator), not bound as placeholders.
+      await handleProject("tests/test-sources-ts.yaml", ["test-sources.ts", "test_sources.py"]);
+    });
+
+    it("rejects a :source= targeting an undeclared postgres source", async () => {
+      await expect(processProject("tests/test-source-unknown.yaml")).rejects.toThrow(
+        /unknown postgres source 'ghost'/,
+      );
+    });
+
+    it("handle baseline attach correctly", async () => {
+      await handleProject("tests/test-baseline-attach.yaml", ["TestBaselineAttach.java"]);
+    });
   });
 
   describe("processProjectSqlite", () => {

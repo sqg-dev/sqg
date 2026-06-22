@@ -265,6 +265,7 @@ SQL Annotation Syntax:
   -- QUERY <name> [:one] [:pluck]   Select query (returns rows)
   -- EXEC <name> [:batch]           Execute statement (INSERT/UPDATE/DELETE)
   -- BASELINE <name>                Schema created outside SQG (runs before migrations, not tracked)
+  -- BASELINE <name> :source=<src>  Schema of a 'type: postgres' source (applied to a managed testcontainer, attached into DuckDB)
   -- MIGRATE <name>                 Schema migration (runs in source order; name is any identifier, e.g. "1" or "add_email")
   -- TESTDATA <name>                Test data setup (not generated)
   -- TABLE <name> :appender         Table for bulk insert appender (DuckDB, PostgreSQL)
@@ -278,6 +279,7 @@ Modifiers:
   :all          Return all rows (default)
   :batch        Generate a JDBC batch method for an EXEC (Java only)
   :appender     Generate bulk insert appender for TABLE annotation
+  :source=Name  Mark a BASELINE block as the schema of a postgres source (Name)
   :result=Name  Name (and share) the row type (Java only). Annotate ONE query
                 with :result=Name — every other query in the same file with the
                 same column shape automatically gets the same name; you do NOT

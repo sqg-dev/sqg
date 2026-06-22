@@ -117,12 +117,15 @@ console.log(user?.name);
 | Annotation | Description |
 |------------|-------------|
 | `-- MIGRATE name` | Schema migration (CREATE TABLE, etc.) |
+| `-- BASELINE name` | Schema created outside SQG (ETL, sibling service). Runs before migrations for type-checking; **not** emitted in `getMigrations()` |
+| `-- BASELINE name :source=pg` | Schema of a `type: postgres` source. Applied natively to a managed testcontainer and attached into DuckDB for introspection (DuckDB generators; needs Docker) |
 | `-- QUERY name` | SELECT query returning rows |
 | `-- QUERY name :one` | Query returning single row or undefined |
 | `-- QUERY name :pluck` | Return single (first) column value |
 | `-- QUERY name :result=Foo` | Name the row type (Java). Add it to ONE query and every same-shape query shares it. Full-table `SELECT *` reuses the `TABLE` row type without annotation. |
 | `-- EXEC name` | INSERT/UPDATE/DELETE (no result rows) |
 | `-- TESTDATA name` | Test data, runs after migrations |
+| `-- TABLE name :appender` | Generate a type-safe bulk insert appender (DuckDB, PostgreSQL) |
 | `@set var = value` | Define parameter with sample value |
 | `${var}` | Reference parameter in query |
 

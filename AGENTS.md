@@ -165,12 +165,14 @@ SELECT COUNT(*) FROM users;
 ```
 
 **Query types:** `QUERY`, `EXEC`, `MIGRATE`, `BASELINE`, `TESTDATA`, `TABLE`
-**Modifiers:** `:one` (single row), `:pluck` (single column), `:all` (default), `:appender` (generate bulk insert appender), `:result=Name` (name the row type — Java only; annotating ONE query in a same-shape group is enough, the rest share it. Without `:result=`, queries keep per-query types except for `SELECT *` matching a TABLE)
+**Modifiers:** `:one` (single row), `:pluck` (single column), `:all` (default), `:appender` (generate bulk insert appender), `:result=Name` (name the row type — Java only; annotating ONE query in a same-shape group is enough, the rest share it. Without `:result=`, queries keep per-query types except for `SELECT *` matching a TABLE), `:source=name` (on a BASELINE block — schema of a `type: postgres` source; see below)
 **Variables:** `@set varName = value` to define, `${varName}` to reference
 
 **MIGRATE ordering:** MIGRATE blocks run in source order (within and across files in the order listed in `sqg.yaml`). The name after `-- MIGRATE` is an arbitrary identifier used to track applied migrations — `1`, `2`, `add_email`, `2026_01_users`, etc. It does **not** control execution order.
 
 **BASELINE:** Use `-- BASELINE <name>` for schema that is created outside SQG (ETL job, sibling service, third-party tool). BASELINE blocks run before MIGRATE blocks during type introspection but are **not** emitted in the generated `getMigrations()` array. The application is expected to obtain that schema from elsewhere.
+
+**Postgres sources (DuckDB):** Declare `sources: [{ name: prod, type: postgres }]` in `sqg.yaml` to query an attached Postgres database (`prod.public.…`). Tag the schema with `-- BASELINE <name> :source=prod` (valid Postgres DDL). At generation SQG starts a Postgres testcontainer (needs Docker), applies the `:source=` blocks natively (real PG types), attaches it into DuckDB, and type-checks — none of it is emitted. For runtime, SQG generates an `attach<Source>(connectionString)` helper that the app calls to attach the real database under the same alias. Requires a `duckdb` generator. Sources without `type` are **file sources**: a path exposed as an inlined `${sources_<name>}` variable for `QUERY`/`EXEC` (e.g. `read_csv`, sqlite `ATTACH`).
 
 ### TABLE Annotation (Appenders)
 
