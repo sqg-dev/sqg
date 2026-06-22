@@ -1,0 +1,16 @@
+version: 1
+
+name: test-postgres-source-bad
+
+# A postgres source with no DuckDB generator — must be rejected, since postgres
+# sources are attached into DuckDB for introspection.
+sql:
+  - files:
+      - test-postgres-source.sql
+    gen:
+      - generator: typescript/sqlite
+        output: /tmp/
+
+sources:
+  - name: prod
+    type: postgres

@@ -69,7 +69,7 @@ export class {{className}} {
     {{#unless skipGenerateFunction}}
     {{functionName}}({{#each variables}}{{name}}: {{type}}{{#unless @last}}, {{/unless}}{{/each}}): {{> returnType }} {
         const stmt = this.prepare<[{{> paramTypes}}], {{> resultType}}>('{{id}}', 
-            {{{quote sqlQuery}}}{{#if isPluck}}, true{{/if}});
+            {{{sqlExpr this}}}{{#if isPluck}}, true{{/if}});
         {{> execute}}
     }
     {{/unless}}

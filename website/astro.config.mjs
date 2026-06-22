@@ -44,6 +44,12 @@ export default defineConfig({
           ],
         },
         {
+          label: "Recipes",
+          items: [
+            { label: "Attach a Postgres database", slug: "guides/attach-external-database" },
+          ],
+        },
+        {
           label: "Generators",
           items: [
             { label: "TypeScript + SQLite", slug: "generators/typescript-sqlite" },

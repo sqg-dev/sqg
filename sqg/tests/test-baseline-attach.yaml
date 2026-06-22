@@ -1,0 +1,12 @@
+version: 1
+
+name: test-baseline-attach
+
+sql:
+  - files:
+      - test-baseline-attach.sql
+    gen:
+        - generator: java/duckdb
+          output: /tmp/
+          config:
+            package: com.test

@@ -84,6 +84,14 @@ export class SQLQuery {
   /** Explicit row-type name from `:result=Name` modifier, when present. */
   resultTypeOverride?: string;
 
+  /**
+   * Name of the postgres `source` this block targets, from a `:source=name`
+   * modifier on a BASELINE block. Such blocks define the schema of an external
+   * postgres source and run natively against that source's container during
+   * generation (not against the DuckDB introspection connection).
+   */
+  sourceTarget?: string;
+
   /** Final row-type identifier assigned by assignResultTypeNames (after introspection). */
   resultTypeName?: string;
 
@@ -257,6 +265,20 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
       const isBatch = modifiers.includes(":batch");
       const resultModifier = modifiers.find((m) => m.startsWith(":result="));
       const resultTypeOverride = resultModifier?.slice(":result=".length);
+      const sourceModifier = modifiers.find((m) => m.startsWith(":source="));
+      const sourceTarget = sourceModifier?.slice(":source=".length);
+      if (sourceTarget && queryType !== "BASELINE") {
+        throw SqgError.inQuery(
+          `The ':source=' modifier is only valid on BASELINE blocks, not ${queryType}`,
+          "SQL_PARSE_ERROR",
+          name,
+          filePath,
+          {
+            suggestion:
+              "Move the schema for a postgres source into a '-- BASELINE <name> :source=<source>' block",
+          },
+        );
+      }
 
       let configStr = getStr("Config", true);
       if (configStr?.endsWith("*/")) {
@@ -539,6 +561,7 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
         annotationLine,
       );
       query.resultTypeOverride = resultTypeOverride;
+      query.sourceTarget = sourceTarget;
 
       checkDuplicate(queryType, name);
 

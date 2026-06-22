@@ -2,9 +2,26 @@ import consola from "consola";
 import type { SQLQuery, TableInfo } from "../sql-query.js";
 import type { ProgressReporter } from "../ui.js";
 
+/** An external database to ATTACH into the introspection connection (DuckDB only). */
+export interface Attachment {
+  /** Catalog alias used in the ATTACH statement (and referenced by queries). */
+  alias: string;
+  /** Connection string / URI passed to ATTACH (e.g. a postgres DSN). */
+  connectionUri: string;
+}
+
+export interface InitDatabaseOptions {
+  /** Catalogs to ATTACH before BASELINE/MIGRATE/TESTDATA run. Only DuckDB consumes this. */
+  attachments?: Attachment[];
+}
+
 export interface DatabaseEngine {
   executeQueries(queries: SQLQuery[], reporter?: ProgressReporter): Promise<void> | void;
-  initializeDatabase(queries: SQLQuery[], reporter?: ProgressReporter): Promise<void> | void;
+  initializeDatabase(
+    queries: SQLQuery[],
+    reporter?: ProgressReporter,
+    options?: InitDatabaseOptions,
+  ): Promise<void> | void;
   /** Introspect table schemas for appender generation */
   introspectTables(tables: TableInfo[], reporter?: ProgressReporter): Promise<void> | void;
 
@@ -19,7 +36,10 @@ export async function initializeDatabase(
   // BASELINE blocks describe schema owned outside SQG (e.g. created by an ETL job
   // or sibling service). They run first so that subsequent MIGRATE blocks can
   // reference those tables, and they are not tracked or emitted as migrations.
-  const baselineQueries = queries.filter((q) => q.isBaseline);
+  // BASELINE blocks tagged with `:source=<name>` define the schema of an attached
+  // postgres source and have already run natively against that source's container,
+  // so they are skipped here.
+  const baselineQueries = queries.filter((q) => q.isBaseline && !q.sourceTarget);
   for (const query of baselineQueries) {
     try {
       await execQueries(query);

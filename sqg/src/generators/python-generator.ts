@@ -94,6 +94,32 @@ export class PythonGenerator extends BaseGenerator {
       return `"${value}"`;
     });
 
+    // SQL expression for a query: plain quoted string, unless a file `${sources_x}`
+    // is present, in which case it becomes an f-string interpolating the source as
+    // a quoted runtime argument (the value is supplied by the caller, not bound).
+    Handlebars.registerHelper("sqlExpr", (queryHelper: SqlQueryHelper) => {
+      const parts = queryHelper.sqlQueryParts;
+      const hasSources = parts.some((p) => typeof p !== "string" && p.name.startsWith("sources_"));
+      if (!hasSources) {
+        const value = queryHelper.sqlQuery;
+        if (value.includes("\n") || value.includes("'") || value.includes('"')) {
+          return `"""\\\n${value}"""`;
+        }
+        return `"${value}"`;
+      }
+      let out = 'f"""';
+      for (const part of parts) {
+        if (typeof part === "string") {
+          out += part.replace(/\\/g, "\\\\").replace(/\{/g, "{{").replace(/\}/g, "}}");
+        } else if (part.name.startsWith("sources_")) {
+          out += ` '{${part.name}}'`;
+        } else {
+          out += "?";
+        }
+      }
+      return `${out}"""`;
+    });
+
     // Python type annotation from column
     Handlebars.registerHelper("pyType", (column: ColumnInfo) => {
       return this.getPyType(column);

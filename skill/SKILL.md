@@ -1,6 +1,6 @@
 ---
 name: sqg
-description: Generate type-safe TypeScript, Java, or Python code from annotated SQL files using SQG (SQL Query Generator). Use whenever the user works with `.sql` files containing `-- QUERY`, `-- EXEC`, `-- MIGRATE`, `-- BASELINE`, or `-- TABLE :appender` annotations, edits a `sqg.yaml`, wants typed wrappers for better-sqlite3, @duckdb/node-api, DuckDB Arrow, JDBC, or psycopg, builds DuckDB bulk appenders, or mentions SQG, sqg.dev, type-safe SQL, or generated query types.
+description: Generate type-safe TypeScript, Java, or Python code from annotated SQL files using SQG (SQL Query Generator). Use whenever the user works with `.sql` files containing `-- QUERY`, `-- EXEC`, `-- MIGRATE`, `-- BASELINE`, or `-- TABLE :appender` annotations, edits a `sqg.yaml`, wants typed wrappers for better-sqlite3, @duckdb/node-api, DuckDB Arrow, JDBC, or psycopg, builds DuckDB bulk appenders, attaches a Postgres database into DuckDB (postgres `sources` / `:source=`), or mentions SQG, sqg.dev, type-safe SQL, or generated query types.
 license: MIT
 metadata:
   author: sqg-dev
@@ -62,6 +62,36 @@ SELECT id, name, email FROM users WHERE id = ${id};
 `-- MIGRATE` blocks run **in source order** within a file, and files run in the order listed in `sqg.yaml`. The name after `-- MIGRATE` is an identifier for migration tracking (`1`, `add_email`, `2026_01_users`, …) — it does **not** drive ordering.
 
 `-- BASELINE` runs before `-- MIGRATE` during type introspection but is excluded from the generated migrations array. Use it when the schema is owned by another system.
+
+### Postgres sources (DuckDB)
+
+When a DuckDB project queries an **attached Postgres database** (`prod.public.orders`), declare it as a `source` so SQG can type-check against the real Postgres schema:
+
+```yaml
+# sqg.yaml
+sources:
+  - name: prod          # also the DuckDB attach alias
+    type: postgres
+    # image: postgres:16-alpine   # optional (default)
+```
+
+```sql
+-- BASELINE prod_orders :source=prod
+CREATE TABLE orders (id BIGINT PRIMARY KEY, customer TEXT NOT NULL, total NUMERIC(10,2));
+
+-- QUERY getOrder :one
+@set id = 1
+SELECT id, customer, total FROM prod.public.orders WHERE id = ${id};
+```
+
+- `:source=<name>` on a `BASELINE` block marks it as the schema of that postgres source. It must be valid **Postgres** DDL.
+- At generation SQG starts a throwaway Postgres **testcontainer** (needs Docker), applies the `:source=` blocks to it natively (real PG types), attaches it into the DuckDB introspection connection as `<name>`, and type-checks. The container, schema, and generation-time `ATTACH` are **not** emitted.
+- Only valid with a `duckdb` generator (the source is attached into DuckDB).
+- For runtime, SQG generates a typed helper `attach<Source>(connectionString)` (e.g. `attachProd`) that runs `ATTACH '…' AS <name> (TYPE postgres)`. The app calls it before queries, passing the production DSN from its own config (the DSN is interpolated, not bound).
+
+### File sources
+
+`sources` entries without `type` (or `type: file`) expose a resolved file path as an inlined `${sources_<name>}` variable for use in `QUERY`/`EXEC` (e.g. `ATTACH ${sources_data} AS d (TYPE sqlite)` or `read_csv(${sources_data})`). The value is the generation-time path; in the generated function it becomes a runtime string argument interpolated into the SQL.
 
 ### Appenders (`-- TABLE … :appender`)
 

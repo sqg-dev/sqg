@@ -1,0 +1,20 @@
+version: 1
+
+name: test-postgres-source
+
+sql:
+  - files:
+      - test-postgres-source.sql
+    gen:
+      - generator: typescript/duckdb
+        output: /tmp/
+      - generator: java/duckdb
+        output: /tmp/
+        config:
+          package: com.test
+      - generator: python/duckdb
+        output: /tmp/
+
+sources:
+  - name: prod
+    type: postgres

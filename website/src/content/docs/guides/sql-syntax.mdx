@@ -80,6 +80,29 @@ SELECT id, list_uri FROM clusters WHERE id = ${id};
 - BASELINE blocks are **not** included in the generated `getMigrations()` array — your application is expected to obtain the baseline schema from elsewhere.
 - Use BASELINE when SQG is not the owner of (part of) the schema, but still needs to know the schema to validate queries.
 
+**When to reach for BASELINE:**
+- Tables created by an **ETL job, a sibling service, or a third-party tool** that your queries read from.
+- A schema managed by **another migration system** that you don't want SQG to re-apply.
+- An **external database attached at runtime** (for example a production Postgres attached into DuckDB). The schema goes in BASELINE so SQG can type-check against it at generation time, while your application performs the real `ATTACH` at runtime.
+
+#### `:source=<name>` — Postgres sources
+
+A BASELINE block tagged `:source=<name>` describes the schema of a **postgres source** declared in `sqg.yaml`:
+
+```sql
+-- BASELINE prod_orders :source=prod
+CREATE TABLE orders (id BIGINT PRIMARY KEY, customer TEXT NOT NULL);
+```
+
+```yaml
+# sqg.yaml
+sources:
+  - name: prod
+    type: postgres
+```
+
+During generation SQG starts a throwaway Postgres testcontainer, applies these `:source=prod` blocks to it **natively** (so introspection sees real Postgres types), attaches it into the DuckDB introspection connection as `prod`, and type-checks queries that read from `prod.public.…`. The container, schema, and generation-time `ATTACH` are not emitted. For runtime, SQG generates a typed `attach<Source>` helper (e.g. `attachProd(connectionString)`) so your application attaches the real database under the same alias. Requires Docker, and a `duckdb` generator. See the [Attach a Postgres database](/guides/attach-external-database/) recipe.
+
 ### Built-in Migration Runner
 
 SQG can generate an `applyMigrations()` function that automatically tracks and applies migrations. Enable it with `config.migrations: true`:

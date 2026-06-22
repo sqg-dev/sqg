@@ -31,7 +31,7 @@ test-python:
 
 # Generate all code from test SQL files
 [group("generate")]
-generate: build-duckdb build-duckdb-arrow build-pg build-sqlite build-sources
+generate: build-duckdb build-duckdb-arrow build-pg build-sqlite build-sources build-baseline-attach build-postgres-source
 
 # Generate all code (CI alias)
 [group("generate")]
@@ -61,6 +61,16 @@ build-sqlite:
 [group("generate")]
 build-sources: create-users-sqlite
   pnpm sqg tests/test-sources.yaml
+
+# Generate BASELINE-attach test code (external catalog via ATTACH)
+[group("generate")]
+build-baseline-attach:
+  pnpm sqg tests/test-baseline-attach.yaml
+
+# Generate postgres-source test code (managed testcontainer + attach; needs Docker)
+[group("generate")]
+build-postgres-source:
+  pnpm sqg tests/test-postgres-source.yaml
 
 # ─── Services ───────────────────────────────────────────────────
 

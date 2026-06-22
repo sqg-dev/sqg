@@ -58,10 +58,17 @@ export class {{className}} {
         );
     }
 
+    {{#each attachers}}
+    /** Attach the "{{alias}}" postgres source under the same alias used during generation. */
+    async {{functionName}}(connectionString: string): Promise<void> {
+        await this.conn.run(`ATTACH '${connectionString}' AS {{alias}} (TYPE postgres)`);
+    }
+
+    {{/each}}
     {{#each queries}}
     {{#unless skipGenerateFunction}}
     async {{functionName}}({{#each variables}}{{name}}: {{type}}{{#unless @last}}, {{/unless}}{{/each}}): Promise<{{> returnType }}> {
-        const sql = {{{quote sqlQuery}}};
+        const sql = {{{sqlExpr this}}};
         {{#if (hasListParams this)}}
         const stmt = await this.conn.prepare(sql);
         {{{bindStatements this}}}

@@ -1,0 +1,15 @@
+version: 1
+
+name: test-sources
+
+sql:
+  - files:
+      - test-sources.sql
+    gen:
+      - generator: typescript/duckdb
+        output: /tmp/
+      - generator: python/duckdb
+        output: /tmp/
+
+sources:
+  - path: tests/users.sqlite

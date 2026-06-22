@@ -4,7 +4,8 @@ A reusable skill that teaches AI coding agents (Claude Code, Cursor, Codex, Copi
 
 ## What this skill covers
 
-- The full SQL annotation syntax (`-- QUERY`, `-- EXEC`, `-- MIGRATE`, `-- BASELINE`, `-- TABLE :appender`, `@set`, `${var}`, modifiers `:one` / `:pluck` / `:all` / `:result=`)
+- The full SQL annotation syntax (`-- QUERY`, `-- EXEC`, `-- MIGRATE`, `-- BASELINE`, `-- TABLE :appender`, `@set`, `${var}`, modifiers `:one` / `:pluck` / `:all` / `:result=` / `:source=`)
+- Postgres `sources`: attach a Postgres database into DuckDB (managed testcontainer for introspection, generated `attach<Source>` helper for runtime)
 - How to write and validate a `sqg.yaml` configuration
 - All supported generators (TypeScript / Java / Python × SQLite / DuckDB / PostgreSQL, plus DuckDB Arrow)
 - The CLI surface (`sqg`, `sqg init`, `sqg syntax`, `sqg --validate`, `sqg mcp`, `sqg ui`)

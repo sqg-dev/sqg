@@ -1,0 +1,11 @@
+version: 1
+
+name: test-source-unknown
+
+# A :source=ghost block with no matching source declaration — must be rejected.
+sql:
+  - files:
+      - test-source-unknown.sql
+    gen:
+      - generator: typescript/duckdb
+        output: /tmp/
