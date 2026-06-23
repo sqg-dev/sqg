@@ -1,0 +1,11 @@
+version: 1
+name: demo
+sql:
+  # `sources` belongs at the project top level, not under an sql block. The
+  # strict schema must reject it here instead of silently dropping it.
+  - files: [test-sqlite.sql]
+    sources:
+      - path: $HOME/data/x.parquet
+    gen:
+      - generator: typescript/sqlite
+        output: ./out/

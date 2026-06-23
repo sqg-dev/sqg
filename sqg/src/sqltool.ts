@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, extname, join, relative, resolve } from "node:path";
 import consola, { LogLevels } from "consola";
-import { pascalCase } from "es-toolkit/string";
+import { escapeRegExp, pascalCase } from "es-toolkit/string";
 import Handlebars from "handlebars";
 import YAML from "yaml";
 import { z } from "zod";
@@ -25,7 +25,11 @@ import {
   SqgError,
 } from "./errors.js";
 import { type Generator, getGenerator } from "./generators/index.js";
-import { type PreparedSources, preparePostgresSources } from "./sources.js";
+import {
+  type PostgresSourceSpec,
+  type PreparedSources,
+  preparePostgresSources,
+} from "./sources.js";
 import type { ColumnInfo, SQLQuery, TableInfo } from "./sql-query.js";
 import { EnumType, ListType, parseSQLQueries, StructType } from "./sql-query.js";
 import type { TypeMapper } from "./type-mapping.js";
@@ -364,73 +368,93 @@ const validGenerators = [...SHORT_GENERATOR_NAMES, ...GENERATOR_NAMES] as const;
 /**
  * Project configuration schema with descriptions for validation messages
  */
-const ProjectSchema = z.object({
-  version: z.number().describe("Configuration version (currently 1)"),
-  name: z
-    .string()
-    .min(1, "Project name is required")
-    .describe("Project name used for generated class names"),
-  sql: z
-    .array(
-      z.object({
-        files: z
-          .array(z.string().min(1))
-          .min(1, "At least one SQL file is required")
-          .describe("SQL files to process"),
-        gen: z
-          .array(
-            z.object({
-              generator: z
-                .string()
-                .refine((val) => isValidGenerator(val), {
-                  message: `Invalid generator. Valid generators: ${validGenerators.join(", ")}`,
-                })
-                .describe(`Code generation generator: ${SHORT_GENERATOR_NAMES.join(", ")}`),
-              name: z.string().optional().describe("Override the generated class/module name"),
-              template: z.string().optional().describe("Custom Handlebars template path"),
-              output: z
-                .string()
-                .min(1, "Output path is required")
-                .describe("Output file or directory path"),
-              config: z.any().optional().describe("Generator-specific configuration"),
-            }),
-          )
-          .min(1, "At least one generator is required")
-          .describe("Code generators to run"),
-      }),
-    )
-    .min(1, "At least one SQL configuration is required")
-    .describe("SQL file configurations"),
-  sources: z
-    .array(
-      z
-        .object({
-          type: z
-            .enum(["file", "postgres"])
-            .optional()
-            .describe("Source type: 'file' (default) or 'postgres'"),
-          path: z
-            .string()
-            .optional()
-            .describe("Path to source file for file sources (supports $HOME)"),
-          name: z
-            .string()
-            .optional()
-            .describe("Variable name (file sources) or DuckDB attach alias (postgres sources)"),
-          image: z
-            .string()
-            .optional()
-            .describe("Docker image for postgres sources (default: postgres:16-alpine)"),
-        })
-        .refine((s) => (s.type === "postgres" ? !!s.name : !!s.path), {
-          message: "file sources require 'path'; postgres sources require 'name'",
-        }),
-    )
-    .optional()
-    .describe(
-      "External sources: files inlined as variables, or postgres databases attached for introspection",
-    ),
-});
+const ProjectSchema = z
+  .object({
+    version: z.number().describe("Configuration version (currently 1)"),
+    name: z
+      .string()
+      .min(1, "Project name is required")
+      .describe("Project name used for generated class names"),
+    sql: z
+      .array(
+        z
+          .object({
+            files: z
+              .array(z.string().min(1))
+              .min(1, "At least one SQL file is required")
+              .describe("SQL files to process"),
+            gen: z
+              .array(
+                z
+                  .object({
+                    generator: z
+                      .string()
+                      .refine((val) => isValidGenerator(val), {
+                        message: `Invalid generator. Valid generators: ${validGenerators.join(", ")}`,
+                      })
+                      .describe(`Code generation generator: ${SHORT_GENERATOR_NAMES.join(", ")}`),
+                    name: z
+                      .string()
+                      .optional()
+                      .describe("Override the generated class/module name"),
+                    template: z.string().optional().describe("Custom Handlebars template path"),
+                    output: z
+                      .string()
+                      .min(1, "Output path is required")
+                      .describe("Output file or directory path"),
+                    config: z.any().optional().describe("Generator-specific configuration"),
+                  })
+                  .strict(),
+              )
+              .min(1, "At least one generator is required")
+              .describe("Code generators to run"),
+          })
+          // `sources` is a project-level key. Rejecting unknown keys here turns a
+          // misplaced `sources:` under an sql block into a pointed error instead of
+          // silently dropping it (which later surfaced as a confusing
+          // "${sources_x} not defined" further downstream).
+          .strict(),
+      )
+      .min(1, "At least one SQL configuration is required")
+      .describe("SQL file configurations"),
+    sources: z
+      .array(
+        z
+          .object({
+            type: z
+              .enum(["file", "postgres"])
+              .optional()
+              .describe("Source type: 'file' (default) or 'postgres'"),
+            path: z
+              .string()
+              .optional()
+              .describe("Path to source file for file sources (supports $HOME)"),
+            name: z
+              .string()
+              .optional()
+              .describe("Variable name (file sources) or DuckDB attach alias (postgres sources)"),
+            image: z
+              .string()
+              .optional()
+              .describe("Docker image for postgres sources (default: postgres:16-alpine)"),
+            url: z
+              .string()
+              .optional()
+              .describe(
+                "Postgres source: connect to this existing database for introspection instead of starting a container. Use a literal DSN or '$ENV_VAR' to read from the environment. When set, ':source=' BASELINE blocks are not applied (the live schema is used), which avoids schema drift.",
+              ),
+          })
+          .strict()
+          .refine((s) => (s.type === "postgres" ? !!s.name : !!s.path), {
+            message: "file sources require 'path'; postgres sources require 'name'",
+          }),
+      )
+      .optional()
+      .describe(
+        "External sources: files inlined as variables, or postgres databases attached for introspection",
+      ),
+  })
+  .strict();
 
 export type Project = z.infer<typeof ProjectSchema>;
 type Source = NonNullable<z.infer<typeof ProjectSchema.shape.sources>>[number];
@@ -459,13 +483,36 @@ export function createExtraVariables(sources: Source[], suppressLogging = false)
     });
 }
 
+/**
+ * Resolve a postgres source `url`. A value of the form `$VAR` or `${VAR}` is
+ * read from the environment (so credentials need not live in sqg.yaml); any
+ * other value is treated as a literal DSN.
+ */
+function resolveSourceUrl(url: string, sourceName: string): string {
+  const match = url.match(/^\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?$/);
+  if (!match) {
+    return url;
+  }
+  const envName = match[1];
+  const value = process.env[envName];
+  if (!value) {
+    throw new SqgError(
+      `Postgres source '${sourceName}' references environment variable '${envName}' which is not set`,
+      "CONFIG_VALIDATION_ERROR",
+      `Set ${envName} to the database connection string, or use a literal DSN in the 'url' field`,
+    );
+  }
+  return value;
+}
+
 /** Postgres sources resolved from the project config (with image defaulted). */
-export function getPostgresSources(sources: Source[]): { name: string; image: string }[] {
+export function getPostgresSources(sources: Source[]): PostgresSourceSpec[] {
   return sources
     .filter((source) => source.type === "postgres")
     .map((source) => ({
       name: source.name!,
       image: source.image ?? "postgres:16-alpine",
+      url: source.url ? resolveSourceUrl(source.url, source.name!) : undefined,
     }));
 }
 
@@ -1131,6 +1178,19 @@ export async function processProjectFromConfig(
           );
         }
 
+        // Auto-scope sources to this file: a postgres source's runtime
+        // attach<Source>() helper is only emitted when this file's SQL actually
+        // references the source — either via a `:source=<name>` BASELINE block
+        // or by qualifying a query with the `<name>.` catalog prefix (the case
+        // for `url` live-DB sources, which need no hand-written BASELINE). This
+        // keeps unrelated generators byte-identical when a source used by a
+        // different sql block is added to the project.
+        const referencedPgSources = pgSources.filter((source) => {
+          const catalogRef = new RegExp(`\\b${escapeRegExp(source.name)}\\.`);
+          return queries.some((q) => q.sourceTarget === source.name || catalogRef.test(q.rawQuery));
+        });
+        const referencedPgSourceNames = referencedPgSources.map((s) => s.name);
+
         // Process each engine group
         for (const [engine, gens] of gensByEngine) {
           const executableQueries = queries.filter((q) => !q.skipGenerateFunction);
@@ -1148,9 +1208,13 @@ export async function processProjectFromConfig(
             // Start postgres-source containers and apply their schema natively,
             // then attach them into the DuckDB introspection connection.
             let attachments: Attachment[] | undefined;
-            if (engine === "duckdb" && pgSources.length > 0) {
+            if (engine === "duckdb" && referencedPgSources.length > 0) {
               ui?.startPhase("Starting postgres source containers...");
-              preparedSources = await preparePostgresSources(pgSources, queries, reporter);
+              preparedSources = await preparePostgresSources(
+                referencedPgSources,
+                queries,
+                reporter,
+              );
               attachments = preparedSources.attachments;
             }
 
@@ -1205,7 +1269,7 @@ export async function processProjectFromConfig(
               tables,
               engine,
               writeToStdout,
-              pgSources.map((s) => s.name),
+              referencedPgSourceNames,
             );
             if (outputPath !== null) {
               files.push(outputPath);

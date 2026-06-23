@@ -11,6 +11,12 @@ export interface PostgresSourceSpec {
   name: string;
   /** Docker image to run the source's throwaway container. */
   image: string;
+  /**
+   * Existing Postgres DSN to introspect against instead of starting a throwaway
+   * container. When set, the live database's real schema is used and the
+   * source's `:source=` BASELINE blocks are NOT applied (avoiding schema drift).
+   */
+  url?: string;
 }
 
 export interface PreparedSources {
@@ -50,12 +56,28 @@ export async function preparePostgresSources(
 
   try {
     for (const source of sources) {
+      // A `url` points at an existing database: introspect its real, live schema
+      // (no container, no BASELINE DDL applied). This is the drift-free path.
+      if (source.url) {
+        attachments.push({ alias: source.name, connectionUri: source.url });
+        continue;
+      }
+
       reporter?.onContainerStarting?.();
-      const container = await new PostgreSqlContainer(source.image)
-        .withDatabase("sqg-db")
-        .withUsername("sqg")
-        .withPassword("secret")
-        .start();
+      let container: StartedPostgreSqlContainer;
+      try {
+        container = await new PostgreSqlContainer(source.image)
+          .withDatabase("sqg-db")
+          .withUsername("sqg")
+          .withPassword("secret")
+          .start();
+      } catch (e) {
+        throw new DatabaseError(
+          `Could not start a Postgres container for source '${source.name}': ${(e as Error).message}`,
+          "postgres",
+          "Postgres sources need Docker to introspect schema. Start Docker, or set 'url' on the source to point at an existing Postgres database (e.g. url: $DATABASE_URL).",
+        );
+      }
       containers.push(container);
       const connectionUri = container.getConnectionUri();
       reporter?.onContainerStarted?.(connectionUri);

@@ -224,9 +224,11 @@ public class {{className}} {
     {{{declareEnums queries}}}
 
     {{#each attachers}}
-    /** Attach the "{{alias}}" postgres source under the same alias used during generation. */
+    /** Attach the "{{alias}}" postgres source under the same alias used during generation. Loads the postgres extension (idempotent) so callers need not rely on DuckDB autoloading. */
     public void {{functionName}}(String connectionString) throws SQLException {
         try (var stmt = connection.createStatement()) {
+            stmt.execute("INSTALL postgres");
+            stmt.execute("LOAD postgres");
             stmt.execute("ATTACH '" + connectionString + "' AS {{alias}} (TYPE postgres)");
         }
     }

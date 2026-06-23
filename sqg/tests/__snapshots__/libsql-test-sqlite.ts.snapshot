@@ -245,10 +245,7 @@ export class TestSqlite {
   }
   async userSummaryOne(): Promise<{ name: string; email: string | null }[]> {
     const result = await this.client.execute({
-      sql: `SELECT name, email FROM users WHERE id = '1';
-
- 
- `,
+      sql: `SELECT name, email FROM users WHERE id = '1';`,
       args: [] as InArgs,
     });
     return result.rows as unknown[] as { name: string; email: string | null }[];

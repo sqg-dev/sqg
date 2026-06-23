@@ -348,10 +348,29 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
         }
 
         trim() {
-          const lastPart =
-            this.sqlParts.length > 0 ? this.sqlParts[this.sqlParts.length - 1] : null;
-          if (lastPart && typeof lastPart === "string") {
-            this.sqlParts[this.sqlParts.length - 1] = lastPart.trimEnd();
+          // Strip whitespace left over after annotation comments are removed
+          // (each is replaced by a " " part, leaving surrounding newlines in the
+          // adjacent text parts). Operating on the parts themselves keeps every
+          // rendering path clean — the joined `sql` string AND `sqlParts` (used
+          // by the Java/TS template-literal renderers).
+          const isBlankString = (p: SqlQueryPart) => typeof p === "string" && p.trim() === "";
+          // Leading: drop blank-only string parts, then trimStart the first text.
+          while (this.sqlParts.length > 0 && isBlankString(this.sqlParts[0])) {
+            this.sqlParts.shift();
+          }
+          if (this.sqlParts.length > 0 && typeof this.sqlParts[0] === "string") {
+            this.sqlParts[0] = (this.sqlParts[0] as string).trimStart();
+          }
+          // Trailing: symmetric.
+          while (
+            this.sqlParts.length > 0 &&
+            isBlankString(this.sqlParts[this.sqlParts.length - 1])
+          ) {
+            this.sqlParts.pop();
+          }
+          const lastIdx = this.sqlParts.length - 1;
+          if (lastIdx >= 0 && typeof this.sqlParts[lastIdx] === "string") {
+            this.sqlParts[lastIdx] = (this.sqlParts[lastIdx] as string).trimEnd();
           }
         }
 

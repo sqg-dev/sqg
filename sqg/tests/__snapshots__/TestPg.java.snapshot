@@ -1471,11 +1471,7 @@ public class TestPg {
     public UserSummary userSummaryOne() throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                """
-                SELECT name, email FROM users WHERE id = 'test';
-
-
-                 """
+                "SELECT name, email FROM users WHERE id = 'test';"
             )
         ) {
             try (var rs = stmt.executeQuery()) {

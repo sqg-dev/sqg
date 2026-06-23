@@ -59,8 +59,10 @@ export class {{className}} {
     }
 
     {{#each attachers}}
-    /** Attach the "{{alias}}" postgres source under the same alias used during generation. */
+    /** Attach the "{{alias}}" postgres source under the same alias used during generation. Loads the postgres extension (idempotent) so callers need not rely on DuckDB autoloading. */
     async {{functionName}}(connectionString: string): Promise<void> {
+        await this.conn.run("INSTALL postgres");
+        await this.conn.run("LOAD postgres");
         await this.conn.run(`ATTACH '${connectionString}' AS {{alias}} (TYPE postgres)`);
     }
 

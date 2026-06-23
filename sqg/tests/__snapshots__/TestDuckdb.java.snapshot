@@ -659,9 +659,7 @@ public class TestDuckdb {
                 """
                 select * from actions
 
-                  where user_id =? and action =?;
-
-                 """
+                  where user_id =? and action =?;"""
             )
         ) {
             if (user_id != null) stmt.setInt(1, user_id);
@@ -708,9 +706,7 @@ public class TestDuckdb {
             """
             select * from actions
 
-              where user_id =? and action =?;
-
-             """
+              where user_id =? and action =?;"""
         );
         if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
         if (user_id != null) stmt.setInt(1, user_id);
@@ -841,7 +837,7 @@ public class TestDuckdb {
     public List<TestResult> test(Integer a) throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "select 1 as n where? ::int is null; "
+                "select 1 as n where? ::int is null;"
             )
         ) {
             if (a != null) stmt.setInt(1, a);
@@ -864,7 +860,7 @@ public class TestDuckdb {
     public Stream<TestResult> testStream(Integer a, StreamOptions options)
         throws SQLException {
         var stmt = connection.prepareStatement(
-            "select 1 as n where? ::int is null; "
+            "select 1 as n where? ::int is null;"
         );
         if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
         if (a != null) stmt.setInt(1, a);
@@ -974,9 +970,7 @@ public class TestDuckdb {
     public record Test3Result(String b, Integer a) {}
 
     public List<Test3Result> test3() throws SQLException {
-        try (
-            var stmt = connection.prepareStatement("select '--ok' b,2 as a ")
-        ) {
+        try (var stmt = connection.prepareStatement("select '--ok' b,2 as a")) {
             try (var rs = stmt.executeQuery()) {
                 var results = new ArrayList<Test3Result>();
                 while (rs.next()) {
@@ -998,7 +992,7 @@ public class TestDuckdb {
 
     public Stream<Test3Result> test3Stream(StreamOptions options)
         throws SQLException {
-        var stmt = connection.prepareStatement("select '--ok' b,2 as a ");
+        var stmt = connection.prepareStatement("select '--ok' b,2 as a");
         if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
@@ -1416,9 +1410,7 @@ public class TestDuckdb {
     public List<TestMap2Result> testMap2() throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                """
-
-                select props: MAP { 1 : 2 }"""
+                "select props: MAP { 1 : 2 }"
             )
         ) {
             try (var rs = stmt.executeQuery()) {
@@ -1437,11 +1429,7 @@ public class TestDuckdb {
 
     public Stream<TestMap2Result> testMap2Stream(StreamOptions options)
         throws SQLException {
-        var stmt = connection.prepareStatement(
-            """
-
-            select props: MAP { 1 : 2 }"""
-        );
+        var stmt = connection.prepareStatement("select props: MAP { 1 : 2 }");
         if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
@@ -1487,9 +1475,7 @@ public class TestDuckdb {
     public List<TestMap3Result> testMap3() throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                """
-
-                select props: MAP { [1] : 2 }"""
+                "select props: MAP { [1] : 2 }"
             )
         ) {
             try (var rs = stmt.executeQuery()) {
@@ -1508,11 +1494,7 @@ public class TestDuckdb {
 
     public Stream<TestMap3Result> testMap3Stream(StreamOptions options)
         throws SQLException {
-        var stmt = connection.prepareStatement(
-            """
-
-            select props: MAP { [1] : 2 }"""
-        );
+        var stmt = connection.prepareStatement("select props: MAP { [1] : 2 }");
         if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 
         var rs = stmt.executeQuery();
@@ -1952,9 +1934,7 @@ public class TestDuckdb {
     public TestNested2Result testNested2() throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                """
-                select {'x' : [{'a' : 1}]} as data
-                 """
+                "select {'x' : [{'a' : 1}]} as data"
             )
         ) {
             try (var rs = stmt.executeQuery()) {
@@ -1995,16 +1975,7 @@ public class TestDuckdb {
     public TestNested3Result testNested3() throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                """
-                select a:[1,2,3] ,b:2, c: {'x' : [{'a' : 1}], 'y' : {'z' : 3}}
-
-
-
-
-
-
-
-                 """
+                "select a:[1,2,3] ,b:2, c: {'x' : [{'a' : 1}], 'y' : {'z' : 3}}"
             )
         ) {
             try (var rs = stmt.executeQuery()) {
@@ -2110,9 +2081,7 @@ public class TestDuckdb {
     public List<TestAllTypesResult> testAllTypes() throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                """
-
-                select * from test_all_types();"""
+                "select * from test_all_types();"
             )
         ) {
             try (var rs = stmt.executeQuery()) {
@@ -2224,9 +2193,7 @@ public class TestDuckdb {
     public Stream<TestAllTypesResult> testAllTypesStream(StreamOptions options)
         throws SQLException {
         var stmt = connection.prepareStatement(
-            """
-
-            select * from test_all_types();"""
+            "select * from test_all_types();"
         );
         if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 

@@ -101,7 +101,32 @@ sources:
     type: postgres
 ```
 
-During generation SQG starts a throwaway Postgres testcontainer, applies these `:source=prod` blocks to it **natively** (so introspection sees real Postgres types), attaches it into the DuckDB introspection connection as `prod`, and type-checks queries that read from `prod.public.…`. The container, schema, and generation-time `ATTACH` are not emitted. For runtime, SQG generates a typed `attach<Source>` helper (e.g. `attachProd(connectionString)`) so your application attaches the real database under the same alias. Requires Docker, and a `duckdb` generator. See the [Attach a Postgres database](/guides/attach-external-database/) recipe.
+During generation SQG starts a throwaway Postgres testcontainer, applies these `:source=prod` blocks to it **natively** (so introspection sees real Postgres types), attaches it into the DuckDB introspection connection as `prod`, and type-checks queries that read from `prod.public.…`. The container, schema, and generation-time `ATTACH` are not emitted. For runtime, SQG generates a typed `attach<Source>` helper (e.g. `attachProd(connectionString)`) so your application attaches the real database under the same alias. Requires Docker (or a [`url`](/guides/attach-external-database/#introspect-an-existing-database-instead-of-a-container) to introspect an existing database without Docker), and a `duckdb` generator. See the [Attach a Postgres database](/guides/attach-external-database/) recipe.
+
+#### File sources — `${sources_<name>}`
+
+A source **without** a `type` is a **file source**: a path exposed to your queries as an inlined `${sources_<name>}` variable (handy for `read_parquet`, `read_csv`, or a SQLite `ATTACH`).
+
+```yaml
+# sqg.yaml
+sources:
+  - path: $HOME/data/appinfo.parquet   # name derived from the basename -> ${sources_appinfo}
+  - name: events                       # explicit name -> ${sources_events}
+    path: ./data/events.parquet
+```
+
+```sql
+-- QUERY appInfo
+SELECT * FROM read_parquet(${sources_appinfo});
+```
+
+The variable name is `sources_` + the source `name`, or — when `name` is omitted — the file's basename without extension. Because the name then silently depends on the filename, prefer an explicit `name:` when the basename is ambiguous.
+
+**Runtime contract (identical across TypeScript, Java, and Python):** a `${sources_<name>}` reference becomes a **runtime method parameter** of string type; the generated SQL interpolates that argument into the query. The generation-time absolute path is used only to introspect types and is **never** baked into the generated code — so the artifact is portable and leaks no developer paths. Call the query with the path your application resolves at runtime:
+
+```typescript
+await db.appInfo('/srv/data/appinfo.parquet');   // the value is interpolated into the SQL
+```
 
 ### Built-in Migration Runner
 

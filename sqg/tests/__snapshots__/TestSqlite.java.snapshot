@@ -693,11 +693,7 @@ public class TestSqlite {
     public List<UserSummary> userSummaryOne() throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                """
-                SELECT name, email FROM users WHERE id = '1';
-
-
-                 """
+                "SELECT name, email FROM users WHERE id = '1';"
             )
         ) {
             try (var rs = stmt.executeQuery()) {
@@ -719,11 +715,7 @@ public class TestSqlite {
     public Stream<UserSummary> userSummaryOneStream(StreamOptions options)
         throws SQLException {
         var stmt = connection.prepareStatement(
-            """
-            SELECT name, email FROM users WHERE id = '1';
-
-
-             """
+            "SELECT name, email FROM users WHERE id = '1';"
         );
         if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
 

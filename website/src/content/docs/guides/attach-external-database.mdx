@@ -16,7 +16,7 @@ A **postgres source** solves this declaratively. During generation SQG:
 
 The container, the schema, and the synthesized `ATTACH` are **never** emitted into the generated code. At runtime your application attaches the **real** production database under the same alias — the [`BASELINE`](/guides/sql-syntax/#baseline) "schema owned elsewhere" contract.
 
-<Aside type="note">Requires Docker at generation time (reuses the same testcontainers integration as the Postgres generator). Only projects that declare a postgres source need it.</Aside>
+<Aside type="note">The container path requires Docker at generation time (reuses the same testcontainers integration as the Postgres generator). Only projects that declare a postgres source need it, and only the `sql` blocks whose queries actually reference the source are affected — see [Scoping](#sources-are-scoped-to-the-blocks-that-use-them). If Docker is unavailable, SQG fails fast with a pointed message; to introspect without Docker, point the source at an existing database with [`url`](#introspect-an-existing-database-instead-of-a-container).</Aside>
 
 ## Declare a postgres source
 
@@ -114,12 +114,37 @@ order = orders.get_order(42)
 
 The DSN never goes through SQG — you pass it in from your application's own config/environment, so dev and prod differ by environment alone with identical generated code. The string is interpolated into the `ATTACH` (DuckDB does not accept a bind parameter there), so treat it as trusted configuration.
 
+The helper runs `INSTALL postgres; LOAD postgres;` before the `ATTACH` (both idempotent), so it works even when DuckDB extension autoloading is disabled. `INSTALL` is a no-op once the extension is present; in a fully offline runtime, install the `postgres` extension into DuckDB ahead of time.
+
 Need more control than the helper offers (read-only, a [DuckDB secret](https://duckdb.org/docs/stable/core_extensions/postgres#configuration-and-secrets), or `ATTACH ''` reading `PGHOST`/`PGPORT`/`PGUSER`/`PGPASSWORD`/`PGDATABASE` from the environment)? Skip the helper and run your own `ATTACH … AS prod (TYPE postgres)` — just keep the `prod` alias.
 
 ## What must line up
 
 1. **Same catalog alias** — the source `name` and your runtime `ATTACH … AS <name>` must match; the generated SQL bakes in `<name>.public.<table>` literally.
 2. **Schema-qualified path** — Postgres tables live under `public`, so queries read `prod.public.<table>`.
+
+## Sources are scoped to the blocks that use them
+
+A postgres source is **project-level**, but it only affects the `sql` blocks whose queries actually reference it (via a `:source=<name>` BASELINE or a `<name>.` catalog reference). Adding a source used by one block leaves every other block's generated code **byte-identical** — unrelated generators don't get an `attach<Source>` helper, and SQG won't start a container while processing them. Put differently: a generator gets the helper only if its SQL talks to the source.
+
+## Introspect an existing database instead of a container
+
+Set `url` on a postgres source to introspect against an **existing** database (a dev/staging Postgres) instead of a throwaway container:
+
+```yaml title="sqg.yaml"
+sources:
+  - name: prod
+    type: postgres
+    url: $DATABASE_URL   # literal DSN, or $ENV_VAR / ${ENV_VAR} read from the environment
+```
+
+With `url` set, SQG:
+
+- **does not start Docker** — useful in CI or any Docker-less environment, and ~2–3s faster per run;
+- uses the database's **real, live schema** for introspection, so it cannot drift from a hand-maintained mirror;
+- **ignores** the source's `:source=<name>` BASELINE blocks (the live schema wins). You can drop them, or keep them as documentation.
+
+A `url` of the form `$VAR` or `${VAR}` is read from the environment so credentials stay out of `sqg.yaml`; any other value is treated as a literal DSN. The generated runtime helper is unchanged — only generation-time introspection differs. Point `url` at a database that mirrors production's schema (a migrated dev DB), never at production itself.
 
 ## Lower-level alternative: a manual `BASELINE` attach
 
@@ -134,7 +159,7 @@ CREATE SCHEMA prod.public;
 CREATE TABLE prod.public.orders (id BIGINT, customer VARCHAR, total DECIMAL(10,2), created_at TIMESTAMP);
 ```
 
-This needs no Docker and runs anywhere, but you get **DuckDB-native** types during introspection rather than real Postgres types, and you maintain the schema in DuckDB DDL. Prefer a postgres source when type fidelity matters. (You can also point the `BASELINE` `ATTACH` at a live Postgres you manage yourself — SQG will introspect against it, but then a reachable database is required at generation time.)
+This needs no Docker and runs anywhere, but you get **DuckDB-native** types during introspection rather than real Postgres types, and you maintain the schema in DuckDB DDL. Prefer a postgres source when type fidelity matters. To stay Docker-free *and* keep real Postgres types, give the postgres source a [`url`](#introspect-an-existing-database-instead-of-a-container) pointing at a database you manage — SQG introspects against it directly (a reachable database is then required at generation time).
 
 <Aside type="tip">
 `BASELINE` blocks run **before** `MIGRATE` blocks. You can read from an attached source *and* own additional tables via `MIGRATE` — those `MIGRATE` tables **are** emitted into `getMigrations()`. See the [SQL Syntax reference](/guides/sql-syntax/#baseline).

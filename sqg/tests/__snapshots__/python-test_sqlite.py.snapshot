@@ -320,20 +320,14 @@ SELECT name as class, email as type FROM users WHERE id = '1'""", ()
     def user_summary_one(self) -> list[UserSummaryOneRow]:
         rows = self._conn.execute(
             """\
-SELECT name, email FROM users WHERE id = '1';
-
- 
- """, ()
+SELECT name, email FROM users WHERE id = '1';""", ()
         ).fetchall()
         return [UserSummaryOneRow(name=row[0], email=row[1]) for row in rows]
 
     def user_summary_one_raw(self) -> list[tuple[Any, ...]]:
         return self._conn.execute(
             """\
-SELECT name, email FROM users WHERE id = '1';
-
- 
- """, ()
+SELECT name, email FROM users WHERE id = '1';""", ()
         ).fetchall()
 
     def user_summary_all(self) -> list[UserSummaryAllRow]:

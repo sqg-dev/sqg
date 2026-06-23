@@ -29,6 +29,23 @@ describe("sqg postgres source", () => {
     }
   }, 90_000);
 
+  it("scopes the attach helper to only the sql blocks that reference the source", async () => {
+    const files = await processProject("tests/test-postgres-source-scoped.yaml");
+    const byName = new Map(files.map((f) => [basename(f), readFileSync(f, "utf-8")]));
+
+    // The block whose SQL references prod gets the attach helper.
+    const uses = byName.get("test-postgres-source.ts")!;
+    expect(uses).toMatch(/attachProd/);
+
+    // The unrelated block must stay byte-identical to a no-sources project: no
+    // attach helper, no leaked DSN. This is the core of Issue 1 — adding a
+    // source for one block must not change another block's generated code.
+    const unrelated = byName.get("test-no-source.ts")!;
+    expect(unrelated).not.toMatch(/attachProd/i);
+    expect(unrelated).not.toMatch(/TYPE postgres/);
+    expect(unrelated).not.toMatch(/postgresql:\/\//);
+  }, 90_000);
+
   it("errors when a postgres source has no DuckDB generator", async () => {
     await expect(processProject("tests/test-postgres-source-bad.yaml")).rejects.toThrow(
       /Postgres sources require a DuckDB generator/,

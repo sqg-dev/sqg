@@ -1,0 +1,21 @@
+version: 1
+
+name: test-postgres-source-scoped
+
+# Two sql blocks share one top-level postgres source. Only the first block's SQL
+# references `prod`; the second must not get the attachProd() helper.
+sql:
+  - files:
+      - test-postgres-source.sql
+    gen:
+      - generator: typescript/duckdb
+        output: /tmp/sqg-scoped-uses/
+  - files:
+      - test-no-source.sql
+    gen:
+      - generator: typescript/duckdb
+        output: /tmp/sqg-scoped-unrelated/
+
+sources:
+  - name: prod
+    type: postgres

@@ -228,9 +228,11 @@ public class TestPostgresSource {
         }
     }
 
-    /** Attach the "prod" postgres source under the same alias used during generation. */
+    /** Attach the "prod" postgres source under the same alias used during generation. Loads the postgres extension (idempotent) so callers need not rely on DuckDB autoloading. */
     public void attachProd(String connectionString) throws SQLException {
         try (var stmt = connection.createStatement()) {
+            stmt.execute("INSTALL postgres");
+            stmt.execute("LOAD postgres");
             stmt.execute(
                 "ATTACH '" + connectionString + "' AS prod (TYPE postgres)"
             );

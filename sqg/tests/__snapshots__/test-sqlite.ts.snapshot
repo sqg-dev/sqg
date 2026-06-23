@@ -222,10 +222,7 @@ export class TestSqlite {
   userSummaryOne(): { name: string; email: string | null }[] {
     const stmt = this.prepare<[], { name: string; email: string | null }>(
       "userSummaryOne",
-      `SELECT name, email FROM users WHERE id = '1';
-
- 
- `,
+      `SELECT name, email FROM users WHERE id = '1';`,
     );
     return stmt.all();
   }

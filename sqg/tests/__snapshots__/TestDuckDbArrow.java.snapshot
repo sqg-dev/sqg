@@ -254,9 +254,7 @@ public class TestDuckDbArrow {
             """
             select * from actions
 
-              where user_id =? and action =?;
-
-             """
+              where user_id =? and action =?;"""
         );
         stmt.setObject(1, user_id);
         stmt.setObject(2, action);
@@ -342,7 +340,7 @@ public class TestDuckDbArrow {
     public TestResult test(Integer a) throws SQLException, IOException {
         var stmt = connection.prepareStatement(
             """
-            select 1 as n where ? ::int is null; """
+            select 1 as n where ? ::int is null;"""
         );
         stmt.setObject(1, a);
         var rs = (DuckDBResultSet) stmt.executeQuery();
@@ -422,7 +420,7 @@ public class TestDuckDbArrow {
     public Test3Result test3() throws SQLException, IOException {
         var stmt = connection.prepareStatement(
             """
-            select '--ok' b,2 as a """
+            select '--ok' b,2 as a"""
         );
         var rs = (DuckDBResultSet) stmt.executeQuery();
         var allocator = new RootAllocator();

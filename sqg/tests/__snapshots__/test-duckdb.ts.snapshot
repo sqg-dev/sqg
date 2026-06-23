@@ -295,9 +295,7 @@ CREATE TABLE tasks (
   > {
     const sql = `select * from actions 
  
-  where user_id =? and action =?;
-
- `;
+  where user_id =? and action =?;`;
     const reader = await this.conn.runAndReadAll(sql, [user_id, action]);
     return reader.getRowObjects() as {
       id: number | null;
@@ -321,7 +319,7 @@ CREATE TABLE tasks (
   }
 
   async test(a: number): Promise<{ n: number | null }[]> {
-    const sql = "select 1 as n where ? ::int is null; ";
+    const sql = "select 1 as n where ? ::int is null;";
     const reader = await this.conn.runAndReadAll(sql, [a]);
     return reader.getRowObjects() as { n: number | null }[];
   }
@@ -333,7 +331,7 @@ CREATE TABLE tasks (
   }
 
   async test3(): Promise<{ b: string | null; a: number | null }[]> {
-    const sql = `select '--ok' b,2 as a `;
+    const sql = `select '--ok' b,2 as a`;
     const reader = await this.conn.runAndReadAll(sql, []);
     return reader.getRowObjects() as { b: string | null; a: number | null }[];
   }
@@ -389,8 +387,7 @@ CREATE TABLE tasks (
   async testMap2(): Promise<
     { props: { entries: { key: number | null; value: number | null }[] } }[]
   > {
-    const sql = ` 
-select props: MAP { 1 : 2 }`;
+    const sql = "select props: MAP { 1 : 2 }";
     const reader = await this.conn.runAndReadAll(sql, []);
     return reader.getRowObjects() as {
       props: { entries: { key: number | null; value: number | null }[] };
@@ -404,8 +401,7 @@ select props: MAP { 1 : 2 }`;
       };
     }[]
   > {
-    const sql = ` 
-select props: MAP { [1] : 2 }`;
+    const sql = "select props: MAP { [1] : 2 }";
     const reader = await this.conn.runAndReadAll(sql, []);
     return reader.getRowObjects() as {
       props: {
@@ -588,8 +584,7 @@ select props: MAP { [1] : 2 }`;
       }
     | undefined
   > {
-    const sql = `select {'x' : [{'a' : 1}]} as data
- `;
+    const sql = `select {'x' : [{'a' : 1}]} as data`;
     const reader = await this.conn.runAndReadAll(sql, []);
     return reader.getRowObjects()[0] as
       | {
@@ -613,15 +608,7 @@ select props: MAP { [1] : 2 }`;
       }
     | undefined
   > {
-    const sql = `select a:[1,2,3] ,b:2, c: {'x' : [{'a' : 1}], 'y' : {'z' : 3}}
-
-
- 
- 
-
-
- 
- `;
+    const sql = `select a:[1,2,3] ,b:2, c: {'x' : [{'a' : 1}], 'y' : {'z' : 3}}`;
     const reader = await this.conn.runAndReadAll(sql, []);
     return reader.getRowObjects()[0] as
       | {
@@ -1015,8 +1002,7 @@ select props: MAP { [1] : 2 }`;
       time_ns: string | null;
     }[]
   > {
-    const sql = ` 
-select * from test_all_types();`;
+    const sql = "select * from test_all_types();";
     const reader = await this.conn.runAndReadAll(sql, []);
     return reader.getRowObjects() as {
       bool: boolean | null;

@@ -7,7 +7,7 @@ test:
 push: test
   pnpm build
   rm -rf deploy
-  pnpm deploy --filter editor --prod deploy
+  pnpm deploy --legacy --filter editor --prod deploy
   echo "push to $TARGET"
   rsync -az --delete  --chown=$OWNER deploy/ $TARGET
   rsync -L -azc --chown=$OWNER .env.production $TARGET/.env

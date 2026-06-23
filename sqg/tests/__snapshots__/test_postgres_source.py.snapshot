@@ -62,7 +62,13 @@ class TestPostgresSource:
             raise
 
     def attach_prod(self, connection_string: str) -> None:
-        """Attach the "prod" postgres source under the same alias used during generation."""
+        """Attach the "prod" postgres source under the same alias used during generation.
+
+        Loads the postgres extension (idempotent) so callers need not rely on
+        DuckDB autoloading.
+        """
+        self._conn.execute("INSTALL postgres")
+        self._conn.execute("LOAD postgres")
         self._conn.execute(f"ATTACH '{connection_string}' AS prod (TYPE postgres)")
 
     def get_order(self, id: int) -> GetOrderRow | None:
