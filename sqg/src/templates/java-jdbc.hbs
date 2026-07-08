@@ -41,10 +41,24 @@ import java.io.IOException;
 
 public class {{className}} {
     private final Connection connection;
+    {{#if (observerEnabled)}}
+    private final SqgObserver observer;
+    {{/if}}
 
     public {{className}}(Connection connection) {
         this.connection = connection;
+        {{#if (observerEnabled)}}
+        this.observer = null;
+        {{/if}}
     }
+    {{#if (observerEnabled)}}
+
+    /** Construct with an instrumentation observer invoked around every generated operation. */
+    public {{className}}(Connection connection, SqgObserver observer) {
+        this.connection = connection;
+        this.observer = observer;
+    }
+    {{/if}}
 
     /** Options for streaming queries. fetchSize hints at the JDBC driver's batch size; 0 means driver default. */
     public record StreamOptions(int fetchSize) {
@@ -238,38 +252,83 @@ public class {{className}} {
     {{#unless skipGenerateFunction}}
     {{>columnTypesRecord}}
     public {{> returnType}} {{functionName}}({{#each variables}}{{{type}}} {{name}}{{#unless @last}}, {{/unless}}{{/each}}) throws SQLException {
+        {{#if (observerEnabled)}}
+        SqgObserver.Scope __obs = observer == null ? null : observer.start("{{functionName}}");
+        long __rows = -1; Throwable __err = null;
+        try {
+        {{/if}}
         try (var stmt = connection.prepareStatement({{{partsToString sqlQueryParts}}})) {
             {{> execute}}
         }
+        {{#if (observerEnabled)}}
+        } catch (SQLException __e) { __err = __e; throw __e; }
+        finally { if (__obs != null) __obs.end(__rows, __err); }
+        {{/if}}
     }
     {{#if isBatch}}
     {{#if (hasMultipleParams variables)}}
     public record {{batchParamsType}}({{#each variables}}{{{type}}} {{name}}{{#unless @last}}, {{/unless}}{{/each}}) {}
 
     public int[] {{functionName}}Batch(Iterable<{{batchParamsType}}> params) throws SQLException {
+        {{#if (observerEnabled)}}
+        SqgObserver.Scope __obs = observer == null ? null : observer.start("{{functionName}}Batch");
+        long __rows = -1; Throwable __err = null;
+        try {
+        {{/if}}
         try (var stmt = connection.prepareStatement({{{partsToString sqlQueryParts}}})) {
+            {{#if (observerEnabled)}}
+            long __n = 0;
+            {{/if}}
             for (var row : params) {
                 {{#each parameters}}{{#if isArray}}stmt.setArray({{plusOne @index}}, connection.createArrayOf("{{arrayBaseType}}", row.{{name}}().toArray()));
                 {{else if isEnum}}stmt.setObject({{plusOne @index}}, row.{{name}}().getValue());
                 {{else}}{{{jdbcSet type (plusOne @index) (concat "row." name "()")}}}
                 {{/if}}{{/each}}
                 stmt.addBatch();
+                {{#if (observerEnabled)}}
+                __n++;
+                {{/if}}
             }
+            {{#if (observerEnabled)}}
+            __rows = __n;
+            {{/if}}
             return stmt.executeBatch();
         }
+        {{#if (observerEnabled)}}
+        } catch (SQLException __e) { __err = __e; throw __e; }
+        finally { if (__obs != null) __obs.end(__rows, __err); }
+        {{/if}}
     }
     {{else}}
     public int[] {{functionName}}Batch(Iterable<{{#each variables}}{{{type}}}{{/each}}> params) throws SQLException {
+        {{#if (observerEnabled)}}
+        SqgObserver.Scope __obs = observer == null ? null : observer.start("{{functionName}}Batch");
+        long __rows = -1; Throwable __err = null;
+        try {
+        {{/if}}
         try (var stmt = connection.prepareStatement({{{partsToString sqlQueryParts}}})) {
+            {{#if (observerEnabled)}}
+            long __n = 0;
+            {{/if}}
             for (var value : params) {
                 {{#each parameters}}{{#if isArray}}stmt.setArray({{plusOne @index}}, connection.createArrayOf("{{arrayBaseType}}", value.toArray()));
                 {{else if isEnum}}stmt.setObject({{plusOne @index}}, value.getValue());
                 {{else}}{{{jdbcSet type (plusOne @index) "value"}}}
                 {{/if}}{{/each}}
                 stmt.addBatch();
+                {{#if (observerEnabled)}}
+                __n++;
+                {{/if}}
             }
+            {{#if (observerEnabled)}}
+            __rows = __n;
+            {{/if}}
             return stmt.executeBatch();
         }
+        {{#if (observerEnabled)}}
+        } catch (SQLException __e) { __err = __e; throw __e; }
+        finally { if (__obs != null) __obs.end(__rows, __err); }
+        {{/if}}
     }
     {{/if}}
     {{/if}}
@@ -279,6 +338,10 @@ public class {{className}} {
     }
 
     public Stream<{{rowType}}> {{functionName}}Stream({{#each variables}}{{{type}}} {{name}}, {{/each}}StreamOptions options) throws SQLException {
+        {{#if (observerEnabled)}}
+        SqgObserver.Scope __obs = observer == null ? null : observer.start("{{functionName}}Stream");
+        try {
+        {{/if}}
         {{#if (isPostgres)}}
         boolean wasAutoCommit = connection.getAutoCommit();
         if (wasAutoCommit) connection.setAutoCommit(false);
@@ -290,6 +353,9 @@ public class {{className}} {
         {{else}}{{{jdbcSet type (plusOne @index) name}}}
         {{/if}}{{/each}}
         var rs = stmt.executeQuery();
+        {{#if (observerEnabled)}}
+        final long[] __count = { 0 };
+        {{/if}}
         var iter = new Iterator<{{rowType}}>() {
             private Boolean hasNext = null;
             public boolean hasNext() {
@@ -302,7 +368,7 @@ public class {{className}} {
             public {{rowType}} next() {
                 if (!hasNext()) throw new NoSuchElementException();
                 hasNext = null;
-                try { return {{> readRow}}; }
+                try { {{#if (observerEnabled)}}__count[0]++; {{/if}}return {{> readRow}}; }
                 catch (SQLException e) { throw new RuntimeException(e); }
             }
         };
@@ -315,9 +381,18 @@ public class {{className}} {
                 {{#if (isPostgres)}}
                 if (wasAutoCommit) connection.setAutoCommit(true);
                 {{/if}}
+                {{#if (observerEnabled)}}
+                if (__obs != null) __obs.end(__count[0], null);
+                {{/if}}
             }
-            catch (SQLException e) { throw new RuntimeException(e); }
+            catch (SQLException e) {
+                {{#if (observerEnabled)}}if (__obs != null) __obs.end(__count[0], e);{{/if}}
+                throw new RuntimeException(e);
+            }
         });
+        {{#if (observerEnabled)}}
+        } catch (SQLException __e) { if (__obs != null) __obs.end(-1, __e); throw __e; }
+        {{/if}}
     }
     {{/unless}}{{/if}}
     {{/unless}}
@@ -437,16 +512,31 @@ int
 {{#if isQuery}}
 try(var rs = stmt.executeQuery()) {
 {{#if isOne}}
-        return rs.next() ? {{> readRow}} : null;    
+{{#if (observerEnabled)}}
+        var __one = rs.next() ? {{> readRow}} : null;
+        __rows = __one != null ? 1 : 0;
+        return __one;
+{{else}}
+        return rs.next() ? {{> readRow}} : null;
+{{/if}}
 {{else}}
 var results = new ArrayList<{{rowType}}>();
 while (rs.next()) {
     results.add({{> readRow}});
 }
+{{#if (observerEnabled)}}
+__rows = results.size();
+{{/if}}
 return results;
 {{/if}}
 }
 {{else}}
+{{#if (observerEnabled)}}
+int __updated = stmt.executeUpdate();
+__rows = __updated;
+return __updated;
+{{else}}
 return stmt.executeUpdate();
+{{/if}}
 {{/if}}
 {{/inline}}

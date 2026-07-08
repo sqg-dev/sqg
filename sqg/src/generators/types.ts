@@ -3,6 +3,12 @@ import type { ColumnInfo, ColumnType, SQLQuery, TableInfo } from "../sql-query.j
 import type { GeneratorConfig, SqlQueryStatement } from "../sqltool.js";
 import type { TypeMapper } from "../type-mapping.js";
 
+/** A support file emitted next to the main generated file. */
+export interface AuxiliaryFile {
+  filename: string;
+  content: string;
+}
+
 export interface Generator {
   getStatement(q: SQLQuery): SqlQueryStatement;
   getFunctionName(id: string): string;
@@ -33,6 +39,14 @@ export interface Generator {
    * @param outputPath - the path to the generated file
    */
   afterGenerate(outputPath: string): Promise<void>;
+
+  /**
+   * Extra support files to emit alongside the main generated file, into the
+   * same output directory (e.g. a shared `SqgObserver.java` interface). Written
+   * once per generation; identical content across SQL files is de-duplicated by
+   * the caller. Returns an empty list by default.
+   */
+  auxiliaryFiles(gen: GeneratorConfig): AuxiliaryFile[];
   beforeGenerate(
     projectDir: string,
     gen: GeneratorConfig,

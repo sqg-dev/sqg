@@ -31,7 +31,7 @@ test-python:
 
 # Generate all code from test SQL files
 [group("generate")]
-generate: build-duckdb build-duckdb-arrow build-pg build-sqlite build-sources build-baseline-attach build-postgres-source
+generate: build-duckdb build-duckdb-arrow build-pg build-sqlite build-sources build-baseline-attach build-postgres-source build-observer
 
 # Generate all code (CI alias)
 [group("generate")]
@@ -71,6 +71,11 @@ build-baseline-attach:
 [group("generate")]
 build-postgres-source:
   pnpm sqg tests/test-postgres-source.yaml
+
+# Generate observer/instrumentation test code (DuckDB JDBC + observer seam)
+[group("generate")]
+build-observer:
+  pnpm sqg tests/test-observer.yaml
 
 # ─── Services ───────────────────────────────────────────────────
 

@@ -90,6 +90,7 @@ sql:
 **Config options:**
 - `package` - Java package name for generated classes
 - `migrations` - When `true`, generates an `applyMigrations()` method with built-in tracking
+- `observer` - When `true`, generates an optional instrumentation hook around every query/exec (see [Instrumentation](#instrumentation-observability))
 
 ## Quick Start
 
@@ -227,6 +228,53 @@ Parameters are bound with typed JDBC setters (`setInt`, `setString`, `setLong`, 
 - `:batch` works for INSERT, UPDATE, and DELETE on any JDBC database.
 - For PostgreSQL INSERTs, add `?reWriteBatchedInserts=true` to your JDBC URL for ~2.5× throughput — the driver automatically rewrites batches into multi-VALUES statements.
 - For the fastest PostgreSQL INSERTs, use [`TABLE ... :appender`](#bulk-inserts-postgresql) (COPY BINARY) instead — typically 5–20× faster than `:batch`. See the [PostgreSQL insert benchmark](/blog/java-postgres-insert-benchmark/) for the numbers.
+
+## Instrumentation (observability)
+
+Set `observer: true` to generate an optional hook invoked around every generated query and exec, so you can add tracing spans, timers, or logging without hand-editing generated code. The hook is **opt-in** — with `observer` unset the generated code is byte-identical to before, with zero overhead.
+
+```yaml
+gen:
+  - generator: java/postgres
+    output: ./src/main/java/com/myapp/db/
+    config:
+      package: com.myapp.db
+      observer: true
+```
+
+This emits a shared `SqgObserver.java` interface next to the generated class (same package) and adds a second constructor that accepts one:
+
+```java
+@FunctionalInterface
+public interface SqgObserver {
+    /** Called before each operation; return a handle for it, or null to ignore. */
+    Scope start(String queryName);
+
+    @FunctionalInterface
+    interface Scope {
+        /** rowCount = affected/returned rows (-1 if n/a); error = null on success. */
+        void end(long rowCount, Throwable error);
+    }
+}
+```
+
+The observer carries the **logical query name** (e.g. `trackedKeywordsWithRanks`), not raw SQL — so spans and metrics stay readable and low-cardinality. Bind it to your tracing library of choice; SQG depends on none:
+
+```java
+SqgObserver observer = queryName -> {
+    var span = tracer.startScopedSpan(queryName);
+    return (rows, err) -> {
+        if (rows >= 0) span.tag("rows", Long.toString(rows));
+        if (err != null) span.error(err);
+        span.finish();
+    };
+};
+
+// Existing no-arg constructor still works (observer defaults to none):
+var queries = new KeywordRanksSql(connection, observer);
+```
+
+**Coverage:** every `QUERY` (single, list, and `...Stream()` — the completion callback fires when the stream closes, so streamed reads are timed to completion), every `EXEC` (row count = affected rows), and `:batch` methods (row count = rows submitted). The callback always runs in a `finally`, and on failure `end` receives the `Throwable`. Migrations and appenders are not instrumented.
 
 ## PostgreSQL
 

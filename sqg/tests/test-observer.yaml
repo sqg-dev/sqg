@@ -1,0 +1,14 @@
+version: 1
+
+name: test-observer
+
+sql:
+  - files:
+      - test-observer.sql
+    gen:
+      - generator: java/duckdb
+        output: ../java/src/main/java/sqg/generated/
+        config:
+          package: sqg.generated
+          migrations: true
+          observer: true

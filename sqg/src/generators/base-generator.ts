@@ -2,7 +2,7 @@ import type { DbEngine } from "../constants.js";
 import type { ColumnInfo, ColumnType, SQLQuery, TableInfo } from "../sql-query.js";
 import type { GeneratorConfig, SqlQueryStatement } from "../sqltool.js";
 import type { TypeMapper } from "../type-mapping.js";
-import type { Generator } from "./types.js";
+import type { AuxiliaryFile, Generator } from "./types.js";
 
 export abstract class BaseGenerator implements Generator {
   constructor(
@@ -25,6 +25,9 @@ export abstract class BaseGenerator implements Generator {
     return this.typeMapper.listType(column);
   }
   abstract afterGenerate(outputPath: string): Promise<void>;
+  auxiliaryFiles(_gen: GeneratorConfig): AuxiliaryFile[] {
+    return [];
+  }
   async beforeGenerate(
     _projectDir: string,
     _gen: GeneratorConfig,

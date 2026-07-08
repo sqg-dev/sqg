@@ -288,6 +288,15 @@ Modifiers:
                 Exception: SELECT * matching a -- TABLE schema (same columns,
                 same order) auto-uses the table's row type with no annotation.
 
+Generator config (sqg.yaml, under gen[].config):
+  package       Java package name for generated classes (Java only)
+  migrations    true → generate applyMigrations() with built-in tracking
+  observer      true → generate an optional instrumentation hook (Java only).
+                Emits a shared SqgObserver interface + a (Connection, SqgObserver)
+                constructor; the hook wraps every QUERY/EXEC/:batch with a
+                start(queryName) → Scope.end(rowCount, error) callback for
+                tracing/metrics/logging. Off by default (zero overhead, no diff).
+
 Example:
   -- MIGRATE 1
   CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT);

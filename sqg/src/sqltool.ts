@@ -924,7 +924,7 @@ export async function writeGeneratedFile(
   engine: DbEngine,
   writeToStdout = false,
   postgresSourceNames: string[] = [],
-): Promise<string | null> {
+): Promise<string[] | null> {
   await generator.beforeGenerate(projectDir, gen, queries, tables);
   const templateDir = dirname(new URL(import.meta.url).pathname);
   const templatePath = join(templateDir, gen.template ?? generator.template);
@@ -955,7 +955,18 @@ export async function writeGeneratedFile(
   const outputPath = getOutputPath(projectDir, name, gen, generator);
   writeFileSync(outputPath, sourceFile);
   await generator.afterGenerate(outputPath);
-  return outputPath;
+
+  // Emit any shared support files (e.g. the observer interface) into the same
+  // directory. Content is identical across SQL files sharing an output dir, so
+  // re-writing is harmless; the caller de-duplicates the returned paths.
+  const written = [outputPath];
+  const outputDir = dirname(outputPath);
+  for (const aux of generator.auxiliaryFiles(gen)) {
+    const auxPath = join(outputDir, aux.filename);
+    writeFileSync(auxPath, aux.content);
+    written.push(auxPath);
+  }
+  return written;
 }
 
 /**
@@ -1260,7 +1271,7 @@ export async function processProjectFromConfig(
           for (const gen of gens) {
             const generator = getGenerator(gen.generator);
             const genWithProject: GeneratorConfig = { ...gen, projectName: project.name };
-            const outputPath = await writeGeneratedFile(
+            const outputPaths = await writeGeneratedFile(
               projectDir,
               genWithProject,
               generator,
@@ -1271,10 +1282,14 @@ export async function processProjectFromConfig(
               writeToStdout,
               referencedPgSourceNames,
             );
-            if (outputPath !== null) {
-              files.push(outputPath);
+            if (outputPaths !== null) {
+              // outputPaths[0] is the main file; the rest are shared support
+              // files that may repeat across SQL files sharing an output dir.
+              for (const path of outputPaths) {
+                if (!files.includes(path)) files.push(path);
+              }
               results.push({
-                outputPath,
+                outputPath: outputPaths[0],
                 queryCount: executableQueries.length,
                 enumCount: countEnums(queries),
                 sqlFile,

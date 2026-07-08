@@ -59,6 +59,10 @@ describe("sqg", () => {
     it("handle baseline attach correctly", async () => {
       await handleProject("tests/test-baseline-attach.yaml", ["TestBaselineAttach.java"]);
     });
+
+    it("emits the observer seam and shared SqgObserver.java when opted in", async () => {
+      await handleProject("tests/test-observer.yaml", ["TestObserver.java", "SqgObserver.java"]);
+    });
   });
 
   describe("processProjectSqlite", () => {
