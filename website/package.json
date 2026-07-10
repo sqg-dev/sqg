@@ -17,6 +17,8 @@
     "@astrojs/starlight": "catalog:",
     "@biomejs/biome": "catalog:",
     "@epic-web/cachified": "catalog:",
+    "@fontsource-variable/inter": "^5.2.8",
+    "@fontsource-variable/jetbrains-mono": "^5.2.8",
     "astro": "catalog:",
     "astro-d2": "catalog:",
     "dockerode": "catalog:",

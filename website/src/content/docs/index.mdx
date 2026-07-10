@@ -1,9 +1,32 @@
 ---
-title: SQG - Compile SQL to Type-Safe Code
+title: Compile SQL to Type-Safe Code
 description: Generate type-safe database code from SQL queries for TypeScript, Java, and Python
 template: splash
 hero:
-  tagline: Write SQL. Get type-safe code. Ship faster.
+  title: Write SQL.<br />Get type-safe code.
+  tagline: SQG runs your queries against a real database at build time and generates fully typed access code for TypeScript, Java, and Python. No ORM. No query builder. No runtime overhead.
+  image:
+    html: |
+      <div class="pipe" aria-hidden="true">
+        <div class="pipe-box">
+          <span class="pipe-label">queries.sql</span>
+          <pre class="pipe-code"><b>-- QUERY</b> find_user <b>:one</b>
+      SELECT * FROM users
+      WHERE email = <b>${email}</b>;</pre>
+        </div>
+        <div class="pipe-step"><span>sqg build</span></div>
+        <div class="pipe-box">
+          <span class="pipe-label">introspect</span>
+          <pre class="pipe-code"><i>-></i> execute against the engine
+      <i>-></i> capture real column types</pre>
+        </div>
+        <div class="pipe-step"></div>
+        <div class="pipe-box">
+          <span class="pipe-label">generated</span>
+          <pre class="pipe-code">findUser(email: <b>string</b>)
+        : <b>User</b> | undefined</pre>
+        </div>
+      </div>
   actions:
     - text: Get Started
       link: /guides/getting-started/
@@ -14,7 +37,7 @@ hero:
       variant: primary
 ---
 
-import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+import { Card, CardGrid, LinkCard, Tabs, TabItem } from '@astrojs/starlight/components';
 
 ## SQL In, Type-Safe Code Out
 
@@ -28,20 +51,23 @@ SELECT * FROM users WHERE email = ${email};
 
 becomes
 
-```typescript
-// TypeScript
-findUser(email: string): User | undefined
-```
-
-```java
-// Java
-public UserRow findUser(String email) throws SQLException
-```
-
-```python
-# Python
-def find_user(self, email: str) -> FindUserRow | None
-```
+<Tabs syncKey="lang">
+  <TabItem label="TypeScript">
+    ```typescript
+    findUser(email: string): User | undefined
+    ```
+  </TabItem>
+  <TabItem label="Java">
+    ```java
+    public UserRow findUser(String email) throws SQLException
+    ```
+  </TabItem>
+  <TabItem label="Python">
+    ```python
+    def find_user(self, email: str) -> FindUserRow | None
+    ```
+  </TabItem>
+</Tabs>
 
 No ORMs. No query builders. Just SQL and types.
 

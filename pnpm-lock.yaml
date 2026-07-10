@@ -20,7 +20,7 @@ catalogs:
       version: 9.0.1
     '@biomejs/biome':
       specifier: 2.5.3
-      version: 2.5.3
+      version: 2.4.9
     '@clack/prompts':
       specifier: ^1.1.0
       version: 1.1.0
@@ -41,7 +41,7 @@ catalogs:
       version: 6.1.3
     '@codemirror/view':
       specifier: ^6.43.6
-      version: 6.43.6
+      version: 6.40.0
     '@duckdb/node-api':
       specifier: 1.5.1-r.1
       version: 1.5.1-r.1
@@ -80,7 +80,7 @@ catalogs:
       version: 7.0.0
     '@tailwindcss/vite':
       specifier: ^4.3.2
-      version: 4.3.2
+      version: 4.2.2
     '@tanstack/svelte-table':
       specifier: 9.0.0-alpha.10
       version: 9.0.0-alpha.10
@@ -191,10 +191,10 @@ catalogs:
       version: 0.27.0
     svelte:
       specifier: ^5.56.4
-      version: 5.56.4
+      version: 5.55.0
     tailwindcss:
       specifier: ^4.3.2
-      version: 4.3.2
+      version: 4.2.2
     tinybench:
       specifier: ^6.0.0
       version: 6.0.0
@@ -203,7 +203,7 @@ catalogs:
       version: 0.21.5
     tsx:
       specifier: ^4.23.0
-      version: 4.23.0
+      version: 4.21.0
     typescript:
       specifier: ^6.0.3
       version: 6.0.3
@@ -218,7 +218,7 @@ catalogs:
       version: 4.1.2
     yaml:
       specifier: ^2.9.0
-      version: 2.9.0
+      version: 2.8.3
     yocto-spinner:
       specifier: ^1.1.0
       version: 1.1.0
@@ -599,6 +599,12 @@ importers:
       '@epic-web/cachified':
         specifier: 'catalog:'
         version: 5.6.3
+      '@fontsource-variable/inter':
+        specifier: ^5.2.8
+        version: 5.2.8
+      '@fontsource-variable/jetbrains-mono':
+        specifier: ^5.2.8
+        version: 5.2.8
       astro:
         specifier: 'catalog:'
         version: 7.0.7(@astrojs/markdown-remark@7.2.1)(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.2)(@types/node@26.1.1)(jiti@2.7.0)(rollup@4.60.0)(tsx@4.23.0)(yaml@2.9.0)
@@ -1671,6 +1677,12 @@ packages:
 
   '@fastify/proxy-addr@5.1.0':
     resolution: {integrity: sha512-INS+6gh91cLUjB+PVHfu1UqcB76Sqtpyp7bnL+FYojhjygvOPA9ctiD/JDKsyD9Xgu4hUhCSJBPig/w7duNajw==}
+
+  '@fontsource-variable/inter@5.2.8':
+    resolution: {integrity: sha512-kOfP2D+ykbcX/P3IFnokOhVRNoTozo5/JxhAIVYLpea/UBmCQ/YWPBfWIDuBImXX/15KH+eKh4xpEUyS2sQQGQ==}
+
+  '@fontsource-variable/jetbrains-mono@5.2.8':
+    resolution: {integrity: sha512-WBA9elru6Jdp5df2mES55wuOO0WIrn3kpXnI4+W2ek5u3ZgLS9XS4gmIlcQhiZOWEKl95meYdvK7xI+ETLCq/Q==}
 
   '@grpc/grpc-js@1.14.3':
     resolution: {integrity: sha512-Iq8QQQ/7X3Sac15oB6p0FmUg/klxQvXLeileoqrTRGJYLV+/9tubbr9ipz0GKHjmXVsgFPo/+W+2cA8eNcR+XA==}
@@ -7351,6 +7363,10 @@ snapshots:
     dependencies:
       '@fastify/forwarded': 3.0.1
       ipaddr.js: 2.3.0
+
+  '@fontsource-variable/inter@5.2.8': {}
+
+  '@fontsource-variable/jetbrains-mono@5.2.8': {}
 
   '@grpc/grpc-js@1.14.3':
     dependencies:

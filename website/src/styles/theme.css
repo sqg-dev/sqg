@@ -1,0 +1,449 @@
+/*
+ * SQG theme — light-first, monospace-forward.
+ *
+ * Starlight ships dark tokens on `:root` and light tokens on
+ * `:root[data-theme='light']`, so both blocks below are required; neither is
+ * a fallback for the other.
+ */
+
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
+
+:root {
+	/*
+	 * Mono for what you look at (chrome, headings, code, data), sans for what
+	 * you read (prose). Setting mono as the body font cost too much readability
+	 * on the long guides.
+	 */
+	--sl-font: 'Inter Variable', ui-sans-serif, var(--sl-font-system);
+	--sl-font-mono: 'JetBrains Mono Variable', var(--sl-font-system-mono);
+	--sqg-mono: var(--sl-font-mono);
+
+	/* Warm amber, the single accent in an otherwise cool slate palette. */
+	--sqg-amber: 32 97% 72%;
+	--sqg-amber-ink: 12 81% 15%;
+
+	/* Dark theme (Starlight's default `:root`). */
+	--sl-color-accent-low: hsl(32 40% 16%);
+	--sl-color-accent: hsl(32 80% 52%);
+	--sl-color-accent-high: hsl(32 95% 80%);
+
+	--sl-color-white: hsl(0 0% 100%);
+	--sl-color-gray-1: hsl(210 20% 92%);
+	--sl-color-gray-2: hsl(214 16% 78%);
+	--sl-color-gray-3: hsl(214 14% 58%);
+	--sl-color-gray-4: hsl(215 15% 38%);
+	--sl-color-gray-5: hsl(217 20% 24%);
+	--sl-color-gray-6: hsl(219 26% 17%);
+	--sl-color-gray-7: hsl(220 30% 13%);
+	--sl-color-black: hsl(222 47% 11%);
+
+	--sl-color-bg: hsl(222 47% 11%);
+	--sl-color-bg-nav: hsl(222 44% 13%);
+	--sl-color-bg-sidebar: hsl(222 47% 11%);
+	--sl-color-bg-inline-code: hsl(217 25% 20%);
+	--sl-color-hairline: hsl(217 22% 22%);
+	--sl-color-hairline-light: hsl(217 22% 26%);
+	--sl-color-hairline-shade: hsl(222 40% 14%);
+
+	--sqg-glow: rgba(112, 145, 171, 0.22);
+	--sqg-grid: hsl(217 22% 22% / 0.55);
+	--sqg-panel: hsl(220 33% 8%);
+
+	/* Prose keeps Starlight's comfortable defaults; only code tightens up. */
+	--sl-text-code: 0.875rem;
+	--sl-line-height-headings: 1.25;
+}
+
+:root[data-theme='light'] {
+	--sl-color-accent-low: hsl(32 90% 90%);
+	--sl-color-accent: hsl(28 82% 46%);
+	--sl-color-accent-high: hsl(12 81% 22%);
+
+	--sl-color-white: hsl(222 47% 11%);
+	--sl-color-gray-1: hsl(222 40% 16%);
+	--sl-color-gray-2: hsl(215 22% 32%);
+	--sl-color-gray-3: hsl(215 16% 47%);
+	--sl-color-gray-4: hsl(214 18% 62%);
+	--sl-color-gray-5: hsl(214 26% 84%);
+	--sl-color-gray-6: hsl(210 33% 94%);
+	--sl-color-gray-7: hsl(210 38% 96%);
+	--sl-color-black: hsl(220 33% 98%);
+
+	--sl-color-bg: hsl(220 33% 98%);
+	--sl-color-bg-nav: hsl(220 33% 98% / 0.85);
+	--sl-color-bg-sidebar: hsl(220 33% 98%);
+	--sl-color-bg-inline-code: hsl(210 34% 93%);
+	--sl-color-hairline: hsl(214 26% 84%);
+	--sl-color-hairline-light: hsl(214 26% 88%);
+	--sl-color-hairline-shade: hsl(214 26% 90%);
+
+	--sqg-glow: rgba(112, 145, 171, 0.3);
+	--sqg-grid: hsl(214 26% 84% / 0.8);
+	--sqg-panel: hsl(0 0% 100%);
+}
+
+/* Amber text selection, echoing the reference. */
+::selection {
+	background: hsl(var(--sqg-amber) / 0.85);
+	color: hsl(var(--sqg-amber-ink));
+}
+
+/* ---------------------------------------------------------------------------
+ * Chrome — monospace lives here, and in code, headings and tabular data.
+ * ------------------------------------------------------------------------ */
+
+header.header,
+.sidebar-content,
+.site-title,
+.right-sidebar,
+.pagination-links,
+starlight-tabs,
+.sl-link-button {
+	font-family: var(--sqg-mono);
+}
+
+header.header {
+	backdrop-filter: blur(12px);
+	border-bottom: 1px solid var(--sl-color-hairline);
+}
+
+.sidebar-content a {
+	letter-spacing: -0.01em;
+	font-size: var(--sl-text-sm);
+}
+
+/* Sidebar group labels read as section markers, not sentences. */
+.sidebar-content summary,
+.sidebar-content > ul > li > details > summary > .group-label > span,
+.sidebar-content > ul > li > span.large {
+	text-transform: lowercase;
+	letter-spacing: 0.08em;
+	font-size: var(--sl-text-xs);
+	color: var(--sl-color-gray-3);
+}
+
+/* Active sidebar entry gets the amber tick. */
+.sidebar-content a[aria-current='page'] {
+	background: transparent;
+	color: var(--sl-color-white);
+	font-weight: 600;
+	box-shadow: inset 2px 0 0 hsl(var(--sqg-amber));
+}
+
+/* ---------------------------------------------------------------------------
+ * Typography
+ * ------------------------------------------------------------------------ */
+
+.sl-markdown-content h1,
+.sl-markdown-content h2,
+.sl-markdown-content h3,
+.sl-markdown-content h4,
+.sl-markdown-content h5,
+h1.hero-title,
+.content-panel h1 {
+	font-family: var(--sqg-mono);
+	letter-spacing: -0.02em;
+	font-weight: 600;
+}
+
+/* Prose stays sans, and wide enough to read comfortably. */
+.sl-markdown-content p,
+.sl-markdown-content li {
+	text-wrap: pretty;
+}
+
+/* Section headings get a dim `##`, the way they'd look in the source. */
+.sl-markdown-content h2::before {
+	content: '## ';
+	color: hsl(var(--sqg-amber));
+	opacity: 0.7;
+	font-weight: 400;
+}
+
+.sl-markdown-content h3::before {
+	content: '### ';
+	color: var(--sl-color-gray-4);
+	font-weight: 400;
+}
+
+.sl-markdown-content a:not(:where(.not-content *)) {
+	text-underline-offset: 0.25em;
+	text-decoration-thickness: 1px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Code, tables, cards
+ * ------------------------------------------------------------------------ */
+
+.expressive-code .frame {
+	border-radius: 0.5rem;
+	border: 1px solid var(--sl-color-hairline);
+	overflow: hidden;
+}
+
+.sl-markdown-content :not(pre) > code:not(:where(.not-content *)) {
+	border: 1px solid var(--sl-color-hairline);
+	border-radius: 0.25rem;
+	padding: 0.1em 0.35em;
+	font-weight: 500;
+}
+
+.sl-markdown-content table:not(:where(.not-content *)) {
+	border: 1px solid var(--sl-color-hairline);
+	border-radius: 0.5rem;
+	border-collapse: separate;
+	border-spacing: 0;
+	overflow: hidden;
+	width: 100%;
+}
+
+.sl-markdown-content table:not(:where(.not-content *)) th {
+	background: var(--sl-color-gray-7);
+	font-family: var(--sqg-mono);
+	text-transform: lowercase;
+	letter-spacing: 0.06em;
+	font-size: var(--sl-text-xs);
+	color: var(--sl-color-gray-2);
+}
+
+.sl-markdown-content table:not(:where(.not-content *)) :where(th, td) {
+	border: 0;
+	border-bottom: 1px solid var(--sl-color-hairline);
+	padding: 0.6rem 0.85rem;
+}
+
+.sl-markdown-content table:not(:where(.not-content *)) tr:last-child td {
+	border-bottom: 0;
+}
+
+.card {
+	border-radius: 0.5rem;
+	background: var(--sqg-panel);
+	transition: border-color 150ms ease, transform 150ms ease;
+}
+
+.card:hover {
+	border-color: hsl(var(--sqg-amber));
+	transform: translateY(-2px);
+}
+
+.card .icon {
+	color: hsl(var(--sqg-amber));
+}
+
+/* ---------------------------------------------------------------------------
+ * Hero (splash template) + the ASCII pipeline diagram
+ * ------------------------------------------------------------------------ */
+
+/*
+ * `isolation: isolate` makes .hero its own stacking context, so the z-index:-1
+ * pseudo-elements paint above `body`'s background-color rather than behind it.
+ * `overflow: clip` lets them bleed past the hero without adding a scrollbar.
+ */
+.hero {
+	position: relative;
+	isolation: isolate;
+	overflow: clip;
+}
+
+/* The hero headline stays mono — it's the loudest bit of character on the site. */
+.hero h1 {
+	font-family: var(--sqg-mono);
+	letter-spacing: -0.045em;
+	font-weight: 700;
+	text-wrap: balance;
+}
+
+/* The tagline is prose, so it reads in sans. */
+.hero .tagline {
+	color: var(--sl-color-gray-3);
+	text-wrap: pretty;
+	max-width: 46ch;
+}
+
+/* A cool radial glow behind the hero, as in the reference. */
+.hero::before {
+	content: '';
+	position: absolute;
+	inset-block-start: -40%;
+	inset-inline-start: 50%;
+	translate: -50% 0;
+	width: min(72rem, 140%);
+	aspect-ratio: 2 / 1;
+	background: radial-gradient(ellipse at center, var(--sqg-glow) 0%, transparent 68%);
+	pointer-events: none;
+	z-index: -1;
+}
+
+/* Faint blueprint grid, fading out at the edges. */
+.hero::after {
+	content: '';
+	position: absolute;
+	inset-block: -8rem -4rem;
+	inset-inline: -10%;
+	background-image: linear-gradient(to right, var(--sqg-grid) 1px, transparent 1px),
+		linear-gradient(to bottom, var(--sqg-grid) 1px, transparent 1px);
+	background-size: 64px 64px;
+	-webkit-mask-image: radial-gradient(ellipse 55% 60% at 50% 45%, black 0%, transparent 100%);
+	mask-image: radial-gradient(ellipse 55% 60% at 50% 45%, black 0%, transparent 100%);
+	pointer-events: none;
+	z-index: -2;
+}
+
+/* The diagram arrives via `hero.image.html`; give it the room it needs. */
+.hero > .hero-html {
+	width: 100%;
+	max-width: none;
+	justify-content: center;
+	/* Room for the dotted shadow, which overhangs by 0.5rem and would be clipped. */
+	padding: 0.75rem;
+}
+
+@media (min-width: 50rem) {
+	/* Default is 7fr 4fr; the pipeline cards need more than 4fr. */
+	.hero {
+		grid-template-columns: 6fr 5fr;
+	}
+
+	.hero > .hero-html {
+		order: 2;
+	}
+}
+
+/*
+ * The build pipeline: hard-bordered cards, each backed by an offset dotted
+ * panel. The offset shadow is a pseudo-element rather than `░` glyphs, so it
+ * stays crisp at any zoom and never breaks alignment.
+ */
+.pipe {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	max-width: 26rem;
+	margin-inline: auto;
+}
+
+.pipe-box {
+	position: relative;
+	border: 2px solid var(--sl-color-white);
+	background: var(--sqg-panel);
+	padding: 1.1rem 1.15rem;
+}
+
+/*
+ * Offset dotted panel behind each card. `.hero` is the stacking context
+ * (isolation: isolate), so z-index:-1 lands above the page background.
+ */
+.pipe-box::after {
+	content: '';
+	position: absolute;
+	inset: 0.5rem -0.5rem -0.5rem 0.5rem;
+	z-index: -1;
+	background-image: radial-gradient(currentColor 1px, transparent 1px);
+	background-size: 4px 4px;
+	color: var(--sl-color-gray-4);
+	opacity: 0.55;
+}
+
+/* Label chip straddling the top border. */
+.pipe-label {
+	position: absolute;
+	inset-block-start: -0.75rem;
+	inset-inline-start: 0.9rem;
+	padding: 0 0.4rem;
+	background: var(--sl-color-bg);
+	border: 2px solid var(--sl-color-white);
+	font-family: var(--sqg-mono);
+	font-size: var(--sl-text-xs);
+	line-height: 1.4;
+	color: var(--sl-color-white);
+}
+
+.pipe-code {
+	margin: 0;
+	background: none;
+	border: 0;
+	padding: 0;
+	font-family: var(--sqg-mono);
+	font-size: clamp(0.68rem, 1.05vw, 0.8rem);
+	line-height: 1.7;
+	white-space: pre;
+	overflow-x: auto;
+	color: var(--sl-color-gray-2);
+}
+
+.pipe-code b {
+	color: hsl(var(--sqg-amber));
+	font-weight: 500;
+}
+
+.pipe-code i {
+	color: var(--sl-color-gray-4);
+	font-style: normal;
+}
+
+/* Dashed connector between cards, with a downward tick. */
+.pipe-step {
+	position: relative;
+	height: 3.5rem;
+	display: grid;
+	place-items: center;
+}
+
+.pipe-step::before {
+	content: '';
+	position: absolute;
+	inset-block: 0;
+	inset-inline-start: 50%;
+	translate: -1px 0;
+	width: 2px;
+	background: repeating-linear-gradient(
+		to bottom,
+		var(--sl-color-gray-4) 0 4px,
+		transparent 4px 8px
+	);
+}
+
+.pipe-step::after {
+	content: '';
+	position: absolute;
+	inset-block-end: 0;
+	inset-inline-start: 50%;
+	translate: -50% 0;
+	border-inline: 5px solid transparent;
+	border-block-start: 6px solid var(--sl-color-gray-4);
+}
+
+.pipe-step span {
+	position: relative;
+	padding: 0 0.5rem;
+	background: var(--sl-color-bg);
+	font-family: var(--sqg-mono);
+	font-size: var(--sl-text-xs);
+	color: hsl(var(--sqg-amber));
+}
+
+/* Buttons: square-ish, mono, no gradient. */
+.sl-link-button {
+	border-radius: 0.375rem;
+	font-family: var(--sl-font-mono);
+	letter-spacing: -0.01em;
+}
+
+.sl-link-button.primary {
+	background: hsl(var(--sqg-amber));
+	border-color: hsl(var(--sqg-amber));
+	color: hsl(var(--sqg-amber-ink));
+}
+
+.sl-link-button.primary:hover {
+	background: hsl(32 97% 66%);
+	border-color: hsl(32 97% 66%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.card:hover {
+		transform: none;
+	}
+}

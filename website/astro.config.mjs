@@ -22,7 +22,12 @@ export default defineConfig({
   site: 'https://sqg.dev',
   integrations: [
     starlight({
-      title: "SQG - Compile SQL to Type-Safe Code",
+      title: "SQG",
+      description:
+        "Compile SQL to type-safe code. Generate database access code for TypeScript, Java, and Python from annotated SQL queries.",
+      logo: { src: "./src/assets/logo.svg" },
+      favicon: "/favicon.svg",
+      customCss: ["./src/styles/theme.css"],
       plugins: [starlightBlog()],
       social: [
         { icon: "external", label: "Playground", href: "/playground/" },
@@ -30,6 +35,9 @@ export default defineConfig({
       ],
       components: {
         Footer: "./src/components/Footer.astro",
+        // Light-first: seeds the stored theme so an untouched visitor gets light,
+        // not their OS scheme. ThemeSelect is left to starlight-blog.
+        ThemeProvider: "./src/components/ThemeProvider.astro",
       },
       editLink: {
         baseUrl: 'https://github.com/sqg-dev/sqg/edit/main/website/',
