@@ -556,7 +556,7 @@ public class TestPg {
     public Users6Result users6(String name) throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "SELECT * FROM users WHERE name =?"
+                "SELECT * FROM users WHERE name = ?"
             )
         ) {
             stmt.setString(1, name);
@@ -578,7 +578,7 @@ public class TestPg {
     public List<Users7Result> users7(String name) throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "SELECT * FROM users WHERE name =?"
+                "SELECT * FROM users WHERE name = ?"
             )
         ) {
             stmt.setString(1, name);
@@ -608,7 +608,7 @@ public class TestPg {
         boolean wasAutoCommit = connection.getAutoCommit();
         if (wasAutoCommit) connection.setAutoCommit(false);
         var stmt = connection.prepareStatement(
-            "SELECT * FROM users WHERE name =?"
+            "SELECT * FROM users WHERE name = ?"
         );
         if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
         stmt.setString(1, name);
@@ -668,7 +668,7 @@ public class TestPg {
         throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "SELECT id, title, status, tags, priority_scores FROM tasks WHERE status =?::task_status;"
+                "SELECT id, title, status, tags, priority_scores FROM tasks WHERE status = ?::task_status;"
             )
         ) {
             stmt.setObject(1, status.getValue());
@@ -710,7 +710,7 @@ public class TestPg {
         boolean wasAutoCommit = connection.getAutoCommit();
         if (wasAutoCommit) connection.setAutoCommit(false);
         var stmt = connection.prepareStatement(
-            "SELECT id, title, status, tags, priority_scores FROM tasks WHERE status =?::task_status;"
+            "SELECT id, title, status, tags, priority_scores FROM tasks WHERE status = ?::task_status;"
         );
         if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
         stmt.setObject(1, status.getValue());
@@ -892,7 +892,7 @@ public class TestPg {
     ) throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "INSERT INTO tasks (title, status, tags, priority_scores) VALUES (?,?::task_status,?,?);"
+                "INSERT INTO tasks (title, status, tags, priority_scores) VALUES (?, ?::task_status, ?, ?);"
             )
         ) {
             stmt.setString(1, title);
@@ -918,7 +918,7 @@ public class TestPg {
         throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "INSERT INTO tasks (title, status, tags, priority_scores) VALUES (?,?::task_status,?,?);"
+                "INSERT INTO tasks (title, status, tags, priority_scores) VALUES (?, ?::task_status, ?, ?);"
             )
         ) {
             for (var row : params) {
@@ -951,7 +951,7 @@ public class TestPg {
     ) throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "INSERT INTO bigint_test (id, small_id, regular_id, amount, name) VALUES (?,?,?,?,?);"
+                "INSERT INTO bigint_test (id, small_id, regular_id, amount, name) VALUES (?, ?, ?, ?, ?);"
             )
         ) {
             if (id != null) stmt.setLong(1, id);
@@ -981,7 +981,7 @@ public class TestPg {
     ) throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "INSERT INTO bigint_test (id, small_id, regular_id, amount, name) VALUES (?,?,?,?,?);"
+                "INSERT INTO bigint_test (id, small_id, regular_id, amount, name) VALUES (?, ?, ?, ?, ?);"
             )
         ) {
             for (var row : params) {
@@ -1013,7 +1013,7 @@ public class TestPg {
     public GetBigintRecordResult getBigintRecord(Long id) throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "SELECT id, serial_id, small_id, regular_id, amount, name FROM bigint_test WHERE id =?;"
+                "SELECT id, serial_id, small_id, regular_id, amount, name FROM bigint_test WHERE id = ?;"
             )
         ) {
             if (id != null) stmt.setLong(1, id);
@@ -1037,7 +1037,7 @@ public class TestPg {
     public Long getBigintAmount(Long id) throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "SELECT amount FROM bigint_test WHERE id =?;"
+                "SELECT amount FROM bigint_test WHERE id = ?;"
             )
         ) {
             if (id != null) stmt.setLong(1, id);
@@ -1172,7 +1172,7 @@ public class TestPg {
     public int insertUuid(UUID id, String label) throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "INSERT INTO uuid_test (id, label) VALUES (?::uuid,?);"
+                "INSERT INTO uuid_test (id, label) VALUES (?::uuid, ?);"
             )
         ) {
             stmt.setObject(1, id);
@@ -1188,7 +1188,7 @@ public class TestPg {
         throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "INSERT INTO uuid_test (id, label) VALUES (?::uuid,?);"
+                "INSERT INTO uuid_test (id, label) VALUES (?::uuid, ?);"
             )
         ) {
             for (var row : params) {
@@ -1206,7 +1206,7 @@ public class TestPg {
     public GetUuidByIdResult getUuidById(UUID id) throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "SELECT id, label FROM uuid_test WHERE id =?::uuid;"
+                "SELECT id, label FROM uuid_test WHERE id = ?::uuid;"
             )
         ) {
             stmt.setObject(1, id);
@@ -1226,7 +1226,7 @@ public class TestPg {
         throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "INSERT INTO users (id, name, email) VALUES (?,?,?);"
+                "INSERT INTO users (id, name, email) VALUES (?, ?, ?);"
             )
         ) {
             stmt.setString(1, id);
@@ -1243,7 +1243,7 @@ public class TestPg {
         throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "INSERT INTO users (id, name, email) VALUES (?,?,?);"
+                "INSERT INTO users (id, name, email) VALUES (?, ?, ?);"
             )
         ) {
             for (var row : params) {
@@ -1260,7 +1260,7 @@ public class TestPg {
     public int updateUserEmail(String id, String email) throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "UPDATE users SET email =? WHERE id =?;"
+                "UPDATE users SET email = ? WHERE id = ?;"
             )
         ) {
             stmt.setString(1, email);
@@ -1276,7 +1276,7 @@ public class TestPg {
         throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "UPDATE users SET email =? WHERE id =?;"
+                "UPDATE users SET email = ? WHERE id = ?;"
             )
         ) {
             for (var row : params) {
@@ -1292,7 +1292,7 @@ public class TestPg {
     public int deleteUser(String id) throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "DELETE FROM users WHERE id =?;"
+                "DELETE FROM users WHERE id = ?;"
             )
         ) {
             stmt.setString(1, id);
@@ -1304,7 +1304,7 @@ public class TestPg {
     public int[] deleteUserBatch(Iterable<String> params) throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "DELETE FROM users WHERE id =?;"
+                "DELETE FROM users WHERE id = ?;"
             )
         ) {
             for (var value : params) {
@@ -1428,7 +1428,7 @@ public class TestPg {
         throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "SELECT * FROM all_types_test WHERE id =?;"
+                "SELECT * FROM all_types_test WHERE id = ?;"
             )
         ) {
             if (id != null) stmt.setInt(1, id);

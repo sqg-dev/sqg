@@ -188,13 +188,13 @@ export class TestSqlite {
   users6(
     name: string,
   ): { id: string; name: string; email: string } | undefined {
-    const stmt = this.prepare("users6", "SELECT * FROM users WHERE name =?");
+    const stmt = this.prepare("users6", "SELECT * FROM users WHERE name = ?");
     return stmt.get(name) as
       | { id: string; name: string; email: string }
       | undefined;
   }
   users7(name: string): { id: string; name: string; email: string | null }[] {
-    const stmt = this.prepare("users7", "SELECT * FROM users WHERE name =?");
+    const stmt = this.prepare("users7", "SELECT * FROM users WHERE name = ?");
     return stmt.all(name) as {
       id: string;
       name: string;

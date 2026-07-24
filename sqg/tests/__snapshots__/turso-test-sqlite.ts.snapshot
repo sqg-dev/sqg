@@ -213,7 +213,7 @@ export class TestSqlite {
   ): Promise<{ id: string; name: string; email: string } | undefined> {
     const stmt = await this.prepare(
       "users6",
-      "SELECT * FROM users WHERE name =?",
+      "SELECT * FROM users WHERE name = ?",
     );
     return (await stmt.get(name)) as
       | { id: string; name: string; email: string }
@@ -224,7 +224,7 @@ export class TestSqlite {
   ): Promise<{ id: string; name: string; email: string | null }[]> {
     const stmt = await this.prepare(
       "users7",
-      "SELECT * FROM users WHERE name =?",
+      "SELECT * FROM users WHERE name = ?",
     );
     return (await stmt.all(name)) as {
       id: string;

@@ -302,7 +302,7 @@ public class TestDuckdb {
     public int insert(String name, String email) throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "insert into users (name, email) values (?,?);"
+                "insert into users (name, email) values (?, ?);"
             )
         ) {
             stmt.setString(1, name);
@@ -465,7 +465,7 @@ public class TestDuckdb {
     public ByIdResult byId(Integer id) throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "select * from users where id =? limit 1;"
+                "select * from users where id = ? limit 1;"
             )
         ) {
             if (id != null) stmt.setInt(1, id);
@@ -488,7 +488,7 @@ public class TestDuckdb {
     public ByEmailResult byEmail(String email) throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "select * from users where email =?;"
+                "select * from users where email = ?;"
             )
         ) {
             stmt.setString(1, email);
@@ -508,7 +508,7 @@ public class TestDuckdb {
     public Integer getIdByEmail(String email) throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "select id from users where email =?;"
+                "select id from users where email = ?;"
             )
         ) {
             stmt.setString(1, email);
@@ -522,7 +522,7 @@ public class TestDuckdb {
     public int updateEmail(Integer id, String email) throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "update users set email =? where id =?;"
+                "update users set email = ? where id = ?;"
             )
         ) {
             stmt.setString(1, email);
@@ -536,7 +536,7 @@ public class TestDuckdb {
     public int delete(Integer id) throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "delete from users where id =?;"
+                "delete from users where id = ?;"
             )
         ) {
             if (id != null) stmt.setInt(1, id);
@@ -558,7 +558,7 @@ public class TestDuckdb {
         throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "select * from actions where user_id =?;"
+                "select * from actions where user_id = ?;"
             )
         ) {
             if (user_id != null) stmt.setInt(1, user_id);
@@ -592,7 +592,7 @@ public class TestDuckdb {
         StreamOptions options
     ) throws SQLException {
         var stmt = connection.prepareStatement(
-            "select * from actions where user_id =?;"
+            "select * from actions where user_id = ?;"
         );
         if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
         if (user_id != null) stmt.setInt(1, user_id);
@@ -659,7 +659,7 @@ public class TestDuckdb {
                 """
                 select * from actions
 
-                  where user_id =? and action =?;"""
+                  where user_id = ? and action = ?;"""
             )
         ) {
             if (user_id != null) stmt.setInt(1, user_id);
@@ -706,7 +706,7 @@ public class TestDuckdb {
             """
             select * from actions
 
-              where user_id =? and action =?;"""
+              where user_id = ? and action = ?;"""
         );
         if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
         if (user_id != null) stmt.setInt(1, user_id);
@@ -837,7 +837,7 @@ public class TestDuckdb {
     public List<TestResult> test(Integer a) throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "select 1 as n where? ::int is null;"
+                "select 1 as n where ? ::int is null;"
             )
         ) {
             if (a != null) stmt.setInt(1, a);
@@ -860,7 +860,7 @@ public class TestDuckdb {
     public Stream<TestResult> testStream(Integer a, StreamOptions options)
         throws SQLException {
         var stmt = connection.prepareStatement(
-            "select 1 as n where? ::int is null;"
+            "select 1 as n where ? ::int is null;"
         );
         if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
         if (a != null) stmt.setInt(1, a);
@@ -2317,7 +2317,7 @@ public class TestDuckdb {
         throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "INSERT INTO events (id, name, tags) VALUES (?,?,?);"
+                "INSERT INTO events (id, name, tags) VALUES (?, ?, ?);"
             )
         ) {
             if (id != null) stmt.setInt(1, id);
@@ -2569,7 +2569,7 @@ public class TestDuckdb {
         throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "INSERT INTO tasks (id, title, priority) VALUES (?,?,?);"
+                "INSERT INTO tasks (id, title, priority) VALUES (?, ?, ?);"
             )
         ) {
             if (id != null) stmt.setInt(1, id);
@@ -2592,7 +2592,7 @@ public class TestDuckdb {
     ) throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "SELECT id, title, priority FROM tasks WHERE priority =?;"
+                "SELECT id, title, priority FROM tasks WHERE priority = ?;"
             )
         ) {
             stmt.setObject(1, priority.getValue());
@@ -2624,7 +2624,7 @@ public class TestDuckdb {
         StreamOptions options
     ) throws SQLException {
         var stmt = connection.prepareStatement(
-            "SELECT id, title, priority FROM tasks WHERE priority =?;"
+            "SELECT id, title, priority FROM tasks WHERE priority = ?;"
         );
         if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
         stmt.setObject(1, priority.getValue());

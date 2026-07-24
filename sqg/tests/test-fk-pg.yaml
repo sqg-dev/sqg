@@ -1,0 +1,10 @@
+version: 1
+
+name: test-fk-pg
+
+sql:
+  - files:
+      - test-fk.sql
+    gen:
+      - generator: python/postgres
+        output: /tmp/fk-pg/

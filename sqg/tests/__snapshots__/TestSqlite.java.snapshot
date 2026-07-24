@@ -572,7 +572,7 @@ public class TestSqlite {
     public Users6Result users6(String name) throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "SELECT * FROM users WHERE name =?"
+                "SELECT * FROM users WHERE name = ?"
             )
         ) {
             stmt.setString(1, name);
@@ -594,7 +594,7 @@ public class TestSqlite {
     public List<Users7Result> users7(String name) throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "SELECT * FROM users WHERE name =?"
+                "SELECT * FROM users WHERE name = ?"
             )
         ) {
             stmt.setString(1, name);
@@ -622,7 +622,7 @@ public class TestSqlite {
     public Stream<Users7Result> users7Stream(String name, StreamOptions options)
         throws SQLException {
         var stmt = connection.prepareStatement(
-            "SELECT * FROM users WHERE name =?"
+            "SELECT * FROM users WHERE name = ?"
         );
         if (options.fetchSize() > 0) stmt.setFetchSize(options.fetchSize());
         stmt.setString(1, name);

@@ -28,6 +28,42 @@ export interface DatabaseEngine {
   close(): Promise<void> | void;
 }
 
+/**
+ * Whether an error is an integrity constraint violation (foreign key, unique,
+ * check, not-null) rather than a problem with the statement itself.
+ */
+export function isConstraintViolation(error: unknown): boolean {
+  const message = (error as Error)?.message ?? "";
+  const code = String((error as { code?: unknown })?.code ?? "");
+  return (
+    code.startsWith("SQLITE_CONSTRAINT") || // better-sqlite3
+    /^23/.test(code) || // postgres: SQLSTATE class 23 (integrity constraint violation)
+    /^Constraint Error/i.test(message) || // duckdb
+    /violates .* constraint|constraint failed/i.test(message)
+  );
+}
+
+/**
+ * Type introspection executes every EXEC statement against whatever data the
+ * MIGRATE and TESTDATA blocks left behind, so a statement can fail purely
+ * because a constraint has nothing to reference — a NOT NULL foreign key can
+ * never be satisfied when no fixture created the parent row.
+ *
+ * Running an EXEC contributes nothing to the generated code (the prepared
+ * statement already supplied the parameter types), so such a failure is
+ * reported as a warning instead of aborting generation. Statements whose
+ * result shape SQG needs (QUERY, including INSERT ... RETURNING) still fail.
+ */
+export function warnConstraintViolation(query: SQLQuery, error: unknown): void {
+  consola.warn(
+    `Skipped executing '${query.id}' in ${query.filename} during type introspection: ` +
+      `${(error as Error).message}\n` +
+      "  Introspection runs each statement against the TESTDATA fixtures only, so constraints " +
+      "such as foreign keys may not be satisfiable. Code generation is unaffected — add a " +
+      "TESTDATA block with the referenced rows to silence this warning.",
+  );
+}
+
 export async function initializeDatabase(
   queries: SQLQuery[],
   execQueries: (query: SQLQuery) => Promise<void>,

@@ -4,7 +4,12 @@ import { isNotNil } from "es-toolkit";
 import { DatabaseError, SqlExecutionError } from "../errors.js";
 import type { SQLQuery, TableInfo } from "../sql-query.js";
 import type { ProgressReporter } from "../ui.js";
-import { type DatabaseEngine, initializeDatabase } from "./types.js";
+import {
+  type DatabaseEngine,
+  initializeDatabase,
+  isConstraintViolation,
+  warnConstraintViolation,
+} from "./types.js";
 
 export const sqlite = new (class implements DatabaseEngine {
   db!: Database;
@@ -43,6 +48,13 @@ export const sqlite = new (class implements DatabaseEngine {
         "This is an internal error. Migrations may have failed silently.",
       );
     }
+    // better-sqlite3 turns foreign keys ON by default. QUERY and EXEC blocks are
+    // introspected against whatever MIGRATE and TESTDATA left behind, so an
+    // INSERT referencing a row that no fixture created cannot satisfy them.
+    // Enforcement stays on while the database is initialized above, so a broken
+    // foreign key in a MIGRATE or TESTDATA block is still an error.
+    db.pragma("foreign_keys = OFF");
+
     try {
       // Skip the setup query as it's already executed
       const executableQueries = queries.filter((q) => !q.skipGenerateFunction);
@@ -204,6 +216,10 @@ export const sqlite = new (class implements DatabaseEngine {
       }
       return stmt.run(...params);
     } catch (error) {
+      if (!query.isQuery && isConstraintViolation(error)) {
+        warnConstraintViolation(query, error);
+        return;
+      }
       consola.error(
         `Failed to execute query '${query.id}' in ${query.filename}:\n ${statement.sql} \n ${statement.parameters.map((p) => p.value).join(", ")}`,
         error,

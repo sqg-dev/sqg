@@ -27,6 +27,20 @@ describe("sqg-pg", () => {
     }, 30_000); // 30 second timeout for test execution
   });
 
+  describe("foreign keys during introspection", () => {
+    // The temp database holds no data, so `insert into posts` can never satisfy
+    // its NOT NULL foreign key. https://github.com/sqg-dev/sqg/issues/10
+    it("generates despite an unsatisfiable foreign key", async () => {
+      const files = await processProject("tests/test-fk-pg.yaml");
+      expect(files).toHaveLength(1);
+      const generated = readFileSync(files[0], "utf-8");
+      expect(generated).toContain("insert_post");
+      // `limit ${lim}` must keep its space — glued to the keyword, Postgres
+      // lexes the placeholder as part of an identifier.
+      expect(generated).toContain("limit %s");
+    }, 30_000);
+  });
+
   describe("parameter type introspection", () => {
     it("should infer BIGINT parameter type from column, not from literal value", async () => {
       const filePath = resolve("tests/test-pg.sql");

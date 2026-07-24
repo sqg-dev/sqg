@@ -249,7 +249,7 @@ public class TestPostgresSource {
     public GetOrderResult getOrder(Long id) throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "select id, customer, total, created_at from prod.public.orders where id =?;"
+                "select id, customer, total, created_at from prod.public.orders where id = ?;"
             )
         ) {
             if (id != null) stmt.setLong(1, id);

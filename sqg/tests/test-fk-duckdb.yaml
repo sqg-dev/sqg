@@ -1,0 +1,10 @@
+version: 1
+
+name: test-fk-duckdb
+
+sql:
+  - files:
+      - test-fk.sql
+    gen:
+      - generator: typescript/duckdb
+        output: /tmp/fk-duckdb/

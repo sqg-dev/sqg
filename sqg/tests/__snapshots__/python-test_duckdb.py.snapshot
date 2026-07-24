@@ -396,7 +396,7 @@ CREATE TABLE tasks (
 
     def insert(self, name: str, email: str) -> None:
         self._conn.execute(
-            "insert into users (name, email) values ($1,$2);", [name, email]
+            "insert into users (name, email) values ($1, $2);", [name, email]
         )
 
     def all(self) -> list[AllRow]:
@@ -425,7 +425,7 @@ select 'abc' as a,1 as x,* from users;""", []
 
     def by_id(self, id: int) -> ByIdRow | None:
         row = self._conn.execute(
-            "select * from users where id =$1 limit 1;", [id]
+            "select * from users where id = $1 limit 1;", [id]
         ).fetchone()
         if row is None:
             return None
@@ -433,12 +433,12 @@ select 'abc' as a,1 as x,* from users;""", []
 
     def by_id_raw(self, id: int) -> tuple[Any, ...] | None:
         return self._conn.execute(
-            "select * from users where id =$1 limit 1;", [id]
+            "select * from users where id = $1 limit 1;", [id]
         ).fetchone()
 
     def by_email(self, email: str) -> ByEmailRow | None:
         row = self._conn.execute(
-            "select * from users where email =$1;", [email]
+            "select * from users where email = $1;", [email]
         ).fetchone()
         if row is None:
             return None
@@ -446,12 +446,12 @@ select 'abc' as a,1 as x,* from users;""", []
 
     def by_email_raw(self, email: str) -> tuple[Any, ...] | None:
         return self._conn.execute(
-            "select * from users where email =$1;", [email]
+            "select * from users where email = $1;", [email]
         ).fetchone()
 
     def get_id_by_email(self, email: str) -> int | None:
         row = self._conn.execute(
-            "select id from users where email =$1;", [email]
+            "select id from users where email = $1;", [email]
         ).fetchone()
         if row is None:
             return None
@@ -459,28 +459,28 @@ select 'abc' as a,1 as x,* from users;""", []
 
     def get_id_by_email_raw(self, email: str) -> tuple[Any, ...] | None:
         return self._conn.execute(
-            "select id from users where email =$1;", [email]
+            "select id from users where email = $1;", [email]
         ).fetchone()
 
     def update_email(self, id: int, email: str) -> None:
         self._conn.execute(
-            "update users set email =$1 where id =$2;", [email, id]
+            "update users set email = $1 where id = $2;", [email, id]
         )
 
     def delete(self, id: int) -> None:
         self._conn.execute(
-            "delete from users where id =$1;", [id]
+            "delete from users where id = $1;", [id]
         )
 
     def actions_by_user_id(self, user_id: int) -> list[ActionsByUserIdRow]:
         rows = self._conn.execute(
-            "select * from actions where user_id =$1;", [user_id]
+            "select * from actions where user_id = $1;", [user_id]
         ).fetchall()
         return [ActionsByUserIdRow(id=row[0], action=row[1], value=row[2], user_id=row[3], timestamp=row[4]) for row in rows]
 
     def actions_by_user_id_raw(self, user_id: int) -> list[tuple[Any, ...]]:
         return self._conn.execute(
-            "select * from actions where user_id =$1;", [user_id]
+            "select * from actions where user_id = $1;", [user_id]
         ).fetchall()
 
     def actions_by_user_id_and_action(self, user_id: int, action: str) -> list[ActionsByUserIdAndActionRow]:
@@ -488,7 +488,7 @@ select 'abc' as a,1 as x,* from users;""", []
             """\
 select * from actions 
  
-  where user_id =$1 and action =$2;""", [user_id, action]
+  where user_id = $1 and action = $2;""", [user_id, action]
         ).fetchall()
         return [ActionsByUserIdAndActionRow(id=row[0], action=row[1], value=row[2], user_id=row[3], timestamp=row[4]) for row in rows]
 
@@ -497,7 +497,7 @@ select * from actions
             """\
 select * from actions 
  
-  where user_id =$1 and action =$2;""", [user_id, action]
+  where user_id = $1 and action = $2;""", [user_id, action]
         ).fetchall()
 
     def top_users(self) -> list[TopUsersRow]:
@@ -513,13 +513,13 @@ select * from actions
 
     def test(self, a: int) -> list[TestRow]:
         rows = self._conn.execute(
-            "select 1 as n where$1 ::int is null;", [a]
+            "select 1 as n where $1 ::int is null;", [a]
         ).fetchall()
         return [TestRow(n=row[0]) for row in rows]
 
     def test_raw(self, a: int) -> list[tuple[Any, ...]]:
         return self._conn.execute(
-            "select 1 as n where$1 ::int is null;", [a]
+            "select 1 as n where $1 ::int is null;", [a]
         ).fetchall()
 
     def test_2(self) -> list[Test2Row]:
@@ -775,7 +775,7 @@ select a:[1,2,3] ,b:2, c: {'x' : [{'a' : 1}], 'y' : {'z' : 3}}""", []
 
     def insert_event(self, id: int, name: str, tags: list[str | None]) -> None:
         self._conn.execute(
-            "INSERT INTO events (id, name, tags) VALUES ($1,$2,$3);", [id, name, tags]
+            "INSERT INTO events (id, name, tags) VALUES ($1, $2, $3);", [id, name, tags]
         )
 
     def all_events(self) -> list[AllEventsRow]:
@@ -813,18 +813,18 @@ select a:[1,2,3] ,b:2, c: {'x' : [{'a' : 1}], 'y' : {'z' : 3}}""", []
 
     def insert_task(self, id: int, title: str, priority: str) -> None:
         self._conn.execute(
-            "INSERT INTO tasks (id, title, priority) VALUES ($1,$2,$3);", [id, title, priority]
+            "INSERT INTO tasks (id, title, priority) VALUES ($1, $2, $3);", [id, title, priority]
         )
 
     def get_tasks_by_priority(self, priority: str) -> list[GetTasksByPriorityRow]:
         rows = self._conn.execute(
-            "SELECT id, title, priority FROM tasks WHERE priority =$1;", [priority]
+            "SELECT id, title, priority FROM tasks WHERE priority = $1;", [priority]
         ).fetchall()
         return [GetTasksByPriorityRow(id=row[0], title=row[1], priority=row[2]) for row in rows]
 
     def get_tasks_by_priority_raw(self, priority: str) -> list[tuple[Any, ...]]:
         return self._conn.execute(
-            "SELECT id, title, priority FROM tasks WHERE priority =$1;", [priority]
+            "SELECT id, title, priority FROM tasks WHERE priority = $1;", [priority]
         ).fetchall()
 
     def get_all_tasks(self) -> list[GetAllTasksRow]:

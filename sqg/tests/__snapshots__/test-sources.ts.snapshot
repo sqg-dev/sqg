@@ -78,7 +78,7 @@ export class TestSources {
   }
 
   async attach(sources_users: string): Promise<DuckDBMaterializedResult> {
-    const sql = `attach '${sources_users}' as "users" (TYPE SQLITE);`;
+    const sql = `attach  '${sources_users}' as "users" (TYPE SQLITE);`;
     return await this.conn.run(sql, []);
   }
 

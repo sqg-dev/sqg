@@ -89,7 +89,7 @@ export class TestPostgresSource {
     | undefined
   > {
     const sql =
-      "select id, customer, total, created_at from prod.public.orders where id =?;";
+      "select id, customer, total, created_at from prod.public.orders where id = ?;";
     const reader = await this.conn.runAndReadAll(sql, [id]);
     return reader.getRowObjects()[0] as
       | {

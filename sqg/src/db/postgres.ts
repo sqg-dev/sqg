@@ -6,7 +6,12 @@ import { DatabaseError, SqlExecutionError } from "../errors.js";
 import type { SQLQuery, TableInfo } from "../sql-query.js";
 import { type ColumnType, EnumType } from "../sql-query.js";
 import type { ProgressReporter } from "../ui.js";
-import { type DatabaseEngine, initializeDatabase } from "./types.js";
+import {
+  type DatabaseEngine,
+  initializeDatabase,
+  isConstraintViolation,
+  warnConstraintViolation,
+} from "./types.js";
 
 const tempDatabaseName = "sqg-db-temp";
 
@@ -25,8 +30,48 @@ interface ConnectionMode {
   connect(): Promise<Client>;
   /** Wrap a query execution so side effects are isolated. */
   wrapQuery(db: Client, fn: () => Promise<QueryResult>): Promise<QueryResult>;
+  /** Stop enforcing referential integrity, see {@link relaxConstraints}. */
+  relaxConstraints(db: Client): Promise<void>;
   /** Clean up connections. */
   close(db: Client): Promise<void>;
+}
+
+/**
+ * Turn off referential integrity enforcement for the introspection connection.
+ *
+ * QUERY and EXEC statements are introspected against whatever data MIGRATE and
+ * TESTDATA left behind, each in its own transaction, so a NOT NULL foreign key
+ * can never be satisfied by a row an earlier statement inserted.
+ * `session_replication_role = replica` disables the triggers enforcing it, for
+ * this connection only, and every statement introspected here is rolled back.
+ *
+ * This happens after the database is initialized, so a foreign key violation in
+ * a MIGRATE or TESTDATA block is still reported — those describe real data.
+ *
+ * Setting it needs superuser (or the SET privilege), so this is best effort:
+ * without it, constraint violations on EXEC statements are still tolerated,
+ * only INSERT ... RETURNING queries would fail.
+ */
+async function relaxConstraints(db: Client, inTransaction: boolean): Promise<void> {
+  try {
+    if (inTransaction) {
+      // A failed SET would poison the surrounding transaction, so shield it.
+      await db.query("SAVEPOINT sqg_relax_constraints");
+      try {
+        await db.query("SET LOCAL session_replication_role = 'replica'");
+      } catch (e) {
+        await db.query("ROLLBACK TO SAVEPOINT sqg_relax_constraints");
+        throw e;
+      }
+      await db.query("RELEASE SAVEPOINT sqg_relax_constraints");
+    } else {
+      await db.query("SET session_replication_role = 'replica'");
+    }
+  } catch (e) {
+    consola.debug(
+      `Could not disable constraint enforcement for introspection: ${(e as Error).message}`,
+    );
+  }
 }
 
 /**
@@ -62,6 +107,13 @@ class ExternalDbMode implements ConnectionMode {
     } finally {
       await db.query("ROLLBACK TO SAVEPOINT sqg_query");
     }
+  }
+
+  relaxConstraints(db: Client): Promise<void> {
+    // Inside the outer transaction, so SET LOCAL — it survives the per-query
+    // savepoints (which only undo what happens after them) and is reverted by
+    // the ROLLBACK in close().
+    return relaxConstraints(db, true);
   }
 
   async close(db: Client): Promise<void> {
@@ -137,6 +189,10 @@ class TempDbMode implements ConnectionMode {
     } finally {
       await db.query("ROLLBACK");
     }
+  }
+
+  relaxConstraints(db: Client): Promise<void> {
+    return relaxConstraints(db, false);
   }
 
   async close(db: Client): Promise<void> {
@@ -290,6 +346,9 @@ export const postgres = new (class implements DatabaseEngine {
         "This is an internal error. Check that migrations completed successfully.",
       );
     }
+    // Only now that MIGRATE and TESTDATA have run — those still get their
+    // foreign keys checked.
+    await this.mode.relaxConstraints(db);
     try {
       const executableQueries = queries.filter((q) => !q.skipGenerateFunction);
 
@@ -384,6 +443,10 @@ export const postgres = new (class implements DatabaseEngine {
       }
       return result;
     } catch (error) {
+      if (!query.isQuery && isConstraintViolation(error)) {
+        warnConstraintViolation(query, error);
+        return;
+      }
       consola.error(`Failed to execute query '${query.id}':`, error);
       throw error;
     }

@@ -73,7 +73,7 @@ class TestPostgresSource:
 
     def get_order(self, id: int) -> GetOrderRow | None:
         row = self._conn.execute(
-            "select id, customer, total, created_at from prod.public.orders where id =$1;", [id]
+            "select id, customer, total, created_at from prod.public.orders where id = $1;", [id]
         ).fetchone()
         if row is None:
             return None
@@ -81,7 +81,7 @@ class TestPostgresSource:
 
     def get_order_raw(self, id: int) -> tuple[Any, ...] | None:
         return self._conn.execute(
-            "select id, customer, total, created_at from prod.public.orders where id =$1;", [id]
+            "select id, customer, total, created_at from prod.public.orders where id = $1;", [id]
         ).fetchone()
 
     def list_orders(self) -> list[ListOrdersRow]:

@@ -353,7 +353,7 @@ public class TestObserver {
         try {
             try (
                 var stmt = connection.prepareStatement(
-                    "select id, name, email from users where id =?;"
+                    "select id, name, email from users where id = ?;"
                 )
             ) {
                 if (id != null) stmt.setInt(1, id);
@@ -387,7 +387,7 @@ public class TestObserver {
         try {
             try (
                 var stmt = connection.prepareStatement(
-                    "select name from users where id =?;"
+                    "select name from users where id = ?;"
                 )
             ) {
                 if (id != null) stmt.setInt(1, id);
@@ -416,7 +416,7 @@ public class TestObserver {
         try {
             try (
                 var stmt = connection.prepareStatement(
-                    "insert into users (id, name, email) values (?,?,?);"
+                    "insert into users (id, name, email) values (?, ?, ?);"
                 )
             ) {
                 if (id != null) stmt.setInt(1, id);
@@ -445,7 +445,7 @@ public class TestObserver {
         try {
             try (
                 var stmt = connection.prepareStatement(
-                    "insert into users (id, name, email) values (?,?,?);"
+                    "insert into users (id, name, email) values (?, ?, ?);"
                 )
             ) {
                 if (id != null) stmt.setInt(1, id);
@@ -480,7 +480,7 @@ public class TestObserver {
         try {
             try (
                 var stmt = connection.prepareStatement(
-                    "insert into users (id, name, email) values (?,?,?);"
+                    "insert into users (id, name, email) values (?, ?, ?);"
                 )
             ) {
                 long __n = 0;
