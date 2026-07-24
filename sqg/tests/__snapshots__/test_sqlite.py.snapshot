@@ -280,7 +280,7 @@ select 10 count, email from users where id = '1';""", ()
 
     def users_6(self, name: str) -> Users6Row | None:
         row = self._conn.execute(
-            "SELECT * FROM users WHERE name =?", (name, )
+            "SELECT * FROM users WHERE name = ?", (name, )
         ).fetchone()
         if row is None:
             return None
@@ -288,18 +288,18 @@ select 10 count, email from users where id = '1';""", ()
 
     def users_6_raw(self, name: str) -> tuple[Any, ...] | None:
         return self._conn.execute(
-            "SELECT * FROM users WHERE name =?", (name, )
+            "SELECT * FROM users WHERE name = ?", (name, )
         ).fetchone()
 
     def users_7(self, name: str) -> list[Users7Row]:
         rows = self._conn.execute(
-            "SELECT * FROM users WHERE name =?", (name, )
+            "SELECT * FROM users WHERE name = ?", (name, )
         ).fetchall()
         return [Users7Row(id=row[0], name=row[1], email=row[2]) for row in rows]
 
     def users_7_raw(self, name: str) -> list[tuple[Any, ...]]:
         return self._conn.execute(
-            "SELECT * FROM users WHERE name =?", (name, )
+            "SELECT * FROM users WHERE name = ?", (name, )
         ).fetchall()
 
     def reserved_word_test(self) -> ReservedWordTestRow | None:

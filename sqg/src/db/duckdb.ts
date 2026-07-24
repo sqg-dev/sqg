@@ -12,7 +12,13 @@ import { DatabaseError, SqlExecutionError } from "../errors.js";
 import type { SQLQuery, TableInfo } from "../sql-query.js";
 import { type ColumnType, EnumType, ListType, MapType, StructType } from "../sql-query.js";
 import type { ProgressReporter } from "../ui.js";
-import { type DatabaseEngine, type InitDatabaseOptions, initializeDatabase } from "./types.js";
+import {
+  type DatabaseEngine,
+  type InitDatabaseOptions,
+  initializeDatabase,
+  isConstraintViolation,
+  warnConstraintViolation,
+} from "./types.js";
 
 /** Cache of enum type names, keyed by stringified sorted values for lookup */
 let enumNameCache = new Map<string, string>();
@@ -216,6 +222,10 @@ export const duckdb = new (class implements DatabaseEngine {
       }
       return await stmt.run();
     } catch (error) {
+      if (!query.isQuery && isConstraintViolation(error)) {
+        warnConstraintViolation(query, error);
+        return;
+      }
       consola.error(`Failed to execute query '${query.id}':`, error);
       throw error;
     }

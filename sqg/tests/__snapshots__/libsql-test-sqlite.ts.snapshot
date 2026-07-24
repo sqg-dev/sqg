@@ -212,7 +212,7 @@ export class TestSqlite {
     name: string,
   ): Promise<{ id: string; name: string; email: string } | undefined> {
     const result = await this.client.execute({
-      sql: "SELECT * FROM users WHERE name =?",
+      sql: "SELECT * FROM users WHERE name = ?",
       args: [name] as InArgs,
     });
     return (result.rows as unknown[])[0] as
@@ -223,7 +223,7 @@ export class TestSqlite {
     name: string,
   ): Promise<{ id: string; name: string; email: string | null }[]> {
     const result = await this.client.execute({
-      sql: "SELECT * FROM users WHERE name =?",
+      sql: "SELECT * FROM users WHERE name = ?",
       args: [name] as InArgs,
     });
     return result.rows as unknown[] as {

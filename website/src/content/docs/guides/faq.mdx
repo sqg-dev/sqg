@@ -363,6 +363,30 @@ INSERT INTO users (id, name) VALUES (1, 'Test');
 INSERT INTO posts (id, user_id, title) VALUES (1, 1, 'Test Post');
 ```
 
+### Constraint violations during introspection
+
+SQG runs every `QUERY` and `EXEC` against a throwaway database to introspect
+types, each in its own transaction — so an `INSERT` with a NOT NULL foreign key
+has no parent row to reference unless a TESTDATA block created it.
+
+You do not need to drop or defer those constraints. Once MIGRATE and TESTDATA
+have run, SQG stops enforcing referential integrity (SQLite and PostgreSQL), and
+where the engine cannot disable it (DuckDB), a constraint violation in an `EXEC`
+is reported as a warning instead of failing generation — nothing in the
+generated code depends on the statement actually running.
+
+Your fixtures are still checked: a foreign key violated by a MIGRATE or TESTDATA
+block is an error, because those describe real data.
+
+A `QUERY` also still has to execute, because its result shape is what SQG
+introspects. If an `INSERT ... RETURNING` query hits a constraint, add a
+TESTDATA block that inserts the rows it depends on:
+
+```sql
+-- TESTDATA
+INSERT INTO users (id, name) VALUES (1, 'Test');
+```
+
 ### Type inference seems wrong
 
 Check that:

@@ -73,6 +73,25 @@ export type SqlQueryStatement = {
   parameters: ParameterEntry[];
 };
 
+/**
+ * Append a placeholder (`?`, `$1`, `$name`, or an inlined source) to the parts
+ * rendered so far, keeping it separated from the preceding SQL text.
+ *
+ * Without the separator, `LIMIT ${n}` would render as `LIMIT$1` — which
+ * Postgres lexes as the identifier `limit$1` and rejects. The whitespace is
+ * added to the parts themselves so every rendering path (the joined `sql`
+ * string and `sqlParts`, used by the template-literal renderers) agrees.
+ */
+function pushPlaceholder(parts: SqlQueryPart[], placeholder: SqlQueryPart): void {
+  const lastIndex = parts.length - 1;
+  const last = parts[lastIndex];
+  // Only word characters glue onto a placeholder; `(`, `=`, `,` etc. are fine.
+  if (typeof last === "string" && /[A-Za-z0-9_$]$/.test(last)) {
+    parts[lastIndex] = `${last} `;
+  }
+  parts.push(placeholder);
+}
+
 export class SQLQuery {
   columns: ColumnInfo[];
 
@@ -381,30 +400,20 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
         }
 
         toSqlWithAnonymousPlaceholders() {
-          let sql = "";
           const sqlParts: SqlQueryPart[] = [];
           for (const part of this.sqlParts) {
             if (typeof part === "string") {
-              sql += part;
               sqlParts.push(part);
+            } else if (part.name.startsWith("sources_")) {
+              // Sources variables are inlined, not parameterized
+              pushPlaceholder(sqlParts, part);
             } else {
-              if (sql.length > 0) {
-                const last = sql[sql.length - 1];
-                if (last !== " " && last !== "=" && last !== ">" && last !== "<") {
-                  sql += " ";
-                }
-              }
-              sql += "?";
-              if (part.name.startsWith("sources_")) {
-                sqlParts.push(part);
-              } else {
-                sqlParts.push("?");
-              }
+              pushPlaceholder(sqlParts, "?");
             }
           }
           return {
             parameters: this.parameters(),
-            sql: sql,
+            sql: sqlParts.map((part) => (typeof part === "string" ? part : "?")).join(""),
             sqlParts: sqlParts,
           };
         }
@@ -423,7 +432,7 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
 
               // Sources variables are inlined, not parameterized
               if (varName.startsWith("sources_")) {
-                sqlParts.push(part);
+                pushPlaceholder(sqlParts, part);
               } else {
                 let pos = parameters.findIndex((p) => p.name === varName);
                 if (pos < 0) {
@@ -432,7 +441,7 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
                 } else {
                   pos = pos + 1;
                 }
-                sqlParts.push(`$${pos}`);
+                pushPlaceholder(sqlParts, `$${pos}`);
               }
             }
           }
@@ -455,9 +464,9 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
               sqlParts.push(part);
             } else if (part.name.startsWith("sources_")) {
               // Sources variables are inlined
-              sqlParts.push(part);
+              pushPlaceholder(sqlParts, part);
             } else {
-              sqlParts.push(`$${part.name}`);
+              pushPlaceholder(sqlParts, `$${part.name}`);
             }
           }
 
@@ -501,10 +510,15 @@ export function parseSQLQueries(filePath: string, extraVariables: ExtraVariable[
             const varName = varRef.replace("${", "").replace("}", "");
             const value = getVariable(varName);
 
-            if (to > from) {
-              sql.appendSql(content.slice(from, to));
+            // Slice up to the start of the variable, not to the end of the last
+            // token: the whitespace in front of `${...}` is part of the SQL and
+            // must survive, or `LIMIT ${n}` renders as `LIMIT$1` — which
+            // Postgres lexes as an identifier instead of a placeholder.
+            if (from >= 0 && child.from > from) {
+              sql.appendSql(content.slice(from, child.from));
             }
             from = child.to;
+            to = child.to;
             sql.appendVariable(varName, value);
           } else {
             if (from < 0) {

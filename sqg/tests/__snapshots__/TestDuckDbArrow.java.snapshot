@@ -47,7 +47,7 @@ public class TestDuckDbArrow {
         throws SQLException, IOException {
         var stmt = connection.prepareStatement(
             """
-            insert into users (name, email) values ( ?, ?);"""
+            insert into users (name, email) values (?, ?);"""
         );
         stmt.setObject(1, name);
         stmt.setObject(2, email);
@@ -156,7 +156,7 @@ public class TestDuckDbArrow {
         throws SQLException, IOException {
         var stmt = connection.prepareStatement(
             """
-            update users set email =? where id =?;"""
+            update users set email = ? where id = ?;"""
         );
         stmt.setObject(1, email);
         stmt.setObject(2, id);
@@ -166,7 +166,7 @@ public class TestDuckDbArrow {
     public int delete(Integer id) throws SQLException, IOException {
         var stmt = connection.prepareStatement(
             """
-            delete from users where id =?;"""
+            delete from users where id = ?;"""
         );
         stmt.setObject(1, id);
         return stmt.executeUpdate();
@@ -201,7 +201,7 @@ public class TestDuckDbArrow {
         throws SQLException, IOException {
         var stmt = connection.prepareStatement(
             """
-            select * from actions where user_id =?;"""
+            select * from actions where user_id = ?;"""
         );
         stmt.setObject(1, user_id);
         var rs = (DuckDBResultSet) stmt.executeQuery();
@@ -254,7 +254,7 @@ public class TestDuckDbArrow {
             """
             select * from actions
 
-              where user_id =? and action =?;"""
+              where user_id = ? and action = ?;"""
         );
         stmt.setObject(1, user_id);
         stmt.setObject(2, action);

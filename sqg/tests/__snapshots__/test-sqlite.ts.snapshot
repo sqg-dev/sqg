@@ -202,14 +202,14 @@ export class TestSqlite {
     const stmt = this.prepare<
       [string],
       { id: string; name: string; email: string }
-    >("users6", "SELECT * FROM users WHERE name =?");
+    >("users6", "SELECT * FROM users WHERE name = ?");
     return stmt.get(name);
   }
   users7(name: string): { id: string; name: string; email: string | null }[] {
     const stmt = this.prepare<
       [string],
       { id: string; name: string; email: string | null }
-    >("users7", "SELECT * FROM users WHERE name =?");
+    >("users7", "SELECT * FROM users WHERE name = ?");
     return stmt.all(name);
   }
   reservedWordTest(): { class: string; type: string } | undefined {

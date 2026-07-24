@@ -294,7 +294,7 @@ public class TestSources {
     public int attach(String sources_users) throws SQLException {
         try (
             var stmt = connection.prepareStatement(
-                "attach '" +
+                "attach  '" +
                     sources_users +
                     """
                     ' as "users" (TYPE SQLITE);"""

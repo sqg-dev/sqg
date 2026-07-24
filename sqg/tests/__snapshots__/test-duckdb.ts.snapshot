@@ -186,7 +186,7 @@ CREATE TABLE tasks (
   }
 
   async insert(name: string, email: string): Promise<DuckDBMaterializedResult> {
-    const sql = "insert into users (name, email) values ( ?, ?);";
+    const sql = "insert into users (name, email) values (?, ?);";
     return await this.conn.run(sql, [name, email]);
   }
 
@@ -221,7 +221,7 @@ CREATE TABLE tasks (
   ): Promise<
     { id: number | null; name: string | null; email: string | null } | undefined
   > {
-    const sql = "select * from users where id =? limit 1;";
+    const sql = "select * from users where id = ? limit 1;";
     const reader = await this.conn.runAndReadAll(sql, [id]);
     return reader.getRowObjects()[0] as
       | { id: number | null; name: string | null; email: string | null }
@@ -233,7 +233,7 @@ CREATE TABLE tasks (
   ): Promise<
     { id: number | null; name: string | null; email: string | null } | undefined
   > {
-    const sql = "select * from users where email =?;";
+    const sql = "select * from users where email = ?;";
     const reader = await this.conn.runAndReadAll(sql, [email]);
     return reader.getRowObjects()[0] as
       | { id: number | null; name: string | null; email: string | null }
@@ -241,7 +241,7 @@ CREATE TABLE tasks (
   }
 
   async getIdByEmail(email: string): Promise<number | null | undefined> {
-    const sql = "select id from users where email =?;";
+    const sql = "select id from users where email = ?;";
     const reader = await this.conn.runAndReadAll(sql, [email]);
     return reader.getRows()[0]?.[0] as number | null | undefined;
   }
@@ -250,12 +250,12 @@ CREATE TABLE tasks (
     id: number,
     email: string,
   ): Promise<DuckDBMaterializedResult> {
-    const sql = "update users set email =? where id =?;";
+    const sql = "update users set email = ? where id = ?;";
     return await this.conn.run(sql, [email, id]);
   }
 
   async delete(id: number): Promise<DuckDBMaterializedResult> {
-    const sql = "delete from users where id =?;";
+    const sql = "delete from users where id = ?;";
     return await this.conn.run(sql, [id]);
   }
 
@@ -270,7 +270,7 @@ CREATE TABLE tasks (
       timestamp: number | null;
     }[]
   > {
-    const sql = "select * from actions where user_id =?;";
+    const sql = "select * from actions where user_id = ?;";
     const reader = await this.conn.runAndReadAll(sql, [user_id]);
     return reader.getRowObjects() as {
       id: number | null;
@@ -295,7 +295,7 @@ CREATE TABLE tasks (
   > {
     const sql = `select * from actions 
  
-  where user_id =? and action =?;`;
+  where user_id = ? and action = ?;`;
     const reader = await this.conn.runAndReadAll(sql, [user_id, action]);
     return reader.getRowObjects() as {
       id: number | null;
@@ -1387,7 +1387,7 @@ CREATE TABLE tasks (
     name: string,
     tags: { items: (string | null)[] },
   ): Promise<DuckDBMaterializedResult> {
-    const sql = "INSERT INTO events (id, name, tags) VALUES ( ?, ?, ?);";
+    const sql = "INSERT INTO events (id, name, tags) VALUES (?, ?, ?);";
     const stmt = await this.conn.prepare(sql);
     stmt.bindValue(1, id);
     stmt.bindValue(2, name);
@@ -1448,7 +1448,7 @@ CREATE TABLE tasks (
     title: string,
     priority: string,
   ): Promise<DuckDBMaterializedResult> {
-    const sql = "INSERT INTO tasks (id, title, priority) VALUES ( ?, ?, ?);";
+    const sql = "INSERT INTO tasks (id, title, priority) VALUES (?, ?, ?);";
     return await this.conn.run(sql, [id, title, priority]);
   }
 
@@ -1461,7 +1461,7 @@ CREATE TABLE tasks (
       priority: "low" | "medium" | "high" | "critical" | null;
     }[]
   > {
-    const sql = "SELECT id, title, priority FROM tasks WHERE priority =?;";
+    const sql = "SELECT id, title, priority FROM tasks WHERE priority = ?;";
     const reader = await this.conn.runAndReadAll(sql, [priority]);
     return reader.getRowObjects() as {
       id: number | null;

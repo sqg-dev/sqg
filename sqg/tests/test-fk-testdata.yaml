@@ -1,0 +1,10 @@
+version: 1
+
+name: test-fk-testdata
+
+sql:
+  - files:
+      - test-fk-testdata.sql
+    gen:
+      - generator: typescript/sqlite
+        output: /tmp/fk-testdata/
