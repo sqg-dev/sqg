@@ -2,5 +2,7 @@
 
 ---
 <script>
-import { trackEvent } from '../client/tracking';
+// Side-effect import: the binding must stay unnamed, otherwise the unused
+// specifier is elided during TS transform and init() never ships.
+import '../client/tracking';
 </script>

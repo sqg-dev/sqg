@@ -9,8 +9,16 @@ import {
 } from "@duckdb/node-api";
 import consola from "consola";
 import { DatabaseError, SqlExecutionError } from "../errors.js";
-import type { SQLQuery, TableInfo } from "../sql-query.js";
-import { type ColumnType, EnumType, ListType, MapType, StructType } from "../sql-query.js";
+import {
+  type ColumnType,
+  EnumType,
+  ListType,
+  MapType,
+  type SQLQuery,
+  StructType,
+  type TableInfo,
+  typedBindableValue,
+} from "../sql-query.js";
 import type { ProgressReporter } from "../ui.js";
 import {
   type DatabaseEngine,
@@ -151,7 +159,7 @@ export const duckdb = new (class implements DatabaseEngine {
         reporter?.onQueryComplete?.(query.id);
       }
     } catch (error) {
-      consola.error("Error executing queries:", (error as Error).message);
+      consola.debug("Error executing queries:", (error as Error).message);
       throw error;
     }
   }
@@ -173,27 +181,44 @@ export const duckdb = new (class implements DatabaseEngine {
 
       const stmt = await connection.prepare(sql);
 
-      // Infer parameter types from the prepared statement
+      // Infer parameter types from the prepared statement.
+      //
+      // DuckDB legitimately leaves some parameters untyped at prepare time and
+      // only resolves them on bind -- DDL (`create table ... as select ${p}`),
+      // arithmetic on a cast (`cast(${a} as DATE) - ${b}`), and functions like
+      // `strptime(${p}, ...)` all do this. `parameterType()` throws
+      // "Failed to get param logical type" for exactly those, even though the
+      // statement binds and executes fine. Skip the ones that throw rather than
+      // failing the whole query: the caller falls back to inferring the type
+      // from the `@set` default value.
       if (stmt.parameterCount > 0) {
         const paramTypes = new Map<string, ColumnType>();
+        const unresolved: string[] = [];
         for (let i = 0; i < stmt.parameterCount; i++) {
-          const paramType = stmt.parameterType(i + 1);
-          paramTypes.set(statement.parameters[i].name, convertType(paramType));
+          const name = statement.parameters[i].name;
+          try {
+            paramTypes.set(name, convertType(stmt.parameterType(i + 1)));
+          } catch {
+            unresolved.push(name);
+          }
         }
         query.parameterTypes = paramTypes;
+        if (unresolved.length > 0) {
+          consola.debug(
+            `DuckDB could not resolve a type for ${unresolved.map((n) => `\${${n}}`).join(", ")} ` +
+              `in query '${query.id}'; inferring from the @set default value instead.`,
+          );
+        }
         consola.debug("Parameter types:", Object.fromEntries(paramTypes));
       }
 
       for (let i = 0; i < stmt.parameterCount; i++) {
-        let value: string | number = statement.parameters[i].value;
-        // Strip surrounding quotes from string values (same as PostgreSQL adapter)
-        if (
-          (value.startsWith("'") && value.endsWith("'")) ||
-          (value.startsWith('"') && value.endsWith('"'))
-        ) {
-          value = value.slice(1, -1);
+        const value = typedBindableValue(statement.parameters[i].value);
+        if (value === null) {
+          stmt.bindNull(i + 1);
+        } else {
+          stmt.bindValue(i + 1, value);
         }
-        stmt.bindValue(i + 1, value);
       }
 
       // Get column information for queries
@@ -226,7 +251,8 @@ export const duckdb = new (class implements DatabaseEngine {
         warnConstraintViolation(query, error);
         return;
       }
-      consola.error(`Failed to execute query '${query.id}':`, error);
+      consola.error(`Failed to execute query '${query.id}':`, (error as Error).message);
+      consola.debug(error);
       throw error;
     }
   }

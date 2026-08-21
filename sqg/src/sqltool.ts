@@ -31,7 +31,7 @@ import {
   preparePostgresSources,
 } from "./sources.js";
 import type { ColumnInfo, SQLQuery, TableInfo } from "./sql-query.js";
-import { EnumType, ListType, parseSQLQueries, StructType } from "./sql-query.js";
+import { EnumType, isNullLiteral, ListType, parseSQLQueries, StructType } from "./sql-query.js";
 import type { TypeMapper } from "./type-mapping.js";
 import type { GenerationResult, UI } from "./ui.js";
 
@@ -217,11 +217,14 @@ export class SqlQueryHelper {
   }
 
   get variables(): { name: string; type: string }[] {
+    // Parameter order follows `@set` declaration order: the `@set` block sits
+    // directly above the query and reads as the parameter list. It is also stable
+    // under SQL edits -- moving a `${x}` around does not renumber the signature.
     return Array.from(this.query.variables.entries()).map(([name, value]) => ({
       name,
       type: this.generator.mapParameterType(
         this.query.parameterTypes?.get(name) ?? detectParameterType(value),
-        false,
+        isNullLiteral(value),
       ),
     }));
   }

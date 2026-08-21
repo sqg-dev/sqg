@@ -9,7 +9,7 @@ repositories {
 }
 
 dependencies {
-    implementation("org.duckdb:duckdb_jdbc:1.5.2.0")
+    implementation("org.duckdb:duckdb_jdbc:1.5.5.1")
     implementation("org.apache.arrow:arrow-vector:19.0.0")
     implementation("org.apache.arrow:arrow-c-data:19.0.0")
     runtimeOnly("org.apache.arrow:arrow-memory-netty:19.0.0")

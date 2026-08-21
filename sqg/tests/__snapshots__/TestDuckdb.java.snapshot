@@ -2047,7 +2047,8 @@ public class TestDuckdb {
         StructOfFixedArrayResult structOfFixedArray,
         Object fixedArrayOfIntList,
         List<Object> listOfFixedIntArray,
-        String timeNs
+        String timeNs,
+        String geometry
     ) {
         public record StructResult(Integer a, String b) {
             private static StructResult fromAttributes(Object[] v) {
@@ -2177,7 +2178,8 @@ public class TestDuckdb {
                                 (Array) rs.getObject(54),
                                 Object[].class
                             ),
-                            rs.getString(55)
+                            rs.getString(55),
+                            rs.getString(56)
                         )
                     );
                 }
@@ -2293,7 +2295,8 @@ public class TestDuckdb {
                         ),
                         (Object) rs.getObject(53),
                         arrayToList((Array) rs.getObject(54), Object[].class),
-                        rs.getString(55)
+                        rs.getString(55),
+                        rs.getString(56)
                     );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);

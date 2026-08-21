@@ -158,7 +158,7 @@ CREATE TABLE IF NOT EXISTS posts (
     name: string,
     email: string,
   ): Promise<DuckDBMaterializedResult> {
-    const sql = "INSERT INTO users (name, email) VALUES ( ?, ?);";
+    const sql = "INSERT INTO users (name, email) VALUES (?, ?);";
     return await this.conn.run(sql, [name, email]);
   }
 
@@ -191,7 +191,7 @@ CREATE TABLE IF NOT EXISTS posts (
       }
     | undefined
   > {
-    const sql = "SELECT id, name, email, created_at FROM users WHERE id =?;";
+    const sql = "SELECT id, name, email, created_at FROM users WHERE id = ?;";
     const reader = await this.conn.runAndReadAll(sql, [id]);
     return reader.getRowObjects()[0] as
       | {
@@ -214,7 +214,8 @@ CREATE TABLE IF NOT EXISTS posts (
       }
     | undefined
   > {
-    const sql = "SELECT id, name, email, created_at FROM users WHERE email =?;";
+    const sql =
+      "SELECT id, name, email, created_at FROM users WHERE email = ?;";
     const reader = await this.conn.runAndReadAll(sql, [email]);
     return reader.getRowObjects()[0] as
       | {
@@ -233,7 +234,7 @@ CREATE TABLE IF NOT EXISTS posts (
     published: boolean,
   ): Promise<DuckDBMaterializedResult> {
     const sql = `INSERT INTO posts (user_id, title, content, published, tags, metadata)
-VALUES ( ?, ?, ?, ?, ['general'], {'views': 0, 'likes': 0, 'featured': false});`;
+VALUES (?, ?, ?, ?, ['general'], {'views': 0, 'likes': 0, 'featured': false});`;
     return await this.conn.run(sql, [userId, title, content, published]);
   }
 
@@ -258,7 +259,7 @@ VALUES ( ?, ?, ?, ?, ['general'], {'views': 0, 'likes': 0, 'featured': false});`
     }[]
   > {
     const sql = `SELECT id, user_id, title, content, published, tags, metadata, created_at
-FROM posts WHERE user_id =?;`;
+FROM posts WHERE user_id = ?;`;
     const reader = await this.conn.runAndReadAll(sql, [userId]);
     return reader.getRowObjects() as {
       id: number | null;
@@ -302,7 +303,7 @@ WHERE p.published = true;`;
   }
 
   async countUserPosts(userId: number): Promise<bigint | null | undefined> {
-    const sql = "SELECT COUNT(*) FROM posts WHERE user_id =?;";
+    const sql = "SELECT COUNT(*) FROM posts WHERE user_id = ?;";
     const reader = await this.conn.runAndReadAll(sql, [userId]);
     return reader.getRows()[0]?.[0] as bigint | null | undefined;
   }

@@ -1,0 +1,16 @@
+version: 1
+
+name: test-param-types
+
+sql:
+  - files:
+      - test-param-types.sql
+    gen:
+        - generator: typescript/duckdb
+          output: ./__generated__/
+        - generator: python/duckdb
+          output: ./__generated__/
+        - generator: java/duckdb
+          output: ./__generated__/
+          config:
+            package: sqg.generated

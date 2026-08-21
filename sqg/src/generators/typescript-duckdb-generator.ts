@@ -2,6 +2,7 @@ import Handlebars from "handlebars";
 import type { DbEngine } from "../constants.js";
 import {
   type ColumnInfo,
+  type ColumnType,
   EnumType,
   ListType,
   MapType,
@@ -11,6 +12,34 @@ import {
 } from "../sql-query.js";
 import type { GeneratorConfig, SqlQueryHelper } from "../sqltool.js";
 import { resolveElementType, TsGenerator } from "./typescript-generator.js";
+
+/**
+ * Bind-compatible parameter types for DuckDB types whose *column* representation
+ * is a wrapper object.
+ *
+ * `getRowObjects()` hands back `{ days }` for a DATE, `{ micros }` for a
+ * TIMESTAMP and so on, which is the right type to read a row into -- but those
+ * plain objects are not `DuckDBValue`s, so binding one throws
+ * "Cannot create values of type ANY" and the generated code does not even
+ * type-check. Every replacement below was verified to bind against
+ * @duckdb/node-api; a string literal is accepted for all of them, which also
+ * matches how the `@set` default is written.
+ */
+const BINDABLE_PARAMETER_TYPES: Record<string, string> = {
+  DATE: "string",
+  DATETIME: "string",
+  TIME: "string",
+  "TIME WITH TIME ZONE": "string",
+  TIMESTAMP: "string",
+  TIMESTAMP_S: "string",
+  TIMESTAMP_MS: "string",
+  TIMESTAMP_NS: "string",
+  "TIMESTAMP WITH TIME ZONE": "string",
+  INTERVAL: "string",
+  UUID: "string",
+  BIT: "string",
+  BLOB: "DuckDBBlobValue | string",
+};
 
 /**
  * TypeScript generator for DuckDB.
@@ -26,6 +55,15 @@ export class TsDuckDBGenerator extends TsGenerator {
 
   override supportsAppenders(_engine: DbEngine): boolean {
     return true;
+  }
+
+  override mapParameterType(type: ColumnType, nullable: boolean): string {
+    const bindable =
+      typeof type === "string" ? BINDABLE_PARAMETER_TYPES[type.toUpperCase()] : undefined;
+    if (!bindable) {
+      return super.mapParameterType(type, nullable);
+    }
+    return nullable ? `${bindable} | null` : bindable;
   }
 
   async beforeGenerate(

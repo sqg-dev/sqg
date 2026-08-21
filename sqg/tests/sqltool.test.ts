@@ -36,6 +36,18 @@ describe("sqg", () => {
     it("handle duckdb correctly", async () => {
       await handleProject("tests/test-duckdb.yaml", ["TestDuckdb.java", "test-duckdb.ts", "test_duckdb.py"]);
     });
+    it("types parameters DuckDB cannot resolve at prepare time", async () => {
+      // Regression: `@set x = null` must yield a nullable parameter and bind as
+      // SQL NULL, and parameters DuckDB leaves untyped at prepare time (DDL,
+      // arithmetic on a cast, strptime) must fall back to the `@set` default
+      // instead of failing the query with "Failed to get param logical type".
+      await handleProject("tests/test-param-types.yaml", [
+        "test-param-types.ts",
+        "test_param_types.py",
+        "TestParamTypes.java",
+      ]);
+    });
+
     it("handle duckdb-arrow correctly", async () => {
       await handleProject("tests/test-duckdb-arrow.yaml", ["TestDuckDbArrow.java"]);
     });

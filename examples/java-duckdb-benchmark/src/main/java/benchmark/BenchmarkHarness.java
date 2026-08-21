@@ -117,7 +117,7 @@ public class BenchmarkHarness {
         return result;
     }
 
-    private static void verifyRow(String context, RowData expected, Object dbRow) {
+    static void verifyRow(String context, RowData expected, Object dbRow) {
         record DbFields(UUID deviceId, java.time.OffsetDateTime timestamp, Double temperature, String location) {}
 
         DbFields fields;
@@ -168,28 +168,45 @@ public class BenchmarkHarness {
         }
     }
 
+    public record ChartSection(
+        String chartId,
+        String chartHeading,
+        String detailsTitle,
+        List<List<MethodResult>> runs,
+        int[] sizes
+    ) {}
+
     public static void generateReport(
             Connection conn, String title, String subtitle,
             List<List<MethodResult>> insertResults, int[] insertSizes,
             List<List<MethodResult>> updateResults, int[] updateSizes,
             List<List<MethodResult>> deleteResults, int[] deleteSizes
     ) throws IOException, SQLException {
+        generateReport(conn, "benchmark-report.html", title, subtitle, List.of(
+            new ChartSection("insertChart", "INSERT: Throughput vs Total Rows", "INSERT results",
+                insertResults, insertSizes),
+            new ChartSection("updateChart", "UPDATE: Throughput vs Total Rows", "UPDATE results",
+                updateResults, updateSizes),
+            new ChartSection("deleteChart", "DELETE: Throughput vs Total Rows", "DELETE results",
+                deleteResults, deleteSizes)
+        ), List.of());
+    }
+
+    public static void generateReport(
+            Connection conn, String reportPath, String title, String subtitle,
+            List<ChartSection> chartSections,
+            List<String[]> extraSystemInfo
+    ) throws IOException, SQLException {
         var is = BenchmarkHarness.class.getResourceAsStream("/report-template.html");
         Objects.requireNonNull(is, "report-template.html not found on classpath");
         var template = new String(is.readAllBytes());
 
         var charts = new StringBuilder();
-        charts.append(buildScaleChart("insertChart", "INSERT: Throughput vs Total Rows",
-            insertResults, insertSizes));
-        charts.append(buildScaleChart("updateChart", "UPDATE: Throughput vs Total Rows",
-            updateResults, updateSizes));
-        charts.append(buildScaleChart("deleteChart", "DELETE: Throughput vs Total Rows",
-            deleteResults, deleteSizes));
-
         var sections = new StringBuilder();
-        appendCollapsible(sections, "INSERT results", insertResults, insertSizes);
-        appendCollapsible(sections, "UPDATE results", updateResults, updateSizes);
-        appendCollapsible(sections, "DELETE results", deleteResults, deleteSizes);
+        for (var cs : chartSections) {
+            charts.append(buildScaleChart(cs.chartId(), cs.chartHeading(), cs.runs(), cs.sizes()));
+            appendCollapsible(sections, cs.detailsTitle(), cs.runs(), cs.sizes());
+        }
 
         var sysInfo = new StringBuilder();
         sysInfo.append(sysRow("Java", System.getProperty("java.version") + " (" + System.getProperty("java.vendor") + ")"));
@@ -204,6 +221,9 @@ public class BenchmarkHarness {
         sysInfo.append(sysRow("DuckDB", duckdbVersion));
         sysInfo.append(sysRow("Warmup Runs", String.valueOf(WARMUP_RUNS)));
         sysInfo.append(sysRow("Measurement Runs", String.valueOf(MEASUREMENT_RUNS)));
+        for (var row : extraSystemInfo) {
+            sysInfo.append(sysRow(row[0], row[1]));
+        }
 
         var html = template
             .replace("{{TITLE}}", title)
@@ -212,8 +232,8 @@ public class BenchmarkHarness {
             .replace("{{RESULTS_SECTIONS}}", sections.toString())
             .replace("{{SYSTEM_INFO}}", sysInfo.toString());
 
-        Files.writeString(Path.of("benchmark-report.html"), html);
-        System.out.println("\nReport written to benchmark-report.html");
+        Files.writeString(Path.of(reportPath), html);
+        System.out.println("\nReport written to " + reportPath);
     }
 
     private static String buildScaleChart(String id, String heading,

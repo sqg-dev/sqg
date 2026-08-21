@@ -1000,6 +1000,7 @@ CREATE TABLE tasks (
         items: ({ items: (number | null)[] } | null)[];
       };
       time_ns: string | null;
+      geometry: string | null;
     }[]
   > {
     const sql = "select * from test_all_types();";
@@ -1379,6 +1380,7 @@ CREATE TABLE tasks (
         items: ({ items: (number | null)[] } | null)[];
       };
       time_ns: string | null;
+      geometry: string | null;
     }[];
   }
 

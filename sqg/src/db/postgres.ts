@@ -4,7 +4,7 @@ import { Client, type QueryResult } from "pg";
 import types from "pg-types";
 import { DatabaseError, SqlExecutionError } from "../errors.js";
 import type { SQLQuery, TableInfo } from "../sql-query.js";
-import { type ColumnType, EnumType } from "../sql-query.js";
+import { bindableValue, type ColumnType, EnumType } from "../sql-query.js";
 import type { ProgressReporter } from "../ui.js";
 import {
   type DatabaseEngine,
@@ -367,16 +367,7 @@ export const postgres = new (class implements DatabaseEngine {
     const statement = query.queryPositional;
     try {
       consola.debug("Query:", statement.sql);
-      const parameterValues = statement.parameters.map((p) => {
-        const value = p.value;
-        if (
-          (value.startsWith("'") && value.endsWith("'")) ||
-          (value.startsWith('"') && value.endsWith('"'))
-        ) {
-          return value.slice(1, -1);
-        }
-        return value;
-      });
+      const parameterValues = statement.parameters.map((p) => bindableValue(p.value));
 
       // Introspect parameter types using PREPARE + pg_prepared_statements
       if (statement.parameters.length > 0) {

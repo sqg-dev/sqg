@@ -65,6 +65,63 @@ export type ParameterEntry = {
 
 export type SqlQueryPart = string | ParameterEntry;
 
+/**
+ * True when a `@set x = null` default declares the parameter as accepting null.
+ * Drives both the generated parameter's nullability and the value bound during
+ * introspection.
+ */
+export function isNullLiteral(value: string): boolean {
+  return value.trim().toLowerCase() === "null";
+}
+
+/**
+ * Convert a `@set` literal into the value to bind while introspecting.
+ * `null` becomes a real SQL NULL -- binding the string "null" makes strictly
+ * typed engines fail with a conversion error on any non-text column.
+ */
+export function bindableValue(value: string): string | null {
+  if (isNullLiteral(value)) {
+    return null;
+  }
+  if (
+    (value.startsWith("'") && value.endsWith("'")) ||
+    (value.startsWith('"') && value.endsWith('"'))
+  ) {
+    return value.slice(1, -1);
+  }
+  return value;
+}
+
+/**
+ * Like {@link bindableValue}, but preserves the literal's natural JS type.
+ *
+ * Needed for parameters DuckDB cannot type at prepare time: their type is
+ * inferred from whatever we bind, so an unquoted `@set n = 3` must bind as the
+ * number 3, not the string "3" (which DuckDB reads as STRING_LITERAL and then
+ * refuses to use in arithmetic).
+ */
+export function typedBindableValue(value: string): string | number | boolean | null {
+  const trimmed = value.trim();
+  if (isNullLiteral(trimmed)) {
+    return null;
+  }
+  // A quoted literal is text by construction: `@set s = '3'` means the string "3".
+  if (
+    (trimmed.startsWith("'") && trimmed.endsWith("'")) ||
+    (trimmed.startsWith('"') && trimmed.endsWith('"'))
+  ) {
+    return trimmed.slice(1, -1);
+  }
+  const lower = trimmed.toLowerCase();
+  if (lower === "true" || lower === "false") {
+    return lower === "true";
+  }
+  if (trimmed !== "" && !Number.isNaN(Number(trimmed))) {
+    return Number(trimmed);
+  }
+  return trimmed;
+}
+
 export type SqlQueryStatement = {
   sql: string; // for backwards compatibility, use sqlParts instead
 

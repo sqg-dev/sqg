@@ -2,7 +2,7 @@ import BetterSqlite3, { type Database } from "better-sqlite3";
 import consola from "consola";
 import { isNotNil } from "es-toolkit";
 import { DatabaseError, SqlExecutionError } from "../errors.js";
-import type { SQLQuery, TableInfo } from "../sql-query.js";
+import { bindableValue, type SQLQuery, type TableInfo } from "../sql-query.js";
 import type { ProgressReporter } from "../ui.js";
 import {
   type DatabaseEngine,
@@ -174,7 +174,7 @@ export const sqlite = new (class implements DatabaseEngine {
       consola.debug("Query:", statement.sql);
 
       const stmt = db.prepare(statement.sql);
-      const params = statement.parameters.map((p) => p.value);
+      const params = statement.parameters.map((p) => bindableValue(p.value));
 
       // Get column information for queries
       if (query.isQuery) {

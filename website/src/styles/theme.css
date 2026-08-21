@@ -291,8 +291,13 @@ h1.hero-title,
 	z-index: -2;
 }
 
-/* The diagram arrives via `hero.image.html`; give it the room it needs. */
+/*
+ * The diagram arrives via `hero.image.html`; give it the room it needs.
+ * Starlight emits it before the copy in the DOM and only reorders at 50rem, so
+ * order it here too — on narrow screens the title must lead, not the diagram.
+ */
 .hero > .hero-html {
+	order: 2;
 	width: 100%;
 	max-width: none;
 	justify-content: center;
@@ -304,10 +309,6 @@ h1.hero-title,
 	/* Default is 7fr 4fr; the pipeline cards need more than 4fr. */
 	.hero {
 		grid-template-columns: 6fr 5fr;
-	}
-
-	.hero > .hero-html {
-		order: 2;
 	}
 }
 
