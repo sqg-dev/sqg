@@ -12,7 +12,7 @@
     "@duckdb/node-api": "catalog:"
   },
   "devDependencies": {
-    "@sqg/sqg": "workspace:",
+    "@sqg/sqg": "workspace:^",
     "@types/node": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:"

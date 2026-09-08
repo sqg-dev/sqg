@@ -1,8 +1,12 @@
 import { execFile } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import typescriptPlugin from "prettier/parser-typescript";
+import estree from "prettier/plugins/estree";
+import prettier from "prettier/standalone";
+import javaPlugin from "prettier-plugin-java";
 import { afterEach, describe, expect, it } from "vitest";
 
 const exec = promisify(execFile);
@@ -96,6 +100,43 @@ describe("CLI", () => {
     });
     expect(result.json.projects).toBeUndefined();
   }, 60_000);
+
+  it("formats what it writes, under the real loader", async () => {
+    // Regression: the generators import prettier dynamically, and the CommonJS
+    // interop shape differs between vitest's loader and plain node/tsx. Getting
+    // it wrong left the output unformatted while every in-process test passed,
+    // because afterGenerate only logs the failure. So check through the CLI.
+    const config = makeProject(
+      "cli-format",
+      `version: 1
+name: cli-format
+sql:
+  - files:
+      - q.sql
+    gen:
+      - generator: typescript/sqlite
+        output: ./gen/
+      - generator: java/sqlite
+        output: ./gen/
+        config:
+          package: com.test
+`,
+    );
+    expect((await sqg(["--format", "json", config])).code).toBe(0);
+    const dir = join(config, "..", "gen");
+
+    const ts = readFileSync(join(dir, "q.ts"), "utf-8");
+    expect(ts).toBe(
+      await prettier.format(ts, { parser: "typescript", plugins: [typescriptPlugin, estree] }),
+    );
+    // The template writes single quotes; only prettier turns them into double.
+    expect(ts).toMatch(/from "better-sqlite3"/);
+
+    const java = readFileSync(join(dir, "Q.java"), "utf-8");
+    expect(java).toBe(
+      await prettier.format(java, { parser: "java", plugins: [javaPlugin], tabWidth: 4 }),
+    );
+  }, 120_000);
 
   it("fails the run when any project in a batch is invalid", async () => {
     const good = makeProject("cli-good");

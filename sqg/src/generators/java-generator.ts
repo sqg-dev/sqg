@@ -2,12 +2,13 @@ import { readFileSync, writeFileSync } from "node:fs";
 import consola from "consola";
 import { camelCase, pascalCase } from "es-toolkit/string";
 import Handlebars from "handlebars";
+import type { Plugin } from "prettier";
 import type { DbEngine } from "../constants.js";
 import type { ColumnInfo, SQLQuery, TableInfo } from "../sql-query.js";
 import { EnumType, ListType, StructType } from "../sql-query.js";
 import type { GeneratorConfig, SqlQueryHelper, SqlQueryPart } from "../sqltool.js";
 import { JavaTypeMapper } from "../type-mapping.js";
-import { BaseGenerator } from "./base-generator.js";
+import { BaseGenerator, interopDefault } from "./base-generator.js";
 import type { AuxiliaryFile } from "./types.js";
 
 /** True when the instrumentation observer seam is opted in via config. */
@@ -307,10 +308,12 @@ export class JavaGenerator extends BaseGenerator {
       // Loaded here, not at module scope: prettier-plugin-java is by far the
       // heaviest import in the CLI, and a run that generates nothing (or
       // generates no Java) must not pay for it.
-      const [{ default: prettier }, { default: prettierPluginJava }] = await Promise.all([
+      const [prettierModule, javaModule] = await Promise.all([
         import("prettier/standalone"),
         import("prettier-plugin-java"),
       ]);
+      const prettier = interopDefault(prettierModule);
+      const prettierPluginJava = interopDefault(javaModule) as unknown as Plugin;
       const code = readFileSync(outputPath, "utf-8");
       const formattedCode = await prettier.format(code, {
         parser: "java",

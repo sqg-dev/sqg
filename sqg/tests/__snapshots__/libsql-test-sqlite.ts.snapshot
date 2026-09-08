@@ -186,8 +186,7 @@ export class TestSqlite {
       args: [] as InArgs,
     });
     return (result.rows as unknown[])[0] as
-      | { posts: number | null; total: number }
-      | undefined;
+      { posts: number | null; total: number } | undefined;
   }
   async users4(): Promise<{ email: string | null; name: string } | undefined> {
     const result = await this.client.execute({
@@ -195,8 +194,7 @@ export class TestSqlite {
       args: [] as InArgs,
     });
     return (result.rows as unknown[])[0] as
-      | { email: string | null; name: string }
-      | undefined;
+      { email: string | null; name: string } | undefined;
   }
   async users5(): Promise<{ count: number; email: string | null }[]> {
     const result = await this.client.execute({
@@ -216,8 +214,7 @@ export class TestSqlite {
       args: [name] as InArgs,
     });
     return (result.rows as unknown[])[0] as
-      | { id: string; name: string; email: string }
-      | undefined;
+      { id: string; name: string; email: string } | undefined;
   }
   async users7(
     name: string,
@@ -240,8 +237,7 @@ export class TestSqlite {
       args: [] as InArgs,
     });
     return (result.rows as unknown[])[0] as
-      | { class: string; type: string }
-      | undefined;
+      { class: string; type: string } | undefined;
   }
   async userSummaryOne(): Promise<{ name: string; email: string | null }[]> {
     const result = await this.client.execute({

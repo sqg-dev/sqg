@@ -35,14 +35,14 @@ export class {{className}} {
 
 {{#if config.migrations}}
     static async applyMigrations(db: Database, projectName = '{{projectName}}'): Promise<void> {
-        const createStmt = db.prepare(`CREATE TABLE IF NOT EXISTS _sqg_migrations (
+        const createStmt = await db.prepare(`CREATE TABLE IF NOT EXISTS _sqg_migrations (
             project TEXT NOT NULL,
             migration_id TEXT NOT NULL,
             applied_at TEXT NOT NULL DEFAULT (datetime('now')),
             PRIMARY KEY (project, migration_id)
         )`);
         await createStmt.run();
-        const selectStmt = db.prepare('SELECT migration_id FROM _sqg_migrations WHERE project = ?');
+        const selectStmt = await db.prepare('SELECT migration_id FROM _sqg_migrations WHERE project = ?');
         const rows = await selectStmt.all(projectName) as { migration_id: string }[];
         const applied = new Set(rows.map(r => r.migration_id));
         const migrations: [string, string][] = [
@@ -53,9 +53,9 @@ export class {{className}} {
         const applyFn = db.transaction(async () => {
             for (const [id, sql] of migrations) {
                 if (!applied.has(id)) {
-                    const execStmt = db.prepare(sql);
+                    const execStmt = await db.prepare(sql);
                     await execStmt.run();
-                    const insertStmt = db.prepare('INSERT INTO _sqg_migrations (project, migration_id) VALUES (?, ?)');
+                    const insertStmt = await db.prepare('INSERT INTO _sqg_migrations (project, migration_id) VALUES (?, ?)');
                     await insertStmt.run(projectName, id);
                 }
             }

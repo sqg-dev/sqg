@@ -16,14 +16,14 @@
     "test:run": "vitest run"
   },
   "dependencies": {
-    "@lezer/common": "^1.5.0",
+    "@lezer/common": "catalog:",
     "@lezer/highlight": "^1.2.3",
-    "@lezer/lr": "^1.4.7"
+    "@lezer/lr": "catalog:"
   },
   "devDependencies": {
-    "@lezer/generator": "^1.8.0",
-    "tsx": "^4.21.0",
-    "typescript": "^5.9.3",
-    "vitest": "^4.0.18"
+    "@lezer/generator": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "^6.0.3",
+    "vitest": "catalog:"
   }
 }

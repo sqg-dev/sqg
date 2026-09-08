@@ -44,14 +44,15 @@ export class TestSqlite {
     db: Database,
     projectName = "test-turso",
   ): Promise<void> {
-    const createStmt = db.prepare(`CREATE TABLE IF NOT EXISTS _sqg_migrations (
+    const createStmt =
+      await db.prepare(`CREATE TABLE IF NOT EXISTS _sqg_migrations (
             project TEXT NOT NULL,
             migration_id TEXT NOT NULL,
             applied_at TEXT NOT NULL DEFAULT (datetime('now')),
             PRIMARY KEY (project, migration_id)
         )`);
     await createStmt.run();
-    const selectStmt = db.prepare(
+    const selectStmt = await db.prepare(
       "SELECT migration_id FROM _sqg_migrations WHERE project = ?",
     );
     const rows = (await selectStmt.all(projectName)) as {
@@ -79,9 +80,9 @@ export class TestSqlite {
     const applyFn = db.transaction(async () => {
       for (const [id, sql] of migrations) {
         if (!applied.has(id)) {
-          const execStmt = db.prepare(sql);
+          const execStmt = await db.prepare(sql);
           await execStmt.run();
-          const insertStmt = db.prepare(
+          const insertStmt = await db.prepare(
             "INSERT INTO _sqg_migrations (project, migration_id) VALUES (?, ?)",
           );
           await insertStmt.run(projectName, id);
@@ -108,6 +109,8 @@ export class TestSqlite {
       ["users6", "users6"],
       ["users7", "users7"],
       ["reserved_word_test", "reservedWordTest"],
+      ["userSummaryOne", "userSummaryOne"],
+      ["userSummaryAll", "userSummaryAll"],
     ]);
   }
 
@@ -187,8 +190,7 @@ export class TestSqlite {
       "select posts, total from bigints where id = 1;",
     );
     return (await stmt.get()) as
-      | { posts: number | null; total: number }
-      | undefined;
+      { posts: number | null; total: number } | undefined;
   }
   async users4(): Promise<{ email: string | null; name: string } | undefined> {
     const stmt = await this.prepare(
@@ -196,8 +198,7 @@ export class TestSqlite {
       `select email, name from users where id = '1';`,
     );
     return (await stmt.get()) as
-      | { email: string | null; name: string }
-      | undefined;
+      { email: string | null; name: string } | undefined;
   }
   async users5(): Promise<{ count: number; email: string | null }[]> {
     const stmt = await this.prepare(
@@ -211,18 +212,17 @@ export class TestSqlite {
   ): Promise<{ id: string; name: string; email: string } | undefined> {
     const stmt = await this.prepare(
       "users6",
-      "SELECT * FROM users WHERE name =?",
+      "SELECT * FROM users WHERE name = ?",
     );
     return (await stmt.get(name)) as
-      | { id: string; name: string; email: string }
-      | undefined;
+      { id: string; name: string; email: string } | undefined;
   }
   async users7(
     name: string,
   ): Promise<{ id: string; name: string; email: string | null }[]> {
     const stmt = await this.prepare(
       "users7",
-      "SELECT * FROM users WHERE name =?",
+      "SELECT * FROM users WHERE name = ?",
     );
     return (await stmt.all(name)) as {
       id: string;
@@ -238,5 +238,19 @@ export class TestSqlite {
       `SELECT name as class, email as type FROM users WHERE id = '1'`,
     );
     return (await stmt.get()) as { class: string; type: string } | undefined;
+  }
+  async userSummaryOne(): Promise<{ name: string; email: string | null }[]> {
+    const stmt = await this.prepare(
+      "userSummaryOne",
+      `SELECT name, email FROM users WHERE id = '1';`,
+    );
+    return (await stmt.all()) as { name: string; email: string | null }[];
+  }
+  async userSummaryAll(): Promise<{ name: string; email: string | null }[]> {
+    const stmt = await this.prepare(
+      "userSummaryAll",
+      "SELECT name, email FROM users;",
+    );
+    return (await stmt.all()) as { name: string; email: string | null }[];
   }
 }

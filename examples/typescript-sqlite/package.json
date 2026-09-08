@@ -12,7 +12,7 @@
     "better-sqlite3": "catalog:"
   },
   "devDependencies": {
-    "@sqg/sqg": "workspace:",
+    "@sqg/sqg": "workspace:^",
     "@types/better-sqlite3": "catalog:",
     "@types/node": "catalog:",
     "tsx": "catalog:",

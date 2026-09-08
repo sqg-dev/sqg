@@ -4,6 +4,18 @@ import type { GeneratorConfig, SqlQueryStatement } from "../sqltool.js";
 import type { TypeMapper } from "../type-mapping.js";
 import type { AuxiliaryFile, Generator } from "./types.js";
 
+/**
+ * Unwrap a dynamically imported CommonJS module.
+ *
+ * The interop shape depends on the loader: plain node exposes the module under
+ * `default`, while tsx (and vitest) hand back the namespace with the exports on
+ * it directly. Destructuring `default` therefore yields `undefined` under one of
+ * them — silently, since prettier only fails once it reads into the plugin.
+ */
+export function interopDefault<T>(module: T): T {
+  return (module as { default?: T }).default ?? module;
+}
+
 export abstract class BaseGenerator implements Generator {
   constructor(
     public template: string,

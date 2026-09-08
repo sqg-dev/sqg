@@ -89,9 +89,9 @@ public class TestSqlite {
     private static OffsetDateTime toOffsetDateTime(Object ts) {
         if (ts == null) return null;
         if (ts instanceof OffsetDateTime odt) return odt;
-        return ((java.sql.Timestamp) ts).toInstant().atOffset(
-            java.time.ZoneOffset.UTC
-        );
+        return ((java.sql.Timestamp) ts)
+            .toInstant()
+            .atOffset(java.time.ZoneOffset.UTC);
     }
 
     private static <K> List<K> arrayToList(

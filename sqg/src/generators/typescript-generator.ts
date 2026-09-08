@@ -15,7 +15,7 @@ import {
 } from "../sql-query.js";
 import type { GeneratorConfig, SqlQueryHelper } from "../sqltool.js";
 import { TypeScriptTypeMapper } from "../type-mapping.js";
-import { BaseGenerator } from "./base-generator.js";
+import { BaseGenerator, interopDefault } from "./base-generator.js";
 
 /** Resolve a ColumnType to its DuckDB type constant name (e.g. "VARCHAR", "INTEGER") for use in generated code. */
 export function resolveElementType(baseType: ColumnType): string {
@@ -331,12 +331,14 @@ export class TsGenerator extends BaseGenerator {
   async afterGenerate(outputPath: string): Promise<void> {
     try {
       consola.debug("Formatting file:", outputPath);
-      const [{ default: prettier }, { default: typescriptPlugin }, { default: estree }] =
-        await Promise.all([
-          import("prettier/standalone"),
-          import("prettier/parser-typescript"),
-          import("prettier/plugins/estree"),
-        ]);
+      const [prettierModule, typescriptModule, estreeModule] = await Promise.all([
+        import("prettier/standalone"),
+        import("prettier/parser-typescript"),
+        import("prettier/plugins/estree"),
+      ]);
+      const prettier = interopDefault(prettierModule);
+      const typescriptPlugin = interopDefault(typescriptModule);
+      const estree = interopDefault(estreeModule);
       const code = readFileSync(outputPath, "utf-8");
       const formattedCode = await prettier.format(code, {
         parser: "typescript",

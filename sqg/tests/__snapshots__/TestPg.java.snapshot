@@ -92,9 +92,9 @@ public class TestPg {
     private static OffsetDateTime toOffsetDateTime(Object ts) {
         if (ts == null) return null;
         if (ts instanceof OffsetDateTime odt) return odt;
-        return ((java.sql.Timestamp) ts).toInstant().atOffset(
-            java.time.ZoneOffset.UTC
-        );
+        return ((java.sql.Timestamp) ts)
+            .toInstant()
+            .atOffset(java.time.ZoneOffset.UTC);
     }
 
     private static <K> List<K> arrayToList(
@@ -1587,27 +1587,31 @@ public class TestPg {
         String name
     ) {}
 
-    private static final PgBulkInsert.PgMapper<
-        BigintTestRow
-    > BIGINT_TEST_MAPPER = PgBulkInsert.PgMapper.forClass(BigintTestRow.class)
-        .map("id", PgBulkInsert.PostgresTypes.INT8.primitive(BigintTestRow::id))
-        .map(
-            "small_id",
-            PgBulkInsert.PostgresTypes.INT2.from(BigintTestRow::smallId)
-        )
-        .map(
-            "regular_id",
-            PgBulkInsert.PostgresTypes.INT4.from(BigintTestRow::regularId)
-        )
-        .map(
-            "amount",
-            PgBulkInsert.PostgresTypes.INT8.primitive(BigintTestRow::amount)
-        )
-        .map("name", PgBulkInsert.PostgresTypes.TEXT.from(BigintTestRow::name));
+    private static final PgBulkInsert.PgMapper<BigintTestRow> BIGINT_TEST_MAPPER =
+        PgBulkInsert.PgMapper.forClass(BigintTestRow.class)
+            .map(
+                "id",
+                PgBulkInsert.PostgresTypes.INT8.primitive(BigintTestRow::id)
+            )
+            .map(
+                "small_id",
+                PgBulkInsert.PostgresTypes.INT2.from(BigintTestRow::smallId)
+            )
+            .map(
+                "regular_id",
+                PgBulkInsert.PostgresTypes.INT4.from(BigintTestRow::regularId)
+            )
+            .map(
+                "amount",
+                PgBulkInsert.PostgresTypes.INT8.primitive(BigintTestRow::amount)
+            )
+            .map(
+                "name",
+                PgBulkInsert.PostgresTypes.TEXT.from(BigintTestRow::name)
+            );
 
-    private static final PgBulkInsert.PgBulkWriter<
-        BigintTestRow
-    > BIGINT_TEST_WRITER = new PgBulkInsert.PgBulkWriter<>(BIGINT_TEST_MAPPER);
+    private static final PgBulkInsert.PgBulkWriter<BigintTestRow> BIGINT_TEST_WRITER =
+        new PgBulkInsert.PgBulkWriter<>(BIGINT_TEST_MAPPER);
 
     /** Row type for tasks appender */
     public record TasksRow(
@@ -1661,114 +1665,112 @@ public class TestPg {
         List<Long> bigArr
     ) {}
 
-    private static final PgBulkInsert.PgMapper<
-        AllTypesTestRow
-    > ALL_TYPES_TEST_MAPPER = PgBulkInsert.PgMapper.forClass(
-        AllTypesTestRow.class
-    )
-        .map(
-            "bool_val",
-            PgBulkInsert.PostgresTypes.BOOLEAN.from(AllTypesTestRow::boolVal)
-        )
-        .map(
-            "small_val",
-            PgBulkInsert.PostgresTypes.INT2.from(AllTypesTestRow::smallVal)
-        )
-        .map(
-            "int_val",
-            PgBulkInsert.PostgresTypes.INT4.from(AllTypesTestRow::intVal)
-        )
-        .map(
-            "big_val",
-            PgBulkInsert.PostgresTypes.INT8.from(AllTypesTestRow::bigVal)
-        )
-        .map(
-            "real_val",
-            PgBulkInsert.PostgresTypes.FLOAT4.from(AllTypesTestRow::realVal)
-        )
-        .map(
-            "double_val",
-            PgBulkInsert.PostgresTypes.FLOAT8.from(AllTypesTestRow::doubleVal)
-        )
-        .map(
-            "numeric_val",
-            PgBulkInsert.PostgresTypes.NUMERIC.from(AllTypesTestRow::numericVal)
-        )
-        .map(
-            "text_val",
-            PgBulkInsert.PostgresTypes.TEXT.from(AllTypesTestRow::textVal)
-        )
-        .map(
-            "varchar_val",
-            PgBulkInsert.PostgresTypes.TEXT.from(AllTypesTestRow::varcharVal)
-        )
-        .map(
-            "date_val",
-            PgBulkInsert.PostgresTypes.DATE.from(AllTypesTestRow::dateVal)
-        )
-        .map(
-            "ts_val",
-            PgBulkInsert.PostgresTypes.TIMESTAMP.from(AllTypesTestRow::tsVal)
-        )
-        .map(
-            "tstz_val",
-            PgBulkInsert.PostgresTypes.TIMESTAMPTZ.offsetDateTime(
-                AllTypesTestRow::tstzVal
+    private static final PgBulkInsert.PgMapper<AllTypesTestRow> ALL_TYPES_TEST_MAPPER =
+        PgBulkInsert.PgMapper.forClass(AllTypesTestRow.class)
+            .map(
+                "bool_val",
+                PgBulkInsert.PostgresTypes.BOOLEAN.from(
+                    AllTypesTestRow::boolVal
+                )
             )
-        )
-        .map(
-            "uuid_val",
-            PgBulkInsert.PostgresTypes.UUID.from(AllTypesTestRow::uuidVal)
-        )
-        .map(
-            "json_val",
-            PgBulkInsert.PostgresTypes.JSONB.from(AllTypesTestRow::jsonVal)
-        )
-        .map(
-            "int_arr",
-            PgBulkInsert.PostgresTypes.array(
-                PgBulkInsert.PostgresTypes.INT4
-            ).from(AllTypesTestRow::intArr)
-        )
-        .map(
-            "text_arr",
-            PgBulkInsert.PostgresTypes.array(
-                PgBulkInsert.PostgresTypes.TEXT
-            ).from(AllTypesTestRow::textArr)
-        )
-        .map(
-            "big_arr",
-            PgBulkInsert.PostgresTypes.array(
-                PgBulkInsert.PostgresTypes.INT8
-            ).from(AllTypesTestRow::bigArr)
-        );
+            .map(
+                "small_val",
+                PgBulkInsert.PostgresTypes.INT2.from(AllTypesTestRow::smallVal)
+            )
+            .map(
+                "int_val",
+                PgBulkInsert.PostgresTypes.INT4.from(AllTypesTestRow::intVal)
+            )
+            .map(
+                "big_val",
+                PgBulkInsert.PostgresTypes.INT8.from(AllTypesTestRow::bigVal)
+            )
+            .map(
+                "real_val",
+                PgBulkInsert.PostgresTypes.FLOAT4.from(AllTypesTestRow::realVal)
+            )
+            .map(
+                "double_val",
+                PgBulkInsert.PostgresTypes.FLOAT8.from(
+                    AllTypesTestRow::doubleVal
+                )
+            )
+            .map(
+                "numeric_val",
+                PgBulkInsert.PostgresTypes.NUMERIC.from(
+                    AllTypesTestRow::numericVal
+                )
+            )
+            .map(
+                "text_val",
+                PgBulkInsert.PostgresTypes.TEXT.from(AllTypesTestRow::textVal)
+            )
+            .map(
+                "varchar_val",
+                PgBulkInsert.PostgresTypes.TEXT.from(
+                    AllTypesTestRow::varcharVal
+                )
+            )
+            .map(
+                "date_val",
+                PgBulkInsert.PostgresTypes.DATE.from(AllTypesTestRow::dateVal)
+            )
+            .map(
+                "ts_val",
+                PgBulkInsert.PostgresTypes.TIMESTAMP.from(
+                    AllTypesTestRow::tsVal
+                )
+            )
+            .map(
+                "tstz_val",
+                PgBulkInsert.PostgresTypes.TIMESTAMPTZ.offsetDateTime(
+                    AllTypesTestRow::tstzVal
+                )
+            )
+            .map(
+                "uuid_val",
+                PgBulkInsert.PostgresTypes.UUID.from(AllTypesTestRow::uuidVal)
+            )
+            .map(
+                "json_val",
+                PgBulkInsert.PostgresTypes.JSONB.from(AllTypesTestRow::jsonVal)
+            )
+            .map(
+                "int_arr",
+                PgBulkInsert.PostgresTypes.array(
+                    PgBulkInsert.PostgresTypes.INT4
+                ).from(AllTypesTestRow::intArr)
+            )
+            .map(
+                "text_arr",
+                PgBulkInsert.PostgresTypes.array(
+                    PgBulkInsert.PostgresTypes.TEXT
+                ).from(AllTypesTestRow::textArr)
+            )
+            .map(
+                "big_arr",
+                PgBulkInsert.PostgresTypes.array(
+                    PgBulkInsert.PostgresTypes.INT8
+                ).from(AllTypesTestRow::bigArr)
+            );
 
-    private static final PgBulkInsert.PgBulkWriter<
-        AllTypesTestRow
-    > ALL_TYPES_TEST_WRITER = new PgBulkInsert.PgBulkWriter<>(
-        ALL_TYPES_TEST_MAPPER
-    );
+    private static final PgBulkInsert.PgBulkWriter<AllTypesTestRow> ALL_TYPES_TEST_WRITER =
+        new PgBulkInsert.PgBulkWriter<>(ALL_TYPES_TEST_MAPPER);
 
     /** Row type for identity_test appender */
     public record IdentityTestRow(String name, Integer value) {}
 
-    private static final PgBulkInsert.PgMapper<
-        IdentityTestRow
-    > IDENTITY_TEST_MAPPER = PgBulkInsert.PgMapper.forClass(
-        IdentityTestRow.class
-    )
-        .map(
-            "name",
-            PgBulkInsert.PostgresTypes.TEXT.from(IdentityTestRow::name)
-        )
-        .map(
-            "value",
-            PgBulkInsert.PostgresTypes.INT4.from(IdentityTestRow::value)
-        );
+    private static final PgBulkInsert.PgMapper<IdentityTestRow> IDENTITY_TEST_MAPPER =
+        PgBulkInsert.PgMapper.forClass(IdentityTestRow.class)
+            .map(
+                "name",
+                PgBulkInsert.PostgresTypes.TEXT.from(IdentityTestRow::name)
+            )
+            .map(
+                "value",
+                PgBulkInsert.PostgresTypes.INT4.from(IdentityTestRow::value)
+            );
 
-    private static final PgBulkInsert.PgBulkWriter<
-        IdentityTestRow
-    > IDENTITY_TEST_WRITER = new PgBulkInsert.PgBulkWriter<>(
-        IDENTITY_TEST_MAPPER
-    );
+    private static final PgBulkInsert.PgBulkWriter<IdentityTestRow> IDENTITY_TEST_WRITER =
+        new PgBulkInsert.PgBulkWriter<>(IDENTITY_TEST_MAPPER);
 }

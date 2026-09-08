@@ -1,6 +1,6 @@
 {
   "root": true,
-  "$schema": "https://biomejs.dev/schemas/2.3.3/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.12/schema.json",
   "formatter": {
     "enabled": true,
     "formatWithErrors": false,
@@ -36,10 +36,9 @@
         "noExplicitAny": "warn",
         "noDoubleEquals": "off",
         "noUnknownAtRules": {
+          "level": "error",
           "options": {
-            "ignore": [
-              "tailwind"
-            ]
+            "ignore": ["tailwind"]
           }
         }
       },

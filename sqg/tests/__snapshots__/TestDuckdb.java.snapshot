@@ -91,9 +91,9 @@ public class TestDuckdb {
     private static OffsetDateTime toOffsetDateTime(Object ts) {
         if (ts == null) return null;
         if (ts instanceof OffsetDateTime odt) return odt;
-        return ((java.sql.Timestamp) ts).toInstant().atOffset(
-            java.time.ZoneOffset.UTC
-        );
+        return ((java.sql.Timestamp) ts)
+            .toInstant()
+            .atOffset(java.time.ZoneOffset.UTC);
     }
 
     private static <K> List<K> arrayToList(
@@ -684,10 +684,10 @@ public class TestDuckdb {
         }
     }
 
-    public Stream<
-        ActionsByUserIdAndActionResult
-    > actionsByUserIdAndActionStream(Integer user_id, String action)
-        throws SQLException {
+    public Stream<ActionsByUserIdAndActionResult> actionsByUserIdAndActionStream(
+        Integer user_id,
+        String action
+    ) throws SQLException {
         return actionsByUserIdAndActionStream(
             user_id,
             action,
@@ -695,9 +695,7 @@ public class TestDuckdb {
         );
     }
 
-    public Stream<
-        ActionsByUserIdAndActionResult
-    > actionsByUserIdAndActionStream(
+    public Stream<ActionsByUserIdAndActionResult> actionsByUserIdAndActionStream(
         Integer user_id,
         String action,
         StreamOptions options
@@ -2055,6 +2053,7 @@ public class TestDuckdb {
                 return new StructResult((Integer) v[0], (String) v[1]);
             }
         }
+
         public record StructOfArraysResult(List<Integer> a, List<String> b) {
             private static StructOfArraysResult fromAttributes(Object[] v) {
                 return new StructOfArraysResult(
@@ -2063,6 +2062,7 @@ public class TestDuckdb {
                 );
             }
         }
+
         public record ArrayOfStructsResult(Integer a, String b) {
             private static ArrayOfStructsResult fromAttributes(Object[] v) {
                 return new ArrayOfStructsResult((Integer) v[0], (String) v[1]);
@@ -2160,8 +2160,7 @@ public class TestDuckdb {
                             ),
                             arrayOfStructToList(
                                 (Array) rs.getObject(44),
-                                TestAllTypesResult
-                                    .ArrayOfStructsResult::fromAttributes
+                                TestAllTypesResult.ArrayOfStructsResult::fromAttributes
                             ),
                             (HashMap) rs.getObject(45),
                             (Object) rs.getObject(46),
@@ -2280,8 +2279,7 @@ public class TestDuckdb {
                         ),
                         arrayOfStructToList(
                             (Array) rs.getObject(44),
-                            TestAllTypesResult
-                                .ArrayOfStructsResult::fromAttributes
+                            TestAllTypesResult.ArrayOfStructsResult::fromAttributes
                         ),
                         (HashMap) rs.getObject(45),
                         (Object) rs.getObject(46),
