@@ -5,6 +5,15 @@
  * For CLI usage, use the `sqg` binary directly.
  */
 
+// Staleness cache (`--if-stale`)
+export type { CacheState, Fingerprint } from "./cache.js";
+export {
+  CACHE_FILE,
+  cacheBlocker,
+  checkUpToDate,
+  computeFingerprint,
+  writeStamp,
+} from "./cache.js";
 export type { DbEngine, GeneratorInfo, Language } from "./constants.js";
 // Constants & generator definitions
 export {
@@ -68,6 +77,7 @@ export type {
   CliProjectOptions,
   GeneratorConfig,
   ParameterEntry,
+  ProcessOptions,
   Project,
   SqlQueryPart,
   SqlQueryStatement,
@@ -98,3 +108,4 @@ export {
   TypeMapper,
   TypeScriptTypeMapper,
 } from "./type-mapping.js";
+export { SQG_VERSION } from "./version.js";

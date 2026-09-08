@@ -1,9 +1,18 @@
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
-import { Client } from "pg";
+import { homedir } from "node:os";
+import type { StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 import type { Attachment } from "./db/types.js";
 import { DatabaseError } from "./errors.js";
 import type { SQLQuery } from "./sql-query.js";
 import type { ProgressReporter } from "./ui.js";
+
+/**
+ * Resolve a file source's path the way the introspection engine sees it:
+ * `$HOME` is expanded, and anything else — including a relative path, which
+ * resolves against the process CWD — is passed through untouched.
+ */
+export function resolveSourcePath(path: string): string {
+  return path.replace("$HOME", homedir());
+}
 
 /** A `type: postgres` source resolved from the project config. */
 export interface PostgresSourceSpec {
@@ -55,6 +64,12 @@ export async function preparePostgresSources(
   };
 
   try {
+    // Imported on demand: testcontainers is the single most expensive import in
+    // the CLI, and only projects with a container-backed source need it.
+    let PostgreSqlContainer:
+      | typeof import("@testcontainers/postgresql").PostgreSqlContainer
+      | undefined;
+
     for (const source of sources) {
       // A `url` points at an existing database: introspect its real, live schema
       // (no container, no BASELINE DDL applied). This is the drift-free path.
@@ -66,6 +81,7 @@ export async function preparePostgresSources(
       reporter?.onContainerStarting?.();
       let container: StartedPostgreSqlContainer;
       try {
+        PostgreSqlContainer ??= (await import("@testcontainers/postgresql")).PostgreSqlContainer;
         container = await new PostgreSqlContainer(source.image)
           .withDatabase("sqg-db")
           .withUsername("sqg")
@@ -84,6 +100,7 @@ export async function preparePostgresSources(
 
       // Apply the source's schema natively (true Postgres types), in source order.
       const schemaBlocks = queries.filter((q) => q.isBaseline && q.sourceTarget === source.name);
+      const { Client } = await import("pg");
       const client = new Client({ connectionString: connectionUri });
       await client.connect();
       try {

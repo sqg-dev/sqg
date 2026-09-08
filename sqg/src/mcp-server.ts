@@ -20,12 +20,9 @@ import {
   SQL_SYNTAX_REFERENCE,
 } from "./constants.js";
 import { processProject, validateProject } from "./sqltool.js";
+import { SQG_VERSION } from "./version.js";
 
-declare const __SQG_VERSION__: string;
-
-const version =
-  process.env.npm_package_version ??
-  (typeof __SQG_VERSION__ !== "undefined" ? __SQG_VERSION__ : "0.0.0");
+const version = SQG_VERSION;
 
 const server = new Server(
   {

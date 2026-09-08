@@ -2,9 +2,6 @@ import { readFileSync, writeFileSync } from "node:fs";
 import consola from "consola";
 import { camelCase, pascalCase } from "es-toolkit/string";
 import Handlebars from "handlebars";
-import typescriptPlugin from "prettier/parser-typescript";
-import estree from "prettier/plugins/estree";
-import prettier from "prettier/standalone";
 import type { DbEngine } from "../constants.js";
 import {
   type ColumnInfo,
@@ -334,6 +331,12 @@ export class TsGenerator extends BaseGenerator {
   async afterGenerate(outputPath: string): Promise<void> {
     try {
       consola.debug("Formatting file:", outputPath);
+      const [{ default: prettier }, { default: typescriptPlugin }, { default: estree }] =
+        await Promise.all([
+          import("prettier/standalone"),
+          import("prettier/parser-typescript"),
+          import("prettier/plugins/estree"),
+        ]);
       const code = readFileSync(outputPath, "utf-8");
       const formattedCode = await prettier.format(code, {
         parser: "typescript",

@@ -2,11 +2,8 @@ import { exit } from "node:process";
 import { Command } from "commander";
 import consola, { LogLevels } from "consola";
 import pc from "picocolors";
-import updateNotifier from "update-notifier";
 import { formatGeneratorsHelp, SHORT_GENERATOR_NAMES, SQL_SYNTAX_REFERENCE } from "./constants.js";
 import { formatErrorForOutput, SqgError } from "./errors.js";
-import { initProject } from "./init.js";
-import { startMcpServer } from "./mcp-server.js";
 import {
   buildProjectFromCliOptions,
   processProject,
@@ -15,17 +12,20 @@ import {
   validateProjectFromConfig,
 } from "./sqltool.js";
 import { UI } from "./ui.js";
+import { SQG_VERSION } from "./version.js";
 
-declare const __SQG_VERSION__: string;
 declare const __SQG_DESCRIPTION__: string;
 
-const version =
-  process.env.npm_package_version ??
-  (typeof __SQG_VERSION__ !== "undefined" ? __SQG_VERSION__ : "0.0.0");
+const version = SQG_VERSION;
 
-updateNotifier({ pkg: { name: "@sqg/sqg", version } }).notify({
-  message: "Update available {currentVersion} → {latestVersion}",
-});
+// Only worth loading when there is a terminal to show the notice in — in a
+// build or a pre-commit hook it is invisible startup cost.
+if (process.stdout.isTTY) {
+  const { default: updateNotifier } = await import("update-notifier");
+  updateNotifier({ pkg: { name: "@sqg/sqg", version } }).notify({
+    message: "Update available {currentVersion} → {latestVersion}",
+  });
+}
 
 const description =
   process.env.npm_package_description ??
@@ -42,6 +42,7 @@ export interface CliOptions {
   verbose?: boolean;
   format?: OutputFormat;
   validate?: boolean;
+  ifStale?: boolean;
   generator?: string;
   file?: string[];
   output?: string;
@@ -49,6 +50,26 @@ export interface CliOptions {
 }
 
 const BRANDING = `\n ${pc.bold(pc.blue("SQG"))} ${pc.dim(`v${version}`)}\n`;
+
+interface ProjectRun {
+  project: string;
+  status: "success" | "up-to-date";
+  generatedFiles: string[];
+}
+
+/**
+ * A single project keeps the original JSON shape; several report per project,
+ * with the run counting as up to date only when every project was skipped.
+ */
+function formatRuns(runs: ProjectRun[]) {
+  if (runs.length === 1) {
+    return { status: runs[0].status, generatedFiles: runs[0].generatedFiles };
+  }
+  return {
+    status: runs.every((run) => run.status === "up-to-date") ? "up-to-date" : "success",
+    projects: runs,
+  };
+}
 
 const program = new Command()
   .name("sqg")
@@ -64,6 +85,10 @@ ${formatGeneratorsHelp()}`,
   .option("--verbose", "Enable debug logging (shows SQL execution details)")
   .option("--format <format>", "Output format: text (default) or json", "text")
   .option("--validate", "Validate configuration without generating code")
+  .option(
+    "--if-stale",
+    "Skip generation when no input has changed since the last run (see .sqg-cache.json)",
+  )
   .option(
     "--generator <generator>",
     `Code generation generator (${SHORT_GENERATOR_NAMES.join(", ")})`,
@@ -83,7 +108,10 @@ ${formatGeneratorsHelp()}`,
 
 // Main generate command (default)
 program
-  .argument("[project]", "Path to the project YAML config (sqg.yaml) or omit to use CLI options")
+  .argument(
+    "[projects...]",
+    "Paths to project YAML configs (sqg.yaml). Several are processed in one run; omit to use CLI options",
+  )
   .hook("preAction", (thisCommand) => {
     const opts = thisCommand.opts<CliOptions>();
     if (opts.verbose) {
@@ -94,19 +122,20 @@ program
       consola.level = LogLevels.silent;
     }
   })
-  .action(async (projectPath: string | undefined, options: CliOptions) => {
-    const writeToStdout = !projectPath && !options.output;
+  .action(async (projectPaths: string[], options: CliOptions) => {
+    const writeToStdout = projectPaths.length === 0 && !options.output;
     const ui = new UI({
       format: options.format,
       verbose: options.verbose,
       isStdout: writeToStdout,
       version,
+      projects: projectPaths.length,
     });
     ui.header();
 
     try {
       // Determine if using YAML config or CLI options
-      const useCliOptions = !projectPath;
+      const useCliOptions = projectPaths.length === 0;
 
       if (useCliOptions) {
         // Validate required CLI options
@@ -157,49 +186,61 @@ program
           exit(result.valid ? 0 : 1);
         }
 
-        const files = await processProjectFromConfig(project, projectDir, writeToStdout, ui);
+        const files = await processProjectFromConfig(project, projectDir, writeToStdout, ui, {
+          ifStale: options.ifStale,
+        });
         // When writing to stdout, don't output JSON status - the generated code is the output
         if (options.format === "json" && !writeToStdout) {
           console.log(
             JSON.stringify({
-              status: "success",
+              status: ui.wasUpToDate ? "up-to-date" : "success",
               generatedFiles: files,
             }),
           );
         }
       } else {
-        // Use YAML config file
+        // Use YAML config files
         if (options.validate) {
-          const result = await validateProject(projectPath);
-          if (options.format === "json") {
-            console.log(JSON.stringify(result, null, 2));
-          } else {
-            if (result.valid) {
-              consola.success("Configuration is valid");
-              consola.info(`Project: ${result.project?.name}`);
-              consola.info(`SQL files: ${result.sqlFiles?.join(", ")}`);
-              consola.info(`Generators: ${result.generators?.join(", ")}`);
-            } else {
-              consola.error("Validation failed");
-              for (const error of result.errors || []) {
-                consola.error(`  ${error.message}`);
-                if (error.suggestion) {
-                  consola.info(`    Suggestion: ${error.suggestion}`);
+          const results = [];
+          for (const projectPath of projectPaths) {
+            const result = await validateProject(projectPath);
+            results.push(result);
+            if (options.format !== "json") {
+              if (result.valid) {
+                consola.success("Configuration is valid");
+                consola.info(`Project: ${result.project?.name}`);
+                consola.info(`SQL files: ${result.sqlFiles?.join(", ")}`);
+                consola.info(`Generators: ${result.generators?.join(", ")}`);
+              } else {
+                consola.error(`Validation failed: ${projectPath}`);
+                for (const error of result.errors || []) {
+                  consola.error(`  ${error.message}`);
+                  if (error.suggestion) {
+                    consola.info(`    Suggestion: ${error.suggestion}`);
+                  }
                 }
               }
             }
           }
-          exit(result.valid ? 0 : 1);
+          if (options.format === "json") {
+            console.log(JSON.stringify(results.length === 1 ? results[0] : results, null, 2));
+          }
+          exit(results.every((result) => result.valid) ? 0 : 1);
         }
 
-        const files = await processProject(projectPath, ui);
+        // One process, every project: startup is the dominant cost of a run
+        // that generates nothing, and it is paid once here.
+        const runs: ProjectRun[] = [];
+        for (const projectPath of projectPaths) {
+          const files = await processProject(projectPath, ui, { ifStale: options.ifStale });
+          runs.push({
+            project: projectPath,
+            status: ui.wasUpToDate ? "up-to-date" : "success",
+            generatedFiles: files,
+          });
+        }
         if (options.format === "json") {
-          console.log(
-            JSON.stringify({
-              status: "success",
-              generatedFiles: files,
-            }),
-          );
+          console.log(JSON.stringify(formatRuns(runs)));
         }
       }
     } catch (err) {
@@ -231,6 +272,7 @@ program
   .action(async (options) => {
     const parentOpts = program.opts<CliOptions>();
     try {
+      const { initProject } = await import("./init.js");
       await initProject(options);
       if (parentOpts.format === "json") {
         console.log(JSON.stringify({ status: "success", message: "Project initialized" }));
@@ -277,6 +319,7 @@ program
   .description("Start MCP (Model Context Protocol) server for AI assistants")
   .action(async () => {
     try {
+      const { startMcpServer } = await import("./mcp-server.js");
       await startMcpServer();
     } catch (error) {
       consola.error("Fatal error in MCP server:", error);

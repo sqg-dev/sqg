@@ -1,11 +1,11 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { basename, dirname, extname, join, relative, resolve } from "node:path";
 import consola, { LogLevels } from "consola";
 import { escapeRegExp, pascalCase } from "es-toolkit/string";
 import Handlebars from "handlebars";
 import YAML from "yaml";
 import { z } from "zod";
+import { cacheBlocker, checkUpToDate, computeFingerprint, writeStamp } from "./cache.js";
 import {
   type DbEngine,
   findSimilarGenerators,
@@ -15,7 +15,7 @@ import {
   parseGenerator,
   SHORT_GENERATOR_NAMES,
 } from "./constants.js";
-import { getDatabaseEngine } from "./db/index.js";
+import { loadDatabaseEngine } from "./db/lazy.js";
 import type { Attachment } from "./db/types.js";
 import {
   ConfigError,
@@ -29,6 +29,7 @@ import {
   type PostgresSourceSpec,
   type PreparedSources,
   preparePostgresSources,
+  resolveSourcePath,
 } from "./sources.js";
 import type { ColumnInfo, SQLQuery, TableInfo } from "./sql-query.js";
 import { EnumType, isNullLiteral, ListType, parseSQLQueries, StructType } from "./sql-query.js";
@@ -476,7 +477,7 @@ export function createExtraVariables(sources: Source[], suppressLogging = false)
     .filter((source) => source.type !== "postgres")
     .map((source) => {
       const path = source.path!;
-      const resolvedPath = path.replace("$HOME", homedir());
+      const resolvedPath = resolveSourcePath(path);
       const name = source.name ?? basename(path, extname(resolvedPath));
       const varName = `sources_${name.replace(/\s+/g, "_")}`;
       if (!suppressLogging) {
@@ -1103,11 +1104,20 @@ function countEnums(queries: SQLQuery[]): number {
 /**
  * Process a project configuration and generate code from a Project object
  */
+export interface ProcessOptions {
+  /**
+   * Skip generation entirely when no input has changed since the last run and
+   * the generated files are still exactly as they were left.
+   */
+  ifStale?: boolean;
+}
+
 export async function processProjectFromConfig(
   project: Project,
   projectDir: string,
   writeToStdout = false,
   ui?: UI,
+  options: ProcessOptions = {},
 ): Promise<string[]> {
   // Suppress all logging when writing to stdout
   const originalLevel = consola.level;
@@ -1115,9 +1125,31 @@ export async function processProjectFromConfig(
     consola.level = LogLevels.silent;
   }
 
+  ui?.startProject(project.name);
+
   const totalStart = performance.now();
   const reporter = ui?.createReporter();
   const results: GenerationResult[] = [];
+
+  // Fingerprint the inputs before anything reads a database or starts a
+  // container — that work is what the cache exists to avoid. Writing to stdout
+  // produces no files to compare against, so it is never cached.
+  const blocker = options.ifStale && !writeToStdout ? cacheBlocker(project) : undefined;
+  const fingerprint =
+    options.ifStale && !writeToStdout && !blocker
+      ? computeFingerprint(project, projectDir)
+      : undefined;
+  if (blocker) {
+    ui?.cacheDisabled(blocker);
+  }
+  if (fingerprint) {
+    const state = checkUpToDate(projectDir, fingerprint);
+    if (state.upToDate) {
+      ui?.upToDate(state.outputs);
+      return state.outputs;
+    }
+    ui?.cacheMiss(state.reason);
+  }
 
   try {
     const extraVariables = createExtraVariables(project.sources ?? [], writeToStdout);
@@ -1217,7 +1249,7 @@ export async function processProjectFromConfig(
 
           let preparedSources: PreparedSources | undefined;
           try {
-            const dbEngine = getDatabaseEngine(engine);
+            const dbEngine = await loadDatabaseEngine(engine);
 
             // Start postgres-source containers and apply their schema natively,
             // then attach them into the DuckDB introspection connection.
@@ -1309,6 +1341,10 @@ export async function processProjectFromConfig(
       }
     }
 
+    if (fingerprint) {
+      writeStamp(projectDir, fingerprint, files);
+    }
+
     ui?.summary(results, performance.now() - totalStart);
     return files;
   } finally {
@@ -1322,8 +1358,8 @@ export async function processProjectFromConfig(
 /**
  * Process a project configuration and generate code from a YAML file
  */
-export async function processProject(projectPath: string, ui?: UI) {
+export async function processProject(projectPath: string, ui?: UI, options: ProcessOptions = {}) {
   const projectDir = resolve(dirname(projectPath));
   const project = parseProjectConfig(projectPath);
-  return await processProjectFromConfig(project, projectDir, false, ui);
+  return await processProjectFromConfig(project, projectDir, false, ui, options);
 }

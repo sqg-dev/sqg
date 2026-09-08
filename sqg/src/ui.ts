@@ -35,16 +35,30 @@ export class UI {
   private verbose: boolean;
   private phaseStart = 0;
   private version: string;
+  private skipped = false;
+  private projects: number;
 
   constructor(options: {
     format?: OutputFormat;
     verbose?: boolean;
     isStdout?: boolean;
     version?: string;
+    /** How many projects this process will run; more than one get labelled. */
+    projects?: number;
   }) {
     this.silent = options.format === "json" || options.isStdout === true;
     this.verbose = options.verbose === true;
     this.version = options.version || "";
+    this.projects = options.projects ?? 1;
+  }
+
+  /** Start a project, resetting the per-project state a batch run reads back */
+  startProject(name: string) {
+    this.skipped = false;
+    if (this.silent || this.projects < 2) return;
+    this.stopSpinner();
+    this.log("");
+    this.log(` ${pc.bold(name)}`);
   }
 
   /** Print colored header */
@@ -152,6 +166,33 @@ export class UI {
     }
     this.log("");
     this.log(` ${pc.green("done")} ${pc.dim(`in ${formatMs(totalMs)}`)}`);
+  }
+
+  /** True when the project was skipped by `--if-stale` (nothing had changed) */
+  get wasUpToDate(): boolean {
+    return this.skipped;
+  }
+
+  /** Report that `--if-stale` found nothing to do */
+  upToDate(outputs: string[]) {
+    this.skipped = true;
+    if (this.silent) return;
+    this.stopSpinner();
+    const count = `${outputs.length} generated ${outputs.length === 1 ? "file" : "files"}`;
+    this.log("");
+    this.log(` ${pc.green("up to date")} ${pc.dim(`— ${count}, nothing to regenerate`)}`);
+  }
+
+  /** Explain why `--if-stale` did not skip (verbose only — normally just noise) */
+  cacheMiss(reason: string) {
+    if (this.silent || !this.verbose) return;
+    this.log(`  ${pc.dim(`regenerating: ${reason}`)}`);
+  }
+
+  /** Warn that `--if-stale` cannot apply to this project */
+  cacheDisabled(reason: string) {
+    if (this.silent) return;
+    this.log(` ${pc.yellow(pc.bold("note"))}  --if-stale ignored: ${reason}`);
   }
 
   /** Display an info-level hint (e.g. "these queries could share a row type") */

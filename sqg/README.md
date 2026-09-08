@@ -145,14 +145,42 @@ console.log(user?.name);
 
 ```bash
 sqg <config>              # Generate code from config file
+sqg <config> <config> ... # Generate several projects in one run
 sqg init                  # Initialize new project with example files
 sqg init --engine duckdb  # Initialize with specific database engine
 sqg --validate <config>   # Validate config without generating code
+sqg --if-stale <config>   # Generate only if an input changed since the last run
 sqg --format json <config> # Output as JSON (for tooling integration)
 sqg syntax                # Show SQL annotation syntax reference
 sqg mcp                   # Start MCP server for AI assistants
 sqg --help                # Show all options
 ```
+
+### Skipping unchanged projects
+
+`--if-stale` makes a run a no-op when nothing that affects the output has
+changed, so generation can be wired into a build, a `just` recipe or a
+pre-commit hook and run unconditionally:
+
+```bash
+git ls-files '*sqg.yaml' | xargs -r sqg --if-stale
+```
+
+Pass every config to one `sqg` (no `xargs -n1`): process startup dominates a run
+that generates nothing, and this way it is paid once. Checking 14 unchanged
+projects takes ~0.1s in total, against ~1.5s as separate processes.
+
+The check itself costs about a millisecond per project and covers the SQL files, the config, the
+generator templates, the sqg version, and the generated files themselves — so a
+hand-edited or deleted output is regenerated too. State lives in a
+`.sqg-cache.json` next to the config; add it to `.gitignore`. Run `--verbose` to
+see why a project was regenerated.
+
+Two things are deliberately not content-hashed. File `sources` are compared by
+size and modification time, because they are the multi-gigabyte databases and
+parquet files being introspected. And a `type: postgres` source with a `url`
+disables the cache entirely: its schema lives in a remote database that can
+change with no local signal.
 
 ## MCP Server (Model Context Protocol)
 
