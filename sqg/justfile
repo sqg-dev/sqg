@@ -113,18 +113,24 @@ install:
 [group("release")]
 release:
   #!/bin/bash
-  pnpm version minor
+  set -euo pipefail
+  # --no-git-checks: pnpm refuses to bump while untracked files exist.
+  # --no-git-tag-version: the commit and tag are made below, with our message.
+  pnpm version minor --no-git-tag-version --no-git-checks
   PACKAGE_VERSION="v$(pnpm pkg get version | tr -d '"')"
   git commit -m "release: $PACKAGE_VERSION" package.json
-  git tag $PACKAGE_VERSION
+  git tag "$PACKAGE_VERSION"
   git push && git push --tags
 
 # Bump patch version, commit, tag, and push
 [group("release")]
 release-patch:
   #!/bin/bash
-  pnpm version patch
+  set -euo pipefail
+  # --no-git-checks: pnpm refuses to bump while untracked files exist.
+  # --no-git-tag-version: the commit and tag are made below, with our message.
+  pnpm version patch --no-git-tag-version --no-git-checks
   PACKAGE_VERSION="v$(pnpm pkg get version | tr -d '"')"
   git commit -m "release: $PACKAGE_VERSION" package.json
-  git tag $PACKAGE_VERSION
+  git tag "$PACKAGE_VERSION"
   git push && git push --tags
