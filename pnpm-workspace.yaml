@@ -44,7 +44,10 @@ catalog:
   '@plausible-analytics/tracker': ^0.4.6
   '@sveltejs/vite-plugin-svelte': ^7.3.0
   '@tailwindcss/vite': ^4.3.3
-  '@tanstack/svelte-table': 9.2.4
+  # Pinned to the alpha deliberately: v9 stable replaced row models
+  # (getCoreRowModel/getSortedRowModel) with the feature API, which
+  # ResultsTable.svelte has not been migrated to.
+  '@tanstack/svelte-table': 9.0.0-alpha.10
   '@testcontainers/postgresql': ^12.1.0
   '@trpc/client': ^11.18.0
   '@trpc/server': ^11.18.0
