@@ -319,13 +319,13 @@ export const postgres = new (class implements DatabaseEngine {
       queries,
       async (query) => {
         try {
-          await this.db.query(query.rawQuery);
+          await this.db.query(query.rawQueryWithSources);
         } catch (e) {
           throw new SqlExecutionError(
             (e as Error).message,
             query.id,
             query.filename,
-            query.rawQuery,
+            query.rawQueryWithSources,
             e as Error,
           );
         }

@@ -3,3 +3,4 @@ dist/
 tests/gen
 tests/users.sqlite
 prod/
+.mise-dev/

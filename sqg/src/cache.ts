@@ -9,7 +9,7 @@
 
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getGenerator } from "./generators/index.js";
 import { resolveSourcePath } from "./sources.js";
@@ -28,6 +28,14 @@ const MISSING = "<missing>";
 export interface Fingerprint {
   /** Generated output changes between releases, so the version is an input. */
   sqg: string;
+  /**
+   * Hash of the running sqg module, because the version alone cannot tell a
+   * release apart from an unreleased build of it. A published install has one
+   * bundle per version, so this is stable there; when sqg is run from a local
+   * checkout it changes with every rebuild, which is exactly when the version
+   * string stops being trustworthy.
+   */
+  build: string;
   /** Hash of the parsed config: key order and YAML formatting are normalized away. */
   config: string;
   /** SQL files and Handlebars templates: path -> content hash. */
@@ -78,7 +86,10 @@ export function computeFingerprint(project: Project, projectDir: string): Finger
     for (const gen of sql.gen) {
       const template = resolveTemplatePath(gen);
       if (template) {
-        inputs[`template:${template}`] = hashFile(template);
+        // Keyed by name, not by the resolved path: templates live next to the
+        // installed module, so the path says where sqg happens to be installed
+        // and would invalidate every project when that moves.
+        inputs[`template:${basename(template)}`] = hashFile(template);
       }
     }
   }
@@ -91,11 +102,17 @@ export function computeFingerprint(project: Project, projectDir: string): Finger
     if (source.type === "postgres" || !source.path) {
       continue;
     }
-    const path = resolveSourcePath(source.path);
+    const path = resolveSourcePath(source.path, projectDir);
     sources[path] = statStamp(path);
   }
 
-  return { sqg: SQG_VERSION, config: hash(stableStringify(project)), inputs, sources };
+  return {
+    sqg: SQG_VERSION,
+    build: buildHash(),
+    config: hash(stableStringify(project)),
+    inputs,
+    sources,
+  };
 }
 
 /** Decide whether the last generated output is still current. */
@@ -157,6 +174,9 @@ function describeChange(prev: Fingerprint, next: Fingerprint): string | undefine
   if (prev.sqg !== next.sqg) {
     return `sqg version changed (${prev.sqg} -> ${next.sqg})`;
   }
+  if (prev.build !== next.build) {
+    return "sqg build changed";
+  }
   if (prev.config !== next.config) {
     return "project config changed";
   }
@@ -198,6 +218,15 @@ function resolveTemplatePath(gen: { generator: string; template?: string }): str
     // An unknown generator is reported properly by the pipeline further down.
     return undefined;
   }
+}
+
+/**
+ * Hash the running module. Bundled (the published CLI) that is the whole
+ * program; run from source it covers this file only, which is the weaker but
+ * far rarer case.
+ */
+function buildHash(): string {
+  return hashFile(fileURLToPath(import.meta.url));
 }
 
 function statStamp(path: string): string {

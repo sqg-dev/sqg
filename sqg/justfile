@@ -107,6 +107,18 @@ install:
   pnpm build
   pnpm add --global $(pwd)
 
+# Build this checkout and register it with mise as the `dev` version
+[group("util")]
+link:
+  pnpm build
+  mkdir -p .mise-dev/bin
+  ln -sf "$(pwd)/dist/sqg.mjs" .mise-dev/bin/sqg
+  mise link npm:@sqg/sqg@dev "$(pwd)/.mise-dev" --force
+  @echo 'Run it with:  mise exec "npm:@sqg/sqg@dev" -- sqg <args>'
+  @echo 'Or for a whole session, put this in the consuming repo mise.local.toml:'
+  @echo '  [tools]'
+  @echo '  "npm:@sqg/sqg" = "dev"' 
+
 # ─── Release ────────────────────────────────────────────────────
 
 # Bump minor version, commit, tag, and push

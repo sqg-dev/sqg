@@ -470,14 +470,18 @@ export class ExtraVariable {
   ) {}
 }
 
-export function createExtraVariables(sources: Source[], suppressLogging = false): ExtraVariable[] {
+export function createExtraVariables(
+  sources: Source[],
+  suppressLogging = false,
+  projectDir: string = process.cwd(),
+): ExtraVariable[] {
   // Only file sources become inlined `${sources_x}` variables. Postgres sources
   // are attached as catalogs and are not referenced through variables.
   return sources
     .filter((source) => source.type !== "postgres")
     .map((source) => {
       const path = source.path!;
-      const resolvedPath = resolveSourcePath(path);
+      const resolvedPath = resolveSourcePath(path, projectDir);
       const name = source.name ?? basename(path, extname(resolvedPath));
       const varName = `sources_${name.replace(/\s+/g, "_")}`;
       if (!suppressLogging) {
@@ -1152,7 +1156,7 @@ export async function processProjectFromConfig(
   }
 
   try {
-    const extraVariables = createExtraVariables(project.sources ?? [], writeToStdout);
+    const extraVariables = createExtraVariables(project.sources ?? [], writeToStdout, projectDir);
     const pgSources = getPostgresSources(project.sources ?? []);
     const pgSourceNames = new Set(pgSources.map((s) => s.name));
 

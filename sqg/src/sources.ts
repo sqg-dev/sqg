@@ -1,4 +1,6 @@
+import { existsSync } from "node:fs";
 import { homedir } from "node:os";
+import { isAbsolute, resolve } from "node:path";
 import type { StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 import type { Attachment } from "./db/types.js";
 import { DatabaseError } from "./errors.js";
@@ -6,12 +8,29 @@ import type { SQLQuery } from "./sql-query.js";
 import type { ProgressReporter } from "./ui.js";
 
 /**
- * Resolve a file source's path the way the introspection engine sees it:
- * `$HOME` is expanded, and anything else — including a relative path, which
- * resolves against the process CWD — is passed through untouched.
+ * Resolve a file source's path to an absolute one.
+ *
+ * `$HOME` is expanded, and a relative path is taken relative to the project —
+ * the reading most people expect, and the only one that survives running sqg
+ * from somewhere other than the config's directory. Configs written against the
+ * invocation directory still work: if the project-relative path does not exist,
+ * the CWD-relative one is used. Neither existing keeps the project-relative
+ * form, so the error names the file where it was expected.
+ *
+ * The resolved path reaches the introspection engine only; generated code takes
+ * source paths as runtime arguments, so nothing machine-specific is emitted.
  */
-export function resolveSourcePath(path: string): string {
-  return path.replace("$HOME", homedir());
+export function resolveSourcePath(path: string, projectDir?: string): string {
+  const expanded = path.replace("$HOME", homedir());
+  if (isAbsolute(expanded) || !projectDir) {
+    return expanded;
+  }
+  const fromProject = resolve(projectDir, expanded);
+  if (existsSync(fromProject)) {
+    return fromProject;
+  }
+  const fromCwd = resolve(process.cwd(), expanded);
+  return existsSync(fromCwd) ? fromCwd : fromProject;
 }
 
 /** A `type: postgres` source resolved from the project config. */

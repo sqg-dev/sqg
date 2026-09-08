@@ -216,6 +216,22 @@ export class SQLQuery {
     return this.isTestdata || this.isMigrate || this.isBaseline || this.id.startsWith("_");
   }
 
+  /**
+   * `rawQuery` with file-source variables inlined.
+   *
+   * Generation-time blocks (BASELINE, MIGRATE, TESTDATA) are executed verbatim
+   * rather than through the placeholder machinery, so a `${sources_x}` in one
+   * would otherwise reach the database unsubstituted. Only source variables are
+   * inlined — they are plain text by design; anything else in such a block is a
+   * parameter, which these blocks do not bind.
+   */
+  get rawQueryWithSources(): string {
+    return this.rawQuery.replace(
+      /\$\{(sources_[a-zA-Z0-9_]*)\}/g,
+      (placeholder, name) => this.variables.get(name) ?? placeholder,
+    );
+  }
+
   validateVariables(): string[] {
     const missingVars: string[] = [];
     const varRegex = /\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g;

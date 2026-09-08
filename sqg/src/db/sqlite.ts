@@ -21,13 +21,13 @@ export const sqlite = new (class implements DatabaseEngine {
       queries,
       (query) => {
         try {
-          db.exec(query.rawQuery);
+          db.exec(query.rawQueryWithSources);
         } catch (e) {
           throw new SqlExecutionError(
             (e as Error).message,
             query.id,
             query.filename,
-            query.rawQuery,
+            query.rawQueryWithSources,
             e as Error,
           );
         }

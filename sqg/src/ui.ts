@@ -37,6 +37,10 @@ export class UI {
   private version: string;
   private skipped = false;
   private projects: number;
+  private quiet: boolean;
+  private currentProject = "";
+  /** Header withheld in quiet mode until something is actually worth printing. */
+  private pendingHeader: string | null = null;
 
   constructor(options: {
     format?: OutputFormat;
@@ -45,17 +49,21 @@ export class UI {
     version?: string;
     /** How many projects this process will run; more than one get labelled. */
     projects?: number;
+    /** Say nothing when there is nothing to do. */
+    quiet?: boolean;
   }) {
     this.silent = options.format === "json" || options.isStdout === true;
     this.verbose = options.verbose === true;
     this.version = options.version || "";
     this.projects = options.projects ?? 1;
+    this.quiet = options.quiet === true;
   }
 
   /** Start a project, resetting the per-project state a batch run reads back */
   startProject(name: string) {
     this.skipped = false;
-    if (this.silent || this.projects < 2) return;
+    this.currentProject = name;
+    if (this.silent || this.projects < 2 || this.quiet) return;
     this.stopSpinner();
     this.log("");
     this.log(` ${pc.bold(name)}`);
@@ -66,7 +74,14 @@ export class UI {
     if (this.silent) return;
     const logo = pc.bold(pc.blue("SQG"));
     const ver = this.version ? ` ${pc.dim(`v${this.version}`)}` : "";
-    this.log(`\n ${logo}${ver}\n`);
+    const header = `\n ${logo}${ver}\n`;
+    // Quiet runs that turn out to have nothing to do print nothing at all, so
+    // the banner waits until there is a first real line to go above.
+    if (this.quiet) {
+      this.pendingHeader = header;
+      return;
+    }
+    this.log(header);
   }
 
   /** Create a ProgressReporter for DB adapters */
@@ -124,6 +139,7 @@ export class UI {
   /** Start a phase with a spinner */
   startPhase(label: string) {
     if (this.silent) return;
+    this.flushHeader();
     this.stopSpinner();
     this.phaseStart = performance.now();
     this.spinner = yoctoSpinner({ text: label }).start();
@@ -156,6 +172,12 @@ export class UI {
   /** Display generation summary */
   summary(results: GenerationResult[], totalMs: number) {
     if (this.silent || results.length === 0) return;
+    // A quiet batch prints nothing for skipped projects, so a project that did
+    // work still needs to say which one it was.
+    if (this.quiet && this.projects > 1) {
+      this.log("");
+      this.log(` ${pc.bold(this.currentProject)}`);
+    }
     this.log("");
     for (const r of results) {
       const parts = [];
@@ -176,7 +198,7 @@ export class UI {
   /** Report that `--if-stale` found nothing to do */
   upToDate(outputs: string[]) {
     this.skipped = true;
-    if (this.silent) return;
+    if (this.silent || this.quiet) return;
     this.stopSpinner();
     const count = `${outputs.length} generated ${outputs.length === 1 ? "file" : "files"}`;
     this.log("");
@@ -231,7 +253,16 @@ export class UI {
     }
   }
 
+  /** Emit the withheld banner, now that there is real output to put under it. */
+  private flushHeader() {
+    if (this.pendingHeader === null) return;
+    const header = this.pendingHeader;
+    this.pendingHeader = null;
+    process.stderr.write(`${header}\n`);
+  }
+
   private log(msg: string) {
+    this.flushHeader();
     process.stderr.write(`${msg}\n`);
   }
 }

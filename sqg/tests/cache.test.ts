@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
@@ -289,6 +290,28 @@ describe("fingerprint inputs", () => {
     expect(computeFingerprint(project, dir).sources[source]).not.toBe(resized);
   });
 
+  it("keys the template by name, so the install location is not an input", () => {
+    const { dir } = makeProject();
+    const project = parseProjectConfig(join(dir, "sqg.yaml"));
+
+    const keys = Object.keys(computeFingerprint(project, dir).inputs);
+    const template = keys.find((key) => key.startsWith("template:"));
+    // Not "template:/home/someone/sqg/dist/templates/...": that would invalidate
+    // every project whenever sqg is installed somewhere else.
+    expect(template).toBe("template:better-sqlite3.hbs");
+  });
+
+  it("fingerprints the running build, not just the version string", () => {
+    const { dir } = makeProject();
+    const project = parseProjectConfig(join(dir, "sqg.yaml"));
+    const fingerprint = computeFingerprint(project, dir);
+
+    // An unreleased build of a released version must not look identical to it.
+    expect(fingerprint.build).toMatch(/^[0-9a-f]{16}$/);
+    expect(fingerprint.build).not.toBe("<missing>");
+    expect(computeFingerprint(project, dir).build).toBe(fingerprint.build);
+  });
+
   it("records a missing input rather than throwing", () => {
     const { dir } = makeProject();
     const project = parseProjectConfig(join(dir, "sqg.yaml"));
@@ -306,7 +329,7 @@ describe("fingerprint inputs", () => {
 
     const keys = Object.keys(computeFingerprint(project, dir).inputs);
     const template = keys.find((key) => key.startsWith("template:"));
-    expect(template).toMatch(/templates\/.+\.hbs$/);
+    expect(template).toMatch(/^template:.+\.hbs$/);
     // Resolved and read, not just named — a template edit changes this value.
     expect(computeFingerprint(project, dir).inputs[template!]).not.toBe("<missing>");
 
@@ -325,6 +348,47 @@ describe("fingerprint inputs", () => {
 
     expect(computeFingerprint(reordered, dir).config).toBe(computeFingerprint(project, dir).config);
   });
+});
+
+describe("source paths", () => {
+  it("resolves a relative source against the project, from any directory", async () => {
+    // bsky's shape: a fixture committed next to the config, referenced by a
+    // relative path. Before this resolved against the project dir it only
+    // worked when sqg was run from that directory.
+    const dir = mkdtempSync(join(tmpdir(), "sqg-cache-"));
+    dirs.push(dir);
+    execFileSync("duckdb", [
+      "-c",
+      `COPY (SELECT 1 AS id, 'a' AS name) TO '${join(dir, "gens.parquet")}' (FORMAT PARQUET);`,
+    ]);
+    writeFileSync(
+      join(dir, "q.sql"),
+      "-- TESTDATA 1\nCREATE TABLE gens AS SELECT * FROM read_parquet(${sources_gens});\n\n-- QUERY allGens\nselect * from gens;\n",
+    );
+    writeFileSync(
+      join(dir, "sqg.yaml"),
+      `version: 1
+name: rel-source
+sql:
+  - files:
+      - q.sql
+    gen:
+      - generator: typescript/duckdb
+        output: ./gen/
+sources:
+  - path: gens.parquet
+    name: gens
+`,
+    );
+    expect(process.cwd()).not.toBe(dir);
+
+    const run = await generate(join(dir, "sqg.yaml"));
+    expect(run.upToDate).toBe(false);
+    const generated = readFileSync(run.files[0], "utf-8");
+    expect(generated).toContain("allGens");
+    // The resolved absolute path is an introspection detail, never emitted.
+    expect(generated).not.toContain(dir);
+  }, 60_000);
 });
 
 describe("cacheBlocker", () => {

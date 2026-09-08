@@ -43,6 +43,7 @@ export interface CliOptions {
   format?: OutputFormat;
   validate?: boolean;
   ifStale?: boolean;
+  quiet?: boolean;
   generator?: string;
   file?: string[];
   output?: string;
@@ -89,6 +90,7 @@ ${formatGeneratorsHelp()}`,
     "--if-stale",
     "Skip generation when no input has changed since the last run (see .sqg-cache.json)",
   )
+  .option("-q, --quiet", "Print nothing when there is nothing to generate")
   .option(
     "--generator <generator>",
     `Code generation generator (${SHORT_GENERATOR_NAMES.join(", ")})`,
@@ -130,6 +132,7 @@ program
       isStdout: writeToStdout,
       version,
       projects: projectPaths.length,
+      quiet: options.quiet,
     });
     ui.header();
 

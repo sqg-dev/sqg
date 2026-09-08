@@ -101,13 +101,13 @@ export const duckdb = new (class implements DatabaseEngine {
       queries,
       async (query) => {
         try {
-          await this.connection.run(query.rawQuery);
+          await this.connection.run(query.rawQueryWithSources);
         } catch (e) {
           throw new SqlExecutionError(
             (e as Error).message,
             query.id,
             query.filename,
-            query.rawQuery,
+            query.rawQueryWithSources,
             e as Error,
           );
         }
