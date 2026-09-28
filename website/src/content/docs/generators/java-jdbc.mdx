@@ -170,7 +170,7 @@ The generator creates a single Java file with:
 
 | SQL Type | Java Type |
 |----------|-----------|
-| `INTEGER`, `INT` | `Integer` |
+| `INTEGER`, `INT` | `Integer` (`Long` for SQLite, whose INTEGER is 64-bit) |
 | `BIGINT` | `Long` |
 | `REAL`, `DOUBLE` | `Double` |
 | `FLOAT` | `Float` |

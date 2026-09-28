@@ -74,14 +74,28 @@ export function isNullLiteral(value: string): boolean {
   return value.trim().toLowerCase() === "null";
 }
 
+/** Matches an SQL hex blob literal such as `x'00ff'` / `X'00FF'`. */
+const BLOB_LITERAL = /^[xX]'((?:[0-9a-fA-F]{2})*)'$/;
+
+/** True if a `@set` value is a hex blob literal (`x'00ff'`), i.e. a BLOB parameter. */
+export function isBlobLiteral(value: string): boolean {
+  return BLOB_LITERAL.test(value.trim());
+}
+
 /**
  * Convert a `@set` literal into the value to bind while introspecting.
  * `null` becomes a real SQL NULL -- binding the string "null" makes strictly
  * typed engines fail with a conversion error on any non-text column.
+ * A hex blob literal (`x'00ff'`) binds as real bytes, so the engine stores a
+ * BLOB and result columns derived from it introspect as BLOB.
  */
-export function bindableValue(value: string): string | null {
+export function bindableValue(value: string): string | Buffer | null {
   if (isNullLiteral(value)) {
     return null;
+  }
+  const blob = BLOB_LITERAL.exec(value.trim());
+  if (blob) {
+    return Buffer.from(blob[1], "hex");
   }
   if (
     (value.startsWith("'") && value.endsWith("'")) ||

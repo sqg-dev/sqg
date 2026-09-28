@@ -397,62 +397,62 @@ public class TestSqlite {
         });
     }
 
-    public Integer existsAny() throws SQLException {
+    public Long existsAny() throws SQLException {
         try (
             var stmt = connection.prepareStatement(
                 "select exists(select 1 from users where id = '1');"
             )
         ) {
             try (var rs = stmt.executeQuery()) {
-                return rs.next() ? rs.getObject(1, Integer.class) : null;
+                return rs.next() ? rs.getObject(1, Long.class) : null;
             }
         }
     }
 
-    public Integer countAll() throws SQLException {
+    public Long countAll() throws SQLException {
         try (
             var stmt = connection.prepareStatement(
                 "select count(*) from users;"
             )
         ) {
             try (var rs = stmt.executeQuery()) {
-                return rs.next() ? rs.getObject(1, Integer.class) : null;
+                return rs.next() ? rs.getObject(1, Long.class) : null;
             }
         }
     }
 
-    public Integer castSum() throws SQLException {
+    public Long castSum() throws SQLException {
         try (
             var stmt = connection.prepareStatement(
                 "select cast(count(*) as integer) as n from users where id = '1';"
             )
         ) {
             try (var rs = stmt.executeQuery()) {
-                return rs.next() ? rs.getObject(1, Integer.class) : null;
+                return rs.next() ? rs.getObject(1, Long.class) : null;
             }
         }
     }
 
-    public Integer existsNoSemi() throws SQLException {
+    public Long existsNoSemi() throws SQLException {
         try (
             var stmt = connection.prepareStatement(
                 "select exists(select 1 from users where id = '1')"
             )
         ) {
             try (var rs = stmt.executeQuery()) {
-                return rs.next() ? rs.getObject(1, Integer.class) : null;
+                return rs.next() ? rs.getObject(1, Long.class) : null;
             }
         }
     }
 
-    public Integer countTrailingWs() throws SQLException {
+    public Long countTrailingWs() throws SQLException {
         try (
             var stmt = connection.prepareStatement(
                 "select count(*) from users ;"
             )
         ) {
             try (var rs = stmt.executeQuery()) {
-                return rs.next() ? rs.getObject(1, Integer.class) : null;
+                return rs.next() ? rs.getObject(1, Long.class) : null;
             }
         }
     }
@@ -492,7 +492,7 @@ public class TestSqlite {
         }
     }
 
-    public record Users5Result(Integer count, String email) {}
+    public record Users5Result(Long count, String email) {}
 
     public List<Users5Result> users5() throws SQLException {
         try (
@@ -505,7 +505,7 @@ public class TestSqlite {
                 while (rs.next()) {
                     results.add(
                         new Users5Result(
-                            rs.getObject(1, Integer.class),
+                            rs.getObject(1, Long.class),
                             rs.getString(2)
                         )
                     );
@@ -546,7 +546,7 @@ public class TestSqlite {
                 hasNext = null;
                 try {
                     return new Users5Result(
-                        rs.getObject(1, Integer.class),
+                        rs.getObject(1, Long.class),
                         rs.getString(2)
                     );
                 } catch (SQLException e) {

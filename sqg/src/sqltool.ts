@@ -32,7 +32,14 @@ import {
   resolveSourcePath,
 } from "./sources.js";
 import type { ColumnInfo, SQLQuery, TableInfo } from "./sql-query.js";
-import { EnumType, isNullLiteral, ListType, parseSQLQueries, StructType } from "./sql-query.js";
+import {
+  EnumType,
+  isBlobLiteral,
+  isNullLiteral,
+  ListType,
+  parseSQLQueries,
+  StructType,
+} from "./sql-query.js";
 import type { TypeMapper } from "./type-mapping.js";
 import type { GenerationResult, UI } from "./ui.js";
 
@@ -647,6 +654,9 @@ export function parseProjectConfig(filePath: string): Project {
 }
 
 function detectParameterType(value: string): string {
+  if (isBlobLiteral(value)) {
+    return "BLOB";
+  }
   const num = Number(value);
   if (!Number.isNaN(num)) {
     if (Number.isInteger(num)) {

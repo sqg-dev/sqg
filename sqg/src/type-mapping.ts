@@ -127,6 +127,10 @@ export abstract class TypeMapper {
  * Generates Java records for struct types and handles Java reserved keywords.
  */
 export class JavaTypeMapper extends TypeMapper {
+  constructor(private readonly engine?: DbEngine) {
+    super();
+  }
+
   private typeMap: { [key: string]: string } = {
     INTEGER: "Integer",
     REAL: "Double",
@@ -270,6 +274,10 @@ export class JavaTypeMapper extends TypeMapper {
   // Language-specific implementations
   protected mapPrimitiveType(type: string, _nullable: boolean): string {
     const upperType = type.toString().toUpperCase();
+    // SQLite INTEGER is a 64-bit storage class; DuckDB/PostgreSQL INTEGER is 32-bit.
+    if (this.engine === "sqlite" && upperType === "INTEGER") {
+      return "Long";
+    }
     const mappedType = this.typeMap[upperType];
     if (mappedType) {
       return mappedType;
@@ -449,6 +457,7 @@ export class TypeScriptTypeMapper extends TypeMapper {
   constructor(
     private readonly engine?: DbEngine,
     public safeIntegers = false,
+    private readonly driver?: string,
   ) {
     super();
   }
@@ -533,6 +542,11 @@ export class TypeScriptTypeMapper extends TypeMapper {
     // SQLite drivers return number for 64-bit integer columns unless safe-integer
     // mode is enabled. Override the shared BIGINT/INT8 -> "bigint" mapping.
     let mappedType = this.typeMap[upperType];
+    // SQLite drivers return BLOBs as Buffer/Uint8Array (@libsql/client: ArrayBuffer),
+    // not the DuckDB `{ bytes }` wrapper; all of them accept a Uint8Array param.
+    if (this.engine === "sqlite" && upperType === "BLOB") {
+      mappedType = this.driver === "libsql" ? "ArrayBuffer" : "Uint8Array";
+    }
     if (
       mappedType === "bigint" &&
       this.engine === "sqlite" &&

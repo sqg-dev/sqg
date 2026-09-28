@@ -172,7 +172,7 @@ db.close();
 | `INTEGER` | `number` |
 | `REAL` | `number` |
 | `TEXT` | `string` |
-| `BLOB` | `Buffer` |
+| `BLOB` | `Uint8Array` (`ArrayBuffer` with libsql) |
 | `NULL` | `null` |
 
 Nullable columns use union types: `string | null`

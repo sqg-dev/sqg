@@ -81,6 +81,31 @@ describe("sqg", () => {
     it("handle sqlite correctly", async () => {
       await handleProject("tests/test-sqlite.yaml", ["test-sqlite.ts", "TestSqlite.java", "test_sqlite.py"]);
     });
+    it("types sqlite BLOB parameters and 64-bit INTEGERs", async () => {
+      // Regression: `@set data = x'…'` was typed as TEXT (Java setString), a BLOB
+      // result was typed as the DuckDB `{ bytes }` shape in TypeScript, and SQLite's
+      // 64-bit INTEGER mapped to Java's 32-bit Integer.
+      const files = await handleProject("tests/test-sqlite-blob.yaml", [
+        "test-sqlite-blob.ts",
+        "test-sqlite-blob.ts",
+        "TestSqliteBlob.java",
+        "test_sqlite_blob.py",
+      ]);
+      const read = (name: string) =>
+        readFileSync(files.find((f) => f.endsWith(name))!, "utf-8");
+      const java = read("TestSqliteBlob.java");
+      expect(java).toContain("byte[] data");
+      expect(java).toContain("stmt.setBytes(4, data);");
+      expect(java).toContain("Long created_at");
+      expect(java).toContain("public byte[] readSlice(Long start, Long length, String hash)");
+      expect(java).not.toMatch(/\bInteger\b/);
+      const ts = read("sqlite-blob/test-sqlite-blob.ts");
+      expect(ts).toContain("data: Uint8Array");
+      expect(ts).not.toContain("bytes: Uint8Array");
+      expect(read("sqlite-blob-libsql/test-sqlite-blob.ts")).toContain("data: ArrayBuffer");
+      const py = read("test_sqlite_blob.py");
+      expect(py).toContain("data: bytes");
+    });
     it("handle sqlite with safeIntegers config (B6)", async () => {
       await handleProject("tests/test-sqlite-safe-integers.yaml", ["test-sqlite.ts"]);
     });

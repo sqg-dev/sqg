@@ -31,7 +31,7 @@ test-python:
 
 # Generate all code from test SQL files
 [group("generate")]
-generate: build-duckdb build-duckdb-arrow build-pg build-sqlite build-sources build-baseline-attach build-postgres-source build-observer
+generate: build-duckdb build-duckdb-arrow build-pg build-sqlite build-sqlite-blob build-sources build-baseline-attach build-postgres-source build-observer
 
 # Generate all code (CI alias)
 [group("generate")]
@@ -56,6 +56,11 @@ build-pg:
 [group("generate")]
 build-sqlite:
   pnpm sqg tests/test-sqlite.yaml
+
+# Generate SQLite BLOB / 64-bit INTEGER test code
+[group("generate")]
+build-sqlite-blob:
+  pnpm sqg tests/test-sqlite-blob.yaml
 
 # Generate source-file test code
 [group("generate")]

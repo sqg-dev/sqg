@@ -1,0 +1,21 @@
+version: 1
+
+name: test-sqlite-blob
+
+sql:
+  - files:
+      - test-sqlite-blob.sql
+    gen:
+        - generator: typescript/sqlite
+          output: /tmp/sqlite-blob/
+        - generator: typescript/sqlite/libsql
+          output: /tmp/sqlite-blob-libsql/
+        - generator: java/sqlite
+          output: ../java/src/main/java/sqg/generated/
+          config:
+            package: sqg.generated
+            migrations: true
+        - generator: python/sqlite
+          output: ../python/generated/
+          config:
+            migrations: true

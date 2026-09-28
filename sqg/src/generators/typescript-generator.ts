@@ -41,8 +41,8 @@ export function resolveElementType(baseType: ColumnType): string {
 }
 
 export class TsGenerator extends BaseGenerator {
-  constructor(template: string, engine?: DbEngine) {
-    super(template, new TypeScriptTypeMapper(engine));
+  constructor(template: string, engine?: DbEngine, driver?: string) {
+    super(template, new TypeScriptTypeMapper(engine, false, driver));
   }
 
   getFunctionName(id: string): string {

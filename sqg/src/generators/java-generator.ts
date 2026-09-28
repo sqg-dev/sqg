@@ -65,7 +65,7 @@ export class JavaGenerator extends BaseGenerator {
     public template: string,
     engine: DbEngine = "duckdb",
   ) {
-    super(template, new JavaTypeMapper());
+    super(template, new JavaTypeMapper(engine));
     this.engine = engine;
   }
 
