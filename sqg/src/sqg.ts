@@ -3,6 +3,7 @@ import { Command } from "commander";
 import consola, { LogLevels } from "consola";
 import pc from "picocolors";
 import { formatGeneratorsHelp, SHORT_GENERATOR_NAMES, SQL_SYNTAX_REFERENCE } from "./constants.js";
+import { shutdownDatabaseEngines } from "./db/lazy.js";
 import { formatErrorForOutput, SqgError } from "./errors.js";
 import {
   buildProjectFromCliOptions,
@@ -246,7 +247,9 @@ program
           console.log(JSON.stringify(formatRuns(runs)));
         }
       }
+      await shutdownDatabaseEngines();
     } catch (err) {
+      await shutdownDatabaseEngines().catch(() => {});
       if (options.format === "json") {
         console.log(JSON.stringify(formatErrorForOutput(err)));
       } else {

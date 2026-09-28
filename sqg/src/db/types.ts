@@ -26,6 +26,9 @@ export interface DatabaseEngine {
   introspectTables(tables: TableInfo[], reporter?: ProgressReporter): Promise<void> | void;
 
   close(): Promise<void> | void;
+
+  /** Release resources kept across projects (e.g. a shared container); called once at exit. */
+  shutdown?(): Promise<void> | void;
 }
 
 /**

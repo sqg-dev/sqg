@@ -34,6 +34,7 @@ export {
 } from "./constants.js";
 // Database adapters
 export { getDatabaseEngine } from "./db/index.js";
+export { shutdownDatabaseEngines } from "./db/lazy.js";
 export type { DatabaseEngine } from "./db/types.js";
 export { initializeDatabase } from "./db/types.js";
 export type { ErrorContext, SqgErrorCode } from "./errors.js";

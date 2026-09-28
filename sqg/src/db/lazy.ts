@@ -9,6 +9,14 @@ import type { DatabaseEngine } from "./types.js";
  * `--if-stale` run that generates nothing down to a few tens of milliseconds.
  */
 export async function loadDatabaseEngine(engine: string): Promise<DatabaseEngine> {
+  const loaded = await importEngine(engine);
+  loadedEngines.add(loaded);
+  return loaded;
+}
+
+const loadedEngines = new Set<DatabaseEngine>();
+
+async function importEngine(engine: string): Promise<DatabaseEngine> {
   switch (engine) {
     case "sqlite":
       return (await import("./sqlite.js")).sqlite;
@@ -18,5 +26,12 @@ export async function loadDatabaseEngine(engine: string): Promise<DatabaseEngine
       return (await import("./postgres.js")).postgres;
     default:
       throw new Error(`Unsupported database engine: ${engine}`);
+  }
+}
+
+/** Shut down every engine loaded so far (stops the shared postgres container). */
+export async function shutdownDatabaseEngines(): Promise<void> {
+  for (const engine of loadedEngines) {
+    await engine.shutdown?.();
   }
 }

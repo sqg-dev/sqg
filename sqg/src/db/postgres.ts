@@ -127,18 +127,12 @@ class ExternalDbMode implements ConnectionMode {
  * Temp database mode: creates a temporary database for SQG to work in.
  * Connects to the provided server first (dbInitial) to CREATE the temp DB,
  * then connects to the temp DB for all operations.
- * On close, drops the temp DB and optionally stops the testcontainer.
+ * On close, drops the temp DB; the server itself is reused by the next file.
  */
 class TempDbMode implements ConnectionMode {
   private dbInitial!: Client;
-  private container: StartedPostgreSqlContainer | null = null;
 
-  constructor(
-    private connectionString: string,
-    container: StartedPostgreSqlContainer,
-  ) {
-    this.container = container;
-  }
+  constructor(private connectionString: string) {}
 
   async connect(): Promise<Client> {
     this.dbInitial = new Client({ connectionString: this.connectionString });
@@ -199,11 +193,6 @@ class TempDbMode implements ConnectionMode {
     await db.end();
     await this.dbInitial.query(`DROP DATABASE IF EXISTS "${tempDatabaseName}"`);
     await this.dbInitial.end();
-
-    if (this.container) {
-      await this.container.stop();
-      this.container = null;
-    }
   }
 }
 
@@ -213,21 +202,26 @@ export const postgres = new (class implements DatabaseEngine {
   private dynamicTypeCache = new Map<number, string>();
   private enumTypeCache = new Map<number, EnumType>();
   private tableOidCache = new Map<number, string>();
+  // Started once and shared by every file and project of this process: container
+  // startup costs seconds, while each file still gets a fresh temp database.
+  private container: Promise<StartedPostgreSqlContainer> | null = null;
 
-  private async startContainer(
-    reporter?: ProgressReporter,
-  ): Promise<{ connectionUri: string; container: StartedPostgreSqlContainer }> {
-    reporter?.onContainerStarting?.();
-
-    const container = await new PostgreSqlContainer("postgres:16-alpine")
-      .withDatabase("sqg-db")
-      .withUsername("sqg")
-      .withPassword("secret")
-      .start();
-
-    const connectionUri = container.getConnectionUri();
-    reporter?.onContainerStarted?.(connectionUri);
-    return { connectionUri, container };
+  private async startContainer(reporter?: ProgressReporter): Promise<string> {
+    if (!this.container) {
+      reporter?.onContainerStarting?.();
+      this.container = new PostgreSqlContainer("postgres:16-alpine")
+        .withDatabase("sqg-db")
+        .withUsername("sqg")
+        .withPassword("secret")
+        .start();
+      this.container.catch(() => {
+        this.container = null;
+      });
+      const connectionUri = (await this.container).getConnectionUri();
+      reporter?.onContainerStarted?.(connectionUri);
+      return connectionUri;
+    }
+    return (await this.container).getConnectionUri();
   }
 
   private async loadTypeCache(db: Client): Promise<void> {
@@ -309,8 +303,7 @@ export const postgres = new (class implements DatabaseEngine {
     if (externalUrl) {
       this.mode = new ExternalDbMode(externalUrl);
     } else {
-      const { connectionUri, container } = await this.startContainer(reporter);
-      this.mode = new TempDbMode(connectionUri, container);
+      this.mode = new TempDbMode(await this.startContainer(reporter));
     }
 
     this.db = await this.mode.connect();
@@ -486,5 +479,13 @@ export const postgres = new (class implements DatabaseEngine {
     this.dynamicTypeCache = new Map();
     this.enumTypeCache = new Map();
     this.tableOidCache = new Map();
+  }
+
+  async shutdown() {
+    const container = this.container;
+    this.container = null;
+    if (container) {
+      await (await container).stop();
+    }
   }
 })();
