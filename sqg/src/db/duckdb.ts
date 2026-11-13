@@ -39,6 +39,14 @@ function convertType(type: DuckDBType): ColumnType {
   if (type instanceof DuckDBListType) {
     return new ListType(convertType(type.valueType));
   }
+  // A TUPLE (DuckDB 2.0) is a struct with unnamed entries: no field names to generate, so it stays an opaque type.
+  if (
+    type instanceof DuckDBStructType &&
+    type.entryNames.length > 0 &&
+    type.entryNames.every((name) => name === "")
+  ) {
+    return type.toString();
+  }
   if (type instanceof DuckDBStructType) {
     return new StructType(
       type.entryTypes.map((t, index) => ({
@@ -226,6 +234,8 @@ export const duckdb = new (class implements DatabaseEngine {
         const result = await stmt.stream();
         const columnNames = result.columnNames();
         const columnTypes = result.columnTypes();
+        // An unread streaming result blocks the connection (DuckDB 2.0).
+        result.closeSync();
         consola.debug("Columns:", columnNames);
         consola.debug(
           "Types:",
@@ -284,6 +294,7 @@ export const duckdb = new (class implements DatabaseEngine {
         const stream = await result.stream();
         const columnNames = stream.columnNames();
         const columnTypes = stream.columnTypes();
+        stream.closeSync();
 
         table.columns = columnNames.map((name, index) => ({
           name,

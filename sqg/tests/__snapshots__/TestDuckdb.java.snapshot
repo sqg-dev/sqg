@@ -2011,6 +2011,7 @@ public class TestDuckdb {
         Instant timestampNs,
         OffsetTime timeTz,
         OffsetDateTime timestampTz,
+        OffsetDateTime timestampTzNs,
         Float float_,
         Double double_,
         BigDecimal dec41,
@@ -2033,6 +2034,7 @@ public class TestDuckdb {
         List<String> varcharArray,
         List<List<Integer>> nestedIntArray,
         StructResult struct,
+        EmptyStructResult emptyStruct,
         StructOfArraysResult structOfArrays,
         List<ArrayOfStructsResult> arrayOfStructs,
         HashMap map,
@@ -2046,11 +2048,18 @@ public class TestDuckdb {
         Object fixedArrayOfIntList,
         List<Object> listOfFixedIntArray,
         String timeNs,
-        String geometry
+        String geometry,
+        Object tuple
     ) {
         public record StructResult(Integer a, String b) {
             private static StructResult fromAttributes(Object[] v) {
                 return new StructResult((Integer) v[0], (String) v[1]);
+            }
+        }
+
+        public record EmptyStructResult() {
+            private static EmptyStructResult fromAttributes(Object[] v) {
+                return new EmptyStructResult();
             }
         }
 
@@ -2110,75 +2119,80 @@ public class TestDuckdb {
                             (Instant) rs.getObject(18),
                             (OffsetTime) rs.getObject(19),
                             (OffsetDateTime) rs.getObject(20),
-                            rs.getObject(21, Float.class),
-                            rs.getObject(22, Double.class),
-                            rs.getBigDecimal(23),
+                            (OffsetDateTime) rs.getObject(21),
+                            rs.getObject(22, Float.class),
+                            rs.getObject(23, Double.class),
                             rs.getBigDecimal(24),
                             rs.getBigDecimal(25),
                             rs.getBigDecimal(26),
-                            (UUID) rs.getObject(27),
-                            rs.getString(28),
+                            rs.getBigDecimal(27),
+                            (UUID) rs.getObject(28),
                             rs.getString(29),
-                            rs.getBytes(30),
-                            rs.getString(31),
-                            (String) rs.getObject(32),
+                            rs.getString(30),
+                            rs.getBytes(31),
+                            rs.getString(32),
                             (String) rs.getObject(33),
                             (String) rs.getObject(34),
-                            arrayToList(
-                                (Array) rs.getObject(35),
-                                Integer[].class
-                            ),
+                            (String) rs.getObject(35),
                             arrayToList(
                                 (Array) rs.getObject(36),
-                                Double[].class
+                                Integer[].class
                             ),
                             arrayToList(
                                 (Array) rs.getObject(37),
-                                LocalDate[].class
+                                Double[].class
                             ),
                             arrayToList(
                                 (Array) rs.getObject(38),
-                                LocalDateTime[].class
+                                LocalDate[].class
                             ),
                             arrayToList(
                                 (Array) rs.getObject(39),
-                                OffsetDateTime[].class
+                                LocalDateTime[].class
                             ),
                             arrayToList(
                                 (Array) rs.getObject(40),
+                                OffsetDateTime[].class
+                            ),
+                            arrayToList(
+                                (Array) rs.getObject(41),
                                 String[].class
                             ),
                             multiDimArrayToList(
-                                (Array) rs.getObject(41),
+                                (Array) rs.getObject(42),
                                 Integer[].class
                             ),
                             TestAllTypesResult.StructResult.fromAttributes(
-                                getAttr((Struct) rs.getObject(42))
-                            ),
-                            TestAllTypesResult.StructOfArraysResult.fromAttributes(
                                 getAttr((Struct) rs.getObject(43))
                             ),
+                            TestAllTypesResult.EmptyStructResult.fromAttributes(
+                                getAttr((Struct) rs.getObject(44))
+                            ),
+                            TestAllTypesResult.StructOfArraysResult.fromAttributes(
+                                getAttr((Struct) rs.getObject(45))
+                            ),
                             arrayOfStructToList(
-                                (Array) rs.getObject(44),
+                                (Array) rs.getObject(46),
                                 TestAllTypesResult.ArrayOfStructsResult::fromAttributes
                             ),
-                            (HashMap) rs.getObject(45),
-                            (Object) rs.getObject(46),
-                            (Object) rs.getObject(47),
+                            (HashMap) rs.getObject(47),
                             (Object) rs.getObject(48),
                             (Object) rs.getObject(49),
                             (Object) rs.getObject(50),
                             (Object) rs.getObject(51),
-                            TestAllTypesResult.StructOfFixedArrayResult.fromAttributes(
-                                getAttr((Struct) rs.getObject(52))
-                            ),
+                            (Object) rs.getObject(52),
                             (Object) rs.getObject(53),
+                            TestAllTypesResult.StructOfFixedArrayResult.fromAttributes(
+                                getAttr((Struct) rs.getObject(54))
+                            ),
+                            (Object) rs.getObject(55),
                             arrayToList(
-                                (Array) rs.getObject(54),
+                                (Array) rs.getObject(56),
                                 Object[].class
                             ),
-                            rs.getString(55),
-                            rs.getString(56)
+                            rs.getString(57),
+                            rs.getString(58),
+                            (Object) rs.getObject(59)
                         )
                     );
                 }
@@ -2238,63 +2252,68 @@ public class TestDuckdb {
                         (Instant) rs.getObject(18),
                         (OffsetTime) rs.getObject(19),
                         (OffsetDateTime) rs.getObject(20),
-                        rs.getObject(21, Float.class),
-                        rs.getObject(22, Double.class),
-                        rs.getBigDecimal(23),
+                        (OffsetDateTime) rs.getObject(21),
+                        rs.getObject(22, Float.class),
+                        rs.getObject(23, Double.class),
                         rs.getBigDecimal(24),
                         rs.getBigDecimal(25),
                         rs.getBigDecimal(26),
-                        (UUID) rs.getObject(27),
-                        rs.getString(28),
+                        rs.getBigDecimal(27),
+                        (UUID) rs.getObject(28),
                         rs.getString(29),
-                        rs.getBytes(30),
-                        rs.getString(31),
-                        (String) rs.getObject(32),
+                        rs.getString(30),
+                        rs.getBytes(31),
+                        rs.getString(32),
                         (String) rs.getObject(33),
                         (String) rs.getObject(34),
-                        arrayToList((Array) rs.getObject(35), Integer[].class),
-                        arrayToList((Array) rs.getObject(36), Double[].class),
+                        (String) rs.getObject(35),
+                        arrayToList((Array) rs.getObject(36), Integer[].class),
+                        arrayToList((Array) rs.getObject(37), Double[].class),
                         arrayToList(
-                            (Array) rs.getObject(37),
+                            (Array) rs.getObject(38),
                             LocalDate[].class
                         ),
                         arrayToList(
-                            (Array) rs.getObject(38),
+                            (Array) rs.getObject(39),
                             LocalDateTime[].class
                         ),
                         arrayToList(
-                            (Array) rs.getObject(39),
+                            (Array) rs.getObject(40),
                             OffsetDateTime[].class
                         ),
-                        arrayToList((Array) rs.getObject(40), String[].class),
+                        arrayToList((Array) rs.getObject(41), String[].class),
                         multiDimArrayToList(
-                            (Array) rs.getObject(41),
+                            (Array) rs.getObject(42),
                             Integer[].class
                         ),
                         TestAllTypesResult.StructResult.fromAttributes(
-                            getAttr((Struct) rs.getObject(42))
-                        ),
-                        TestAllTypesResult.StructOfArraysResult.fromAttributes(
                             getAttr((Struct) rs.getObject(43))
                         ),
+                        TestAllTypesResult.EmptyStructResult.fromAttributes(
+                            getAttr((Struct) rs.getObject(44))
+                        ),
+                        TestAllTypesResult.StructOfArraysResult.fromAttributes(
+                            getAttr((Struct) rs.getObject(45))
+                        ),
                         arrayOfStructToList(
-                            (Array) rs.getObject(44),
+                            (Array) rs.getObject(46),
                             TestAllTypesResult.ArrayOfStructsResult::fromAttributes
                         ),
-                        (HashMap) rs.getObject(45),
-                        (Object) rs.getObject(46),
-                        (Object) rs.getObject(47),
+                        (HashMap) rs.getObject(47),
                         (Object) rs.getObject(48),
                         (Object) rs.getObject(49),
                         (Object) rs.getObject(50),
                         (Object) rs.getObject(51),
-                        TestAllTypesResult.StructOfFixedArrayResult.fromAttributes(
-                            getAttr((Struct) rs.getObject(52))
-                        ),
+                        (Object) rs.getObject(52),
                         (Object) rs.getObject(53),
-                        arrayToList((Array) rs.getObject(54), Object[].class),
-                        rs.getString(55),
-                        rs.getString(56)
+                        TestAllTypesResult.StructOfFixedArrayResult.fromAttributes(
+                            getAttr((Struct) rs.getObject(54))
+                        ),
+                        (Object) rs.getObject(55),
+                        arrayToList((Array) rs.getObject(56), Object[].class),
+                        rs.getString(57),
+                        rs.getString(58),
+                        (Object) rs.getObject(59)
                     );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);

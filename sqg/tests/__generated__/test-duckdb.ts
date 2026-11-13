@@ -646,6 +646,7 @@ CREATE TABLE tasks (
       timestamp_ns: { nanos: bigint } | null;
       time_tz: { micros: bigint; offset: number } | null;
       timestamp_tz: { micros: bigint } | null;
+      timestamp_tz_ns: { nanos: bigint } | null;
       float: number | null;
       double: number | null;
       dec_4_1: { width: number; scale: number; value: bigint } | null;
@@ -969,6 +970,7 @@ CREATE TABLE tasks (
       varchar_array: { items: (string | null)[] };
       nested_int_array: { items: { items: (number | null)[] }[] };
       struct: { entries: { a: number | null; b: string | null } };
+      empty_struct: { entries: {} } | null;
       struct_of_arrays: {
         entries: {
           a: { items: (number | null)[] };
@@ -1001,6 +1003,7 @@ CREATE TABLE tasks (
       };
       time_ns: string | null;
       geometry: string | null;
+      tuple: unknown;
     }[]
   > {
     const sql = "select * from test_all_types();";
@@ -1026,6 +1029,7 @@ CREATE TABLE tasks (
       timestamp_ns: { nanos: bigint } | null;
       time_tz: { micros: bigint; offset: number } | null;
       timestamp_tz: { micros: bigint } | null;
+      timestamp_tz_ns: { nanos: bigint } | null;
       float: number | null;
       double: number | null;
       dec_4_1: { width: number; scale: number; value: bigint } | null;
@@ -1349,6 +1353,7 @@ CREATE TABLE tasks (
       varchar_array: { items: (string | null)[] };
       nested_int_array: { items: { items: (number | null)[] }[] };
       struct: { entries: { a: number | null; b: string | null } };
+      empty_struct: { entries: {} } | null;
       struct_of_arrays: {
         entries: {
           a: { items: (number | null)[] };
@@ -1381,6 +1386,7 @@ CREATE TABLE tasks (
       };
       time_ns: string | null;
       geometry: string | null;
+      tuple: unknown;
     }[];
   }
 

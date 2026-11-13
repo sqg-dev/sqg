@@ -163,6 +163,7 @@ export class JavaTypeMapper extends TypeMapper {
     TIMESTAMP_NS: "Instant",
     // DuckDB JDBC returns OffsetDateTime natively for TIMESTAMPTZ columns
     "TIMESTAMP WITH TIME ZONE": "OffsetDateTime",
+    TIMESTAMPTZ_NS: "OffsetDateTime",
     UUID: "UUID",
     INTERVAL: "String",
     BIT: "String",
@@ -297,7 +298,7 @@ export class JavaTypeMapper extends TypeMapper {
     if (upperType.startsWith("ENUM(")) {
       return "String";
     }
-    if (upperType.startsWith("UNION(")) {
+    if (upperType.startsWith("UNION(") || upperType.startsWith("TUPLE(")) {
       return "Object";
     }
     // Fixed-size arrays like INTEGER[3], VARCHAR[3][3], STRUCT(...)[3], etc. - treat as Object for now
@@ -402,7 +403,7 @@ export class JavaTypeMapper extends TypeMapper {
       return `toOffsetDateTime(${value})`;
     }
     // DuckDB JDBC returns OffsetDateTime directly for TIMESTAMP WITH TIME ZONE — no conversion needed
-    if (upperType === "TIMESTAMP WITH TIME ZONE") {
+    if (upperType === "TIMESTAMP WITH TIME ZONE" || upperType === "TIMESTAMPTZ_NS") {
       return `(OffsetDateTime)${value}`;
     }
     if (upperType === "DATE") {
@@ -514,6 +515,7 @@ export class TypeScriptTypeMapper extends TypeMapper {
     TIMESTAMP_MS: "{ millis: bigint }",
     TIMESTAMP_NS: "{ nanos: bigint }",
     "TIMESTAMP WITH TIME ZONE": "{ micros: bigint }",
+    TIMESTAMPTZ_NS: "{ nanos: bigint }",
     UUID: "{ hugeint: bigint }",
     INTERVAL: "{ months: number; days: number; micros: bigint }",
     BIT: "{ data: Uint8Array }",
@@ -579,6 +581,9 @@ export class TypeScriptTypeMapper extends TypeMapper {
     if (upperType.startsWith("UNION(")) {
       const baseType = "{ tag: string; value: unknown }";
       return nullable ? `${baseType} | null` : baseType;
+    }
+    if (upperType.startsWith("TUPLE(")) {
+      return "unknown";
     }
     // Fixed-size arrays like INTEGER[3], VARCHAR[3][3], etc. - DuckDB returns { items: T[] }
     const fixedArrayMatch = upperType.match(/^([A-Z_]+)\[(\d+)\](\[\d+\])*$/);
@@ -728,6 +733,7 @@ export class PythonTypeMapper extends TypeMapper {
     TIMESTAMP_S: "datetime.datetime",
     TIMESTAMP_MS: "datetime.datetime",
     TIMESTAMP_NS: "datetime.datetime",
+    TIMESTAMPTZ_NS: "datetime.datetime",
 
     TIME: "datetime.time",
     "TIME WITH TIME ZONE": "datetime.time",
@@ -796,7 +802,7 @@ export class PythonTypeMapper extends TypeMapper {
     if (upperType.startsWith("ENUM(")) {
       return nullable ? "str | None" : "str";
     }
-    if (upperType.startsWith("UNION(")) {
+    if (upperType.startsWith("UNION(") || upperType.startsWith("TUPLE(")) {
       return nullable ? "Any | None" : "Any";
     }
 
@@ -836,12 +842,14 @@ export class PythonTypeMapper extends TypeMapper {
       .filter(Boolean)
       .join("\n\n");
 
-    const fields = column.type.fields
-      .map((field) => {
-        const fieldType = this.getTypeName(field);
-        return `    ${this.varName(field.name)}: ${fieldType}`;
-      })
-      .join("\n");
+    // A class body can't be empty: an empty STRUCT (DuckDB 2.0) gets `pass`.
+    const fields =
+      column.type.fields
+        .map((field) => {
+          const fieldType = this.getTypeName(field);
+          return `    ${this.varName(field.name)}: ${fieldType}`;
+        })
+        .join("\n") || "    pass";
 
     let result = "";
     if (children) {
